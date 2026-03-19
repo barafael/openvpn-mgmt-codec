@@ -142,14 +142,13 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
             if args.is_empty() {
                 return Err("kill requires a target (common name or ip:port)".into());
             }
-            if let Some((ip, port_str)) = args.rsplit_once(':') {
-                if let Ok(port) = port_str.parse::<u16>() {
+            if let Some((ip, port_str)) = args.rsplit_once(':')
+                && let Ok(port) = port_str.parse::<u16>() {
                     return Ok(OvpnCommand::Kill(KillTarget::Address {
                         ip: ip.to_owned(),
                         port,
                     }));
                 }
-            }
             Ok(OvpnCommand::Kill(KillTarget::CommonName(args.to_owned())))
         }
 

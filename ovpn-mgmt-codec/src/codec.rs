@@ -372,7 +372,7 @@ impl Decoder for OvpnCodec {
             let line_bytes = src.split_to(newline_pos + 1);
             let line = std::str::from_utf8(&line_bytes)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
-                .trim_end_matches(|c| c == '\r' || c == '\n')
+                .trim_end_matches(['\r', '\n'])
                 .to_owned();
 
             // ── Phase 1: Multi-line >CLIENT: accumulation ────────
@@ -383,8 +383,8 @@ impl Decoder for OvpnCodec {
             // interleaving here should not occur. Any other line (SUCCESS,
             // ERROR, other notifications) falls through to normal processing
             // as a defensive measure.
-            if let Some(ref mut accum) = self.client_notif {
-                if let Some(rest) = line.strip_prefix(">CLIENT:ENV,") {
+            if let Some(ref mut accum) = self.client_notif
+                && let Some(rest) = line.strip_prefix(">CLIENT:ENV,") {
                     if rest == "END" {
                         let finished = self.client_notif.take().unwrap();
                         return Ok(Some(OvpnMessage::Notification(Notification::Client {
@@ -405,7 +405,6 @@ impl Decoder for OvpnCodec {
                 }
                 // Not a >CLIENT:ENV line — fall through to normal processing.
                 // This handles interleaved notifications or unexpected output.
-            }
 
             // ── Phase 2: Multi-line command response accumulation ─
             if let Some(ref mut buf) = self.multi_line_buf {
@@ -526,7 +525,7 @@ impl OvpnCodec {
                 let mut parts = args.splitn(3, ',');
                 let cid = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
                 let addr = parts.next().unwrap_or("").to_owned();
-                let primary = parts.next().map_or(false, |s| s == "1");
+                let primary = parts.next() == Some("1");
                 return Some(OvpnMessage::Notification(Notification::ClientAddress {
                     cid,
                     addr,
