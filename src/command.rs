@@ -179,6 +179,53 @@ pub enum OvpnCommand {
     /// Wire: `proxy NONE` / `proxy HTTP host port [nct]` / `proxy SOCKS host port`
     Proxy(ProxyAction),
 
+    // ── Server statistics ─────────────────────────────────────────
+    /// Request aggregated server stats.
+    /// Wire: `load-stats`
+    /// Response: `SUCCESS: nclients=N,bytesin=N,bytesout=N`
+    LoadStats,
+
+    // ── Extended client management (OpenVPN 2.5+) ────────────────
+    /// Defer authentication for a client, allowing async auth backends.
+    /// Wire: `client-pending-auth {CID} {KID} {TIMEOUT} {EXTRA}`
+    ClientPendingAuth {
+        cid: u64,
+        kid: u64,
+        /// Timeout in seconds before the pending auth expires.
+        timeout: u32,
+        /// Extra opaque string passed to the auth backend.
+        extra: String,
+    },
+
+    /// Extended deny with optional redirect URL (OpenVPN 2.5+).
+    /// Wire: `client-deny-v2 {CID} {KID} "reason" ["client-reason"] ["redirect-url"]`
+    ClientDenyV2 {
+        cid: u64,
+        kid: u64,
+        reason: String,
+        client_reason: Option<String>,
+        redirect_url: Option<String>,
+    },
+
+    /// Respond to a challenge-response authentication (OpenVPN 2.5+).
+    /// Wire: `cr-response {CID} {KID} {RESPONSE}`
+    CrResponse {
+        cid: u64,
+        kid: u64,
+        response: String,
+    },
+
+    // ── External certificate (OpenVPN 2.4+) ──────────────────────
+    /// Supply an external certificate in response to `>NEED-CERTIFICATE`.
+    /// Multi-line command: header, PEM lines, `END`.
+    /// Wire: `certificate\n{pem_lines}\nEND`
+    Certificate { pem_lines: Vec<String> },
+
+    // ── Windows service bypass message ──────────────────────────
+    /// (Windows only) Send a bypass message to the OpenVPN service.
+    /// Wire: `bypass-message "message"`
+    BypassMessage(String),
+
     // ── Session lifecycle ────────────────────────────────────────
     /// Close the management session. OpenVPN keeps running and resumes
     /// listening for new management connections.

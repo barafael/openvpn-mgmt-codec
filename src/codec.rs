@@ -221,6 +221,57 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref filter_lines,
             } => write_block(dst, &format!("client-pf {cid}"), filter_lines),
 
+            // ── Server statistics ─────────────────────────────────
+            OvpnCommand::LoadStats => write_line(dst, "load-stats"),
+
+            // ── Extended client management ───────────────────────
+            OvpnCommand::ClientPendingAuth {
+                cid,
+                kid,
+                timeout,
+                ref extra,
+            } => write_line(
+                dst,
+                &format!("client-pending-auth {cid} {kid} {timeout} {extra}"),
+            ),
+
+            OvpnCommand::ClientDenyV2 {
+                cid,
+                kid,
+                ref reason,
+                ref client_reason,
+                ref redirect_url,
+            } => {
+                let r = quote_and_escape(reason);
+                let mut cmd = format!("client-deny-v2 {cid} {kid} {r}");
+                if let Some(cr) = client_reason {
+                    cmd.push(' ');
+                    cmd.push_str(&quote_and_escape(cr));
+                    if let Some(url) = redirect_url {
+                        cmd.push(' ');
+                        cmd.push_str(&quote_and_escape(url));
+                    }
+                }
+                write_line(dst, &cmd)
+            }
+
+            OvpnCommand::CrResponse {
+                cid,
+                kid,
+                ref response,
+            } => write_line(dst, &format!("cr-response {cid} {kid} {response}")),
+
+            // ── External certificate ─────────────────────────────
+            OvpnCommand::Certificate { ref pem_lines } => {
+                write_block(dst, "certificate", pem_lines)
+            }
+
+            // ── Windows service bypass ───────────────────────────
+            OvpnCommand::BypassMessage(ref msg) => {
+                let escaped = quote_and_escape(msg);
+                write_line(dst, &format!("bypass-message {escaped}"))
+            }
+
             // ── Remote/Proxy ─────────────────────────────────────
             OvpnCommand::Remote(RemoteAction::Accept) => write_line(dst, "remote ACCEPT"),
             OvpnCommand::Remote(RemoteAction::Skip) => write_line(dst, "remote SKIP"),
