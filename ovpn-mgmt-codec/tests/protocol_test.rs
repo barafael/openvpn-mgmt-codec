@@ -744,7 +744,7 @@ fn remote_notification() {
         }) => {
             assert_eq!(host, "vpn.example.com");
             assert_eq!(*port, 1194);
-            assert_eq!(protocol, "udp");
+            assert_eq!(*protocol, TransportProtocol::Udp);
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -762,7 +762,7 @@ fn proxy_notification() {
             port,
         }) => {
             assert_eq!(*proto_num, 1);
-            assert_eq!(proto_type, "udp");
+            assert_eq!(*proto_type, TransportProtocol::Udp);
             assert_eq!(host, "vpn.example.com");
             assert_eq!(*port, 1194);
         }
@@ -2475,7 +2475,7 @@ fn remote_notification_tcp() {
         }) => {
             assert_eq!(host, "vpn.example.com");
             assert_eq!(*port, 443);
-            assert_eq!(protocol, "tcp-client");
+            assert_eq!(*protocol, TransportProtocol::Custom("tcp-client".into()));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -2495,7 +2495,7 @@ fn proxy_notification_tcp() {
             port,
         }) => {
             assert_eq!(*proto_num, 1);
-            assert_eq!(proto_type, "TCP");
+            assert_eq!(*proto_type, TransportProtocol::Tcp);
             assert_eq!(host, "vpn.example.com");
             assert_eq!(*port, 0, "port may be absent");
         }

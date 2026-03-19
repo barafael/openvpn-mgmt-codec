@@ -2,6 +2,7 @@ use crate::auth::AuthType;
 use crate::client_event::ClientEvent;
 use crate::log_level::LogLevel;
 use crate::openvpn_state::OpenVpnState;
+use crate::transport_protocol::TransportProtocol;
 
 /// Sub-types of `>PASSWORD:` notifications. The password notification
 /// has several distinct forms with completely different structures.
@@ -176,16 +177,16 @@ pub enum Notification {
         host: String,
         /// Remote server port.
         port: u16,
-        /// Protocol (e.g. `"udp"`, `"tcp"`).
-        protocol: String,
+        /// Transport protocol.
+        protocol: TransportProtocol,
     },
 
     /// `>PROXY:proto_num,proto_type,host[,port]`
     Proxy {
         /// Numeric protocol identifier.
         proto_num: u32,
-        /// Protocol type (e.g. `"udp"`, `"tcp"`).
-        proto_type: String,
+        /// Transport protocol type.
+        proto_type: TransportProtocol,
         /// Server hostname or IP.
         host: String,
         /// Server port (`0` if not provided by the server).

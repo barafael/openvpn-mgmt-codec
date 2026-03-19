@@ -31,6 +31,8 @@ pub mod signal;
 pub mod status_format;
 /// Stream mode selectors (on/off/all/recent).
 pub mod stream_mode;
+/// Transport protocol (UDP, TCP) for remote/proxy notifications.
+pub mod transport_protocol;
 /// Error classification for unrecognized protocol lines.
 pub mod unrecognized;
 
@@ -48,4 +50,5 @@ pub use remote_action::RemoteAction;
 pub use signal::Signal;
 pub use status_format::StatusFormat;
 pub use stream_mode::StreamMode;
+pub use transport_protocol::TransportProtocol;
 pub use unrecognized::UnrecognizedKind;

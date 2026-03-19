@@ -35,6 +35,7 @@ fn quote_and_escape(s: &str) -> String {
 use crate::client_event::ClientEvent;
 use crate::log_level::LogLevel;
 use crate::openvpn_state::OpenVpnState;
+use crate::transport_protocol::TransportProtocol;
 
 /// Internal state for accumulating multi-line `>CLIENT:` notifications.
 #[derive(Debug)]
@@ -705,7 +706,7 @@ fn parse_remote(payload: &str) -> Option<Notification> {
     let mut parts = payload.splitn(3, ',');
     let host = parts.next()?.to_owned();
     let port = parts.next()?.parse().ok()?;
-    let protocol = parts.next()?.to_owned();
+    let protocol = TransportProtocol::parse(parts.next()?);
     Some(Notification::Remote {
         host,
         port,
@@ -716,7 +717,7 @@ fn parse_remote(payload: &str) -> Option<Notification> {
 fn parse_proxy(payload: &str) -> Option<Notification> {
     let mut parts = payload.splitn(4, ',');
     let proto_num = parts.next()?.parse().ok()?;
-    let proto_type = parts.next()?.to_owned();
+    let proto_type = TransportProtocol::parse(parts.next()?);
     let host = parts.next()?.to_owned();
     let port = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
     Some(Notification::Proxy {
