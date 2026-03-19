@@ -64,6 +64,8 @@ pub struct OvpnCodec {
 }
 
 impl OvpnCodec {
+    /// Create a new codec with default state, ready to encode commands and
+    /// decode responses.
     pub fn new() -> Self {
         Self {
             // Before any command is sent, OpenVPN sends a greeting
@@ -504,18 +506,223 @@ impl OvpnCodec {
             return None; // Signal to the caller to keep reading.
         }
 
-        // All other notifications are single-line.
-        Some(OvpnMessage::Notification(Notification::Simple {
-            kind: kind.to_owned(),
-            payload: payload.to_owned(),
-        }))
+        // Dispatch to typed parsers. On parse failure, fall back to Simple.
+        let notification = match kind {
+            "STATE" => parse_state(payload),
+            "BYTECOUNT" => parse_bytecount(payload),
+            "BYTECOUNT_CLI" => parse_bytecount_cli(payload),
+            "LOG" => parse_log(payload),
+            "ECHO" => parse_echo(payload),
+            "HOLD" => Some(Notification::Hold {
+                text: payload.to_owned(),
+            }),
+            "FATAL" => Some(Notification::Fatal {
+                message: payload.to_owned(),
+            }),
+            "PKCS11ID-COUNT" => parse_pkcs11id_count(payload),
+            "NEED-OK" => parse_need_ok(payload),
+            "NEED-STR" => parse_need_str(payload),
+            "RSA_SIGN" => Some(Notification::RsaSign {
+                data: payload.to_owned(),
+            }),
+            "REMOTE" => parse_remote(payload),
+            "PROXY" => Some(Notification::Proxy {
+                payload: payload.to_owned(),
+            }),
+            "PASSWORD" => parse_password(payload),
+            _ => None,
+        };
+
+        Some(OvpnMessage::Notification(notification.unwrap_or(
+            Notification::Simple {
+                kind: kind.to_owned(),
+                payload: payload.to_owned(),
+            },
+        )))
     }
+}
+
+// ── Notification parsers ──────────────────────────────────────────
+//
+// Each returns `Option<Notification>`. `None` means "could not parse,
+// fall back to Simple". This is intentional — the protocol varies
+// across OpenVPN versions and we never want a parse failure to
+// produce an error.
+
+fn parse_state(payload: &str) -> Option<Notification> {
+    let mut parts = payload.splitn(8, ',');
+    let timestamp = parts.next()?.parse().ok()?;
+    let name = parts.next()?.to_owned();
+    let description = parts.next()?.to_owned();
+    let local_ip = parts.next()?.to_owned();
+    let remote_ip = parts.next()?.to_owned();
+    let local_port = parts.next().unwrap_or("").to_owned();
+    let remote_port = parts.next().unwrap_or("").to_owned();
+    Some(Notification::State {
+        timestamp,
+        name,
+        description,
+        local_ip,
+        remote_ip,
+        local_port,
+        remote_port,
+    })
+}
+
+fn parse_bytecount(payload: &str) -> Option<Notification> {
+    let (a, b) = payload.split_once(',')?;
+    Some(Notification::ByteCount {
+        bytes_in: a.parse().ok()?,
+        bytes_out: b.parse().ok()?,
+    })
+}
+
+fn parse_bytecount_cli(payload: &str) -> Option<Notification> {
+    let mut parts = payload.splitn(3, ',');
+    let cid = parts.next()?.parse().ok()?;
+    let bytes_in = parts.next()?.parse().ok()?;
+    let bytes_out = parts.next()?.parse().ok()?;
+    Some(Notification::ByteCountCli {
+        cid,
+        bytes_in,
+        bytes_out,
+    })
+}
+
+fn parse_log(payload: &str) -> Option<Notification> {
+    let (ts_str, rest) = payload.split_once(',')?;
+    let timestamp = ts_str.parse().ok()?;
+    let (flags, message) = rest.split_once(',')?;
+    Some(Notification::Log {
+        timestamp,
+        flags: flags.to_owned(),
+        message: message.to_owned(),
+    })
+}
+
+fn parse_echo(payload: &str) -> Option<Notification> {
+    let (ts_str, param) = payload.split_once(',')?;
+    let timestamp = ts_str.parse().ok()?;
+    Some(Notification::Echo {
+        timestamp,
+        param: param.to_owned(),
+    })
+}
+
+fn parse_pkcs11id_count(payload: &str) -> Option<Notification> {
+    let count = payload.trim().parse().ok()?;
+    Some(Notification::Pkcs11IdCount { count })
+}
+
+/// Parse `Need 'name' ... MSG:message` from NEED-OK payload.
+fn parse_need_ok(payload: &str) -> Option<Notification> {
+    // Format: Need 'name' confirmation MSG:message
+    let rest = payload.strip_prefix("Need '")?;
+    let (name, rest) = rest.split_once('\'')?;
+    let msg = rest.split_once("MSG:")?.1;
+    Some(Notification::NeedOk {
+        name: name.to_owned(),
+        message: msg.to_owned(),
+    })
+}
+
+/// Parse `Need 'name' input MSG:message` from NEED-STR payload.
+fn parse_need_str(payload: &str) -> Option<Notification> {
+    let rest = payload.strip_prefix("Need '")?;
+    let (name, rest) = rest.split_once('\'')?;
+    let msg = rest.split_once("MSG:")?.1;
+    Some(Notification::NeedStr {
+        name: name.to_owned(),
+        message: msg.to_owned(),
+    })
+}
+
+fn parse_remote(payload: &str) -> Option<Notification> {
+    let mut parts = payload.splitn(3, ',');
+    let host = parts.next()?.to_owned();
+    let port = parts.next()?.to_owned();
+    let protocol = parts.next()?.to_owned();
+    Some(Notification::Remote {
+        host,
+        port,
+        protocol,
+    })
+}
+
+use crate::message::PasswordNotification;
+
+fn parse_password(payload: &str) -> Option<Notification> {
+    // Verification Failed: 'type'
+    if let Some(rest) = payload.strip_prefix("Verification Failed: '") {
+        let auth_type = rest.strip_suffix('\'')?;
+        return Some(Notification::Password(
+            PasswordNotification::VerificationFailed {
+                auth_type: auth_type.to_owned(),
+            },
+        ));
+    }
+
+    // Need 'type' username/password [SC:...|CRV1:...]
+    // Need 'type' password
+    let rest = payload.strip_prefix("Need '")?;
+    let (auth_type, rest) = rest.split_once('\'')?;
+    let rest = rest.trim_start();
+
+    // Check for challenge-response suffixes
+    if let Some(after_up) = rest.strip_prefix("username/password") {
+        let after_up = after_up.trim_start();
+
+        // Static challenge: SC:echo_flag,challenge_text
+        if let Some(sc) = after_up.strip_prefix("SC:") {
+            let (echo_str, challenge) = sc.split_once(',')?;
+            return Some(Notification::Password(
+                PasswordNotification::StaticChallenge {
+                    echo: echo_str == "1",
+                    challenge: challenge.to_owned(),
+                },
+            ));
+        }
+
+        // Dynamic challenge: CRV1:flags:state_id:username_b64:challenge
+        if let Some(crv1) = after_up.strip_prefix("CRV1:") {
+            let mut parts = crv1.splitn(4, ':');
+            let flags = parts.next()?.to_owned();
+            let state_id = parts.next()?.to_owned();
+            let username_b64 = parts.next()?.to_owned();
+            let challenge = parts.next()?.to_owned();
+            return Some(Notification::Password(
+                PasswordNotification::DynamicChallenge {
+                    flags,
+                    state_id,
+                    username_b64,
+                    challenge,
+                },
+            ));
+        }
+
+        // Plain username/password request
+        return Some(Notification::Password(PasswordNotification::NeedAuth {
+            auth_type: auth_type.to_owned(),
+        }));
+    }
+
+    // Need 'type' password
+    if rest.starts_with("password") {
+        return Some(Notification::Password(
+            PasswordNotification::NeedPassword {
+                auth_type: auth_type.to_owned(),
+            },
+        ));
+    }
+
+    None // Unrecognized PASSWORD sub-format — fall back to Simple
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::auth::AuthType;
+    use crate::message::PasswordNotification;
     use crate::signal::Signal;
     use crate::status_format::StatusFormat;
     use crate::stream_mode::StreamMode;
@@ -785,13 +992,23 @@ mod tests {
     }
 
     #[test]
-    fn decode_simple_notification() {
+    fn decode_state_notification() {
         let msgs = decode_all(">STATE:1234567890,CONNECTED,SUCCESS,,10.0.0.1\n");
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::Simple { kind, payload }) => {
-                assert_eq!(kind, "STATE");
-                assert_eq!(payload, "1234567890,CONNECTED,SUCCESS,,10.0.0.1");
+            OvpnMessage::Notification(Notification::State {
+                timestamp,
+                name,
+                description,
+                local_ip,
+                remote_ip,
+                ..
+            }) => {
+                assert_eq!(*timestamp, 1234567890);
+                assert_eq!(name, "CONNECTED");
+                assert_eq!(description, "SUCCESS");
+                assert_eq!(local_ip, "");
+                assert_eq!(remote_ip, "10.0.0.1");
             }
             other => panic!("unexpected: {other:?}"),
         }
@@ -847,7 +1064,7 @@ mod tests {
         // First emitted message: the interleaved notification.
         assert!(matches!(
             &msgs[0],
-            OvpnMessage::Notification(Notification::Simple { kind, .. }) if kind == "BYTECOUNT"
+            OvpnMessage::Notification(Notification::ByteCount { bytes_in: 1000, bytes_out: 2000 })
         ));
         // Second: the completed multi-line block (notification is not included).
         match &msgs[1] {
@@ -920,9 +1137,10 @@ mod tests {
         let msgs = decode_all(">PASSWORD:Need 'Auth' username/password\n");
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::Simple { kind, payload }) => {
-                assert_eq!(kind, "PASSWORD");
-                assert_eq!(payload, "Need 'Auth' username/password");
+            OvpnMessage::Notification(Notification::Password(
+                PasswordNotification::NeedAuth { auth_type },
+            )) => {
+                assert_eq!(auth_type, "Auth");
             }
             other => panic!("unexpected: {other:?}"),
         }
@@ -950,9 +1168,9 @@ mod tests {
         );
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::Simple { kind, payload }) => {
-                assert_eq!(kind, "NEED-OK");
-                assert!(payload.contains("token-insertion-request"));
+            OvpnMessage::Notification(Notification::NeedOk { name, message }) => {
+                assert_eq!(name, "token-insertion-request");
+                assert_eq!(message, "Please insert your token");
             }
             other => panic!("unexpected: {other:?}"),
         }
@@ -963,9 +1181,8 @@ mod tests {
         let msgs = decode_all(">HOLD:Waiting for hold release\n");
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::Simple { kind, payload }) => {
-                assert_eq!(kind, "HOLD");
-                assert_eq!(payload, "Waiting for hold release");
+            OvpnMessage::Notification(Notification::Hold { text }) => {
+                assert_eq!(text, "Waiting for hold release");
             }
             other => panic!("unexpected: {other:?}"),
         }

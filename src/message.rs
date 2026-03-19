@@ -1,3 +1,43 @@
+/// Sub-types of `>PASSWORD:` notifications. The password notification
+/// has several distinct forms with completely different structures.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PasswordNotification {
+    /// `>PASSWORD:Need 'Auth' username/password`
+    NeedAuth {
+        /// The credential set being requested (e.g. `"Auth"`).
+        auth_type: String,
+    },
+    /// `>PASSWORD:Need 'Private Key' password`
+    NeedPassword {
+        /// The credential set being requested (e.g. `"Private Key"`).
+        auth_type: String,
+    },
+    /// `>PASSWORD:Verification Failed: 'Auth'`
+    VerificationFailed {
+        /// The credential set that failed verification.
+        auth_type: String,
+    },
+    /// Static challenge: `>PASSWORD:Need 'Auth' username/password SC:{echo},{challenge}`
+    StaticChallenge {
+        /// Whether to echo the user's response (from the `echo` flag: `0` or `1`).
+        echo: bool,
+        /// The challenge text presented to the user.
+        challenge: String,
+    },
+    /// Dynamic challenge (CRV1):
+    /// `>PASSWORD:Need 'Auth' username/password CRV1:{flags}:{state_id}:{username_b64}:{challenge}`
+    DynamicChallenge {
+        /// Comma-separated CRV1 flags.
+        flags: String,
+        /// Opaque state identifier for the auth backend.
+        state_id: String,
+        /// Base64-encoded username.
+        username_b64: String,
+        /// The challenge text presented to the user.
+        challenge: String,
+    },
+}
+
 /// A parsed real-time notification from OpenVPN.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Notification {
@@ -17,17 +57,131 @@ pub enum Notification {
 
     /// A single-line `>CLIENT:ADDRESS` notification.
     ClientAddress {
+        /// Client ID.
         cid: String,
+        /// Assigned virtual address.
         addr: String,
+        /// `"1"` if this is the primary address, `"0"` otherwise.
         primary: String,
     },
 
-    /// Any other single-line notification: `>STATE:...`, `>BYTECOUNT:...`,
-    /// `>LOG:...`, `>HOLD:...`, `>PASSWORD:...`, `>ECHO:...`, `>FATAL:...`,
-    /// `>NEED-OK:...`, `>NEED-STR:...`, `>RSA_SIGN:...`, `>REMOTE:...`,
-    /// `>PROXY:...`, `>BYTECOUNT_CLI:...`, etc.
+    /// `>STATE:timestamp,name,description,local_ip,remote_ip[,local_port,remote_port]`
+    State {
+        /// Unix timestamp of the state change.
+        timestamp: u64,
+        /// State name (e.g. `"CONNECTED"`, `"RECONNECTING"`).
+        name: String,
+        /// Verbose description of the state.
+        description: String,
+        /// Local tunnel IP address (may be empty).
+        local_ip: String,
+        /// Remote server IP address (may be empty).
+        remote_ip: String,
+        /// Local port (may be empty, OpenVPN 2.1+).
+        local_port: String,
+        /// Remote port (may be empty, OpenVPN 2.1+).
+        remote_port: String,
+    },
+
+    /// `>BYTECOUNT:bytes_in,bytes_out` (client mode)
+    ByteCount {
+        /// Bytes received since last reset.
+        bytes_in: u64,
+        /// Bytes sent since last reset.
+        bytes_out: u64,
+    },
+
+    /// `>BYTECOUNT_CLI:cid,bytes_in,bytes_out` (server mode, per-client)
+    ByteCountCli {
+        /// Client ID.
+        cid: u64,
+        /// Bytes received from this client.
+        bytes_in: u64,
+        /// Bytes sent to this client.
+        bytes_out: u64,
+    },
+
+    /// `>LOG:timestamp,flags,message`
+    Log {
+        /// Unix timestamp of the log entry.
+        timestamp: u64,
+        /// Log level flags (e.g. `"I"` for info, `"D"` for debug).
+        flags: String,
+        /// The log message text.
+        message: String,
+    },
+
+    /// `>ECHO:timestamp,param_string`
+    Echo {
+        /// Unix timestamp.
+        timestamp: u64,
+        /// The echoed parameter string.
+        param: String,
+    },
+
+    /// `>HOLD:Waiting for hold release[:N]`
+    Hold {
+        /// The hold message text.
+        text: String,
+    },
+
+    /// `>FATAL:message`
+    Fatal {
+        /// The fatal error message.
+        message: String,
+    },
+
+    /// `>PKCS11ID-COUNT:count`
+    Pkcs11IdCount {
+        /// Number of available PKCS#11 identities.
+        count: u32,
+    },
+
+    /// `>NEED-OK:Need 'name' confirmation MSG:message`
+    NeedOk {
+        /// The prompt name.
+        name: String,
+        /// The prompt message to display.
+        message: String,
+    },
+
+    /// `>NEED-STR:Need 'name' input MSG:message`
+    NeedStr {
+        /// The prompt name.
+        name: String,
+        /// The prompt message to display.
+        message: String,
+    },
+
+    /// `>RSA_SIGN:base64_data`
+    RsaSign {
+        /// Base64-encoded data to be signed.
+        data: String,
+    },
+
+    /// `>REMOTE:host,port,protocol`
+    Remote {
+        /// Remote server hostname or IP.
+        host: String,
+        /// Remote server port.
+        port: String,
+        /// Protocol (e.g. `"udp"`, `"tcp"`).
+        protocol: String,
+    },
+
+    /// `>PROXY:proto_num,proto_type,host[,port]`
+    Proxy {
+        /// Raw payload after `>PROXY:`.
+        payload: String,
+    },
+
+    /// `>PASSWORD:...` — see [`PasswordNotification`] for the sub-types.
+    Password(PasswordNotification),
+
+    /// Fallback for any notification type not explicitly modeled above.
+    /// Kept for forward compatibility with future OpenVPN versions.
     Simple {
-        /// The notification type keyword (e.g. `"STATE"`, `"BYTECOUNT"`).
+        /// The notification type keyword (e.g. `"BYTECOUNT"`).
         kind: String,
         /// Everything after the first colon.
         payload: String,
@@ -62,7 +216,9 @@ pub enum OvpnMessage {
     /// A line that could not be classified into any known message type.
     /// Contains the raw line and a description of what went wrong.
     Unrecognized {
+        /// The raw line that could not be parsed.
         line: String,
+        /// Why the line was not recognized.
         kind: crate::unrecognized::UnrecognizedKind,
     },
 }
