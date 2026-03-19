@@ -7,9 +7,12 @@ use std::fmt;
 /// - V3: tab-delimited, ideal for programmatic consumption
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum StatusFormat {
+    /// Default human-readable format.
     #[default]
     V1,
+    /// Adds header/footer markers for easier parsing.
     V2,
+    /// Tab-delimited, ideal for programmatic consumption.
     V3,
 }
 

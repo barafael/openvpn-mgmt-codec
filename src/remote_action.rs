@@ -7,5 +7,10 @@ pub enum RemoteAction {
     /// Skip this entry and advance to the next `--remote`.
     Skip,
     /// Override the host and port.
-    Modify { host: String, port: u16 },
+    Modify {
+        /// Replacement hostname or IP.
+        host: String,
+        /// Replacement port.
+        port: u16,
+    },
 }

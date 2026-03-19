@@ -32,7 +32,7 @@ tokio-util = { version = "0.7", features = ["codec"] }
 
 Then wrap a TCP stream with the codec:
 
-```rust
+```rust,no_run
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 use futures::{SinkExt, StreamExt};

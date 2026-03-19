@@ -6,12 +6,19 @@ pub enum ProxyAction {
     None,
     /// Use an HTTP proxy.
     Http {
+        /// Proxy hostname or IP.
         host: String,
+        /// Proxy port.
         port: u16,
         /// If true, pass the `"nct"` flag to allow only non-cleartext
         /// authentication with the proxy.
         non_cleartext_only: bool,
     },
     /// Use a SOCKS proxy.
-    Socks { host: String, port: u16 },
+    Socks {
+        /// Proxy hostname or IP.
+        host: String,
+        /// Proxy port.
+        port: u16,
+    },
 }
