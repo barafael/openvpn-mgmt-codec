@@ -15,10 +15,11 @@
 
 use futures::{SinkExt, StreamExt};
 use ovpn_mgmt_codec::{
-    AuthType, KillTarget, Notification, OvpnCodec, OvpnCommand, OvpnMessage,
-    PasswordNotification, Signal, StatusFormat, StreamMode,
+    AuthRetryMode, AuthType, KillTarget, NeedOkResponse, Notification, OvpnCodec, OvpnCommand,
+    OvpnMessage, PasswordNotification, ProxyAction, RemoteAction, Signal, StatusFormat, StreamMode,
 };
 use std::env;
+use std::io::Write as _;
 use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
@@ -27,6 +28,48 @@ use tokio_util::codec::Framed;
 use std::path::Path;
 #[cfg(unix)]
 use tokio::net::UnixStream;
+
+const USAGE: &str = "\
+ovpn-mgmt-cli — interactive OpenVPN management interface client
+
+USAGE:
+    ovpn-mgmt-cli [ADDRESS]
+
+ADDRESS defaults to 127.0.0.1:7505.
+On Unix, a path to a Unix domain socket is also accepted.
+
+COMMANDS (at the ovpn> prompt):
+    version                        Show OpenVPN and management interface version
+    status [1|2|3]                 Dump connection status (format V1/V2/V3)
+    state [on|off|all|on all|N]    Query or stream state changes
+    log   [on|off|all|on all|N]    Query or stream log messages
+    echo  [on|off|all|on all|N]    Query or stream echo parameters
+    pid                            Show OpenVPN PID
+    help                           List management commands
+    net                            (Windows) Show adapter/route info
+    load-stats                     Aggregated server statistics
+    verb [N]                       Get/set log verbosity (0-15)
+    mute [N]                       Get/set mute threshold
+    bytecount N                    Enable byte-count notifications (0 to disable)
+    signal SIGHUP|SIGTERM|...      Send signal to daemon
+    kill <cn|ip:port>              Kill client by common name or address
+    hold [on|off|release]          Query/set hold state
+    username <type> <value>        Supply username
+    password <type> <value>        Supply password
+    auth-retry none|interact|...   Set auth-retry strategy
+    forget-passwords               Forget cached passwords
+    needok <name> ok|cancel        Respond to NEED-OK prompt
+    needstr <name> <value>         Respond to NEED-STR prompt
+    pkcs11-id-count                Query PKCS#11 cert count
+    pkcs11-id-get N                Get PKCS#11 cert by index
+    client-auth <cid> <kid> [lines]  Authorize client (lines comma-separated)
+    client-auth-nt <cid> <kid>     Authorize client (no config push)
+    client-deny <cid> <kid> <reason> [client-reason]  Deny client
+    client-kill <cid>              Kill client by CID
+    remote accept|skip|mod <h> <p> Respond to REMOTE prompt
+    proxy none|http|socks ...      Respond to PROXY prompt
+    exit / quit                    Disconnect
+    <anything else>                Sent as raw command";
 
 /// Parse a user-typed line into an `OvpnCommand`.
 fn parse_input(line: &str) -> Result<OvpnCommand, String> {
@@ -37,7 +80,7 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
         .unwrap_or((line, ""));
 
     match cmd {
-        // Informational
+        // ── Informational ────────────────────────────────────────
         "version" => Ok(OvpnCommand::Version),
         "pid" => Ok(OvpnCommand::Pid),
         "help" => Ok(OvpnCommand::Help),
@@ -48,19 +91,12 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
             "" | "1" => Ok(OvpnCommand::Status(StatusFormat::V1)),
             "2" => Ok(OvpnCommand::Status(StatusFormat::V2)),
             "3" => Ok(OvpnCommand::Status(StatusFormat::V3)),
-            _ => Err(format!("invalid status format: {args}")),
+            _ => Err(format!("invalid status format: {args} (use 1, 2, or 3)")),
         },
 
         "state" => match args {
             "" => Ok(OvpnCommand::State),
-            "on" => Ok(OvpnCommand::StateStream(StreamMode::On)),
-            "off" => Ok(OvpnCommand::StateStream(StreamMode::Off)),
-            "all" => Ok(OvpnCommand::StateStream(StreamMode::All)),
-            "on all" => Ok(OvpnCommand::StateStream(StreamMode::OnAll)),
-            n => n
-                .parse::<u32>()
-                .map(|n| OvpnCommand::StateStream(StreamMode::Recent(n)))
-                .map_err(|_| format!("invalid state argument: {args}")),
+            other => parse_stream_mode(other).map(OvpnCommand::StateStream),
         },
 
         "log" => parse_stream_mode(args).map(OvpnCommand::Log),
@@ -72,7 +108,7 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
             } else {
                 args.parse::<u8>()
                     .map(|n| OvpnCommand::Verb(Some(n)))
-                    .map_err(|_| format!("invalid verbosity: {args}"))
+                    .map_err(|_| format!("invalid verbosity: {args} (0-15)"))
             }
         }
 
@@ -91,13 +127,15 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
             .map(OvpnCommand::ByteCount)
             .map_err(|_| format!("bytecount requires a number, got: {args}")),
 
-        // Connection control
+        // ── Connection control ───────────────────────────────────
         "signal" => match args {
             "SIGHUP" => Ok(OvpnCommand::Signal(Signal::SigHup)),
             "SIGTERM" => Ok(OvpnCommand::Signal(Signal::SigTerm)),
             "SIGUSR1" => Ok(OvpnCommand::Signal(Signal::SigUsr1)),
             "SIGUSR2" => Ok(OvpnCommand::Signal(Signal::SigUsr2)),
-            _ => Err(format!("unknown signal: {args} (use SIGHUP/SIGTERM/SIGUSR1/SIGUSR2)")),
+            _ => Err(format!(
+                "unknown signal: {args} (use SIGHUP/SIGTERM/SIGUSR1/SIGUSR2)"
+            )),
         },
 
         "kill" => {
@@ -123,7 +161,7 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
             _ => Err(format!("invalid hold argument: {args}")),
         },
 
-        // Authentication
+        // ── Authentication ───────────────────────────────────────
         "username" => {
             let (auth_type, value) = args
                 .split_once(char::is_whitespace)
@@ -144,13 +182,152 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
             })
         }
 
+        "auth-retry" => match args {
+            "none" => Ok(OvpnCommand::AuthRetry(AuthRetryMode::None)),
+            "interact" => Ok(OvpnCommand::AuthRetry(AuthRetryMode::Interact)),
+            "nointeract" => Ok(OvpnCommand::AuthRetry(AuthRetryMode::NoInteract)),
+            _ => Err(format!(
+                "invalid auth-retry mode: {args} (use none/interact/nointeract)"
+            )),
+        },
+
         "forget-passwords" => Ok(OvpnCommand::ForgetPasswords),
 
-        // Lifecycle
+        // ── Interactive prompts ──────────────────────────────────
+        "needok" => {
+            let (name, resp) = args
+                .rsplit_once(char::is_whitespace)
+                .ok_or("usage: needok <name> ok|cancel")?;
+            let response = match resp {
+                "ok" => NeedOkResponse::Ok,
+                "cancel" => NeedOkResponse::Cancel,
+                _ => return Err(format!("invalid needok response: {resp} (use ok/cancel)")),
+            };
+            Ok(OvpnCommand::NeedOk {
+                name: name.trim().to_owned(),
+                response,
+            })
+        }
+
+        "needstr" => {
+            let (name, value) = args
+                .split_once(char::is_whitespace)
+                .ok_or("usage: needstr <name> <value>")?;
+            Ok(OvpnCommand::NeedStr {
+                name: name.to_owned(),
+                value: value.trim().to_owned(),
+            })
+        }
+
+        // ── PKCS#11 ─────────────────────────────────────────────
+        "pkcs11-id-count" => Ok(OvpnCommand::Pkcs11IdCount),
+
+        "pkcs11-id-get" => args
+            .parse::<u32>()
+            .map(OvpnCommand::Pkcs11IdGet)
+            .map_err(|_| format!("pkcs11-id-get requires a number, got: {args}")),
+
+        // ── Client management (server mode) ─────────────────────
+        "client-auth" => {
+            let mut parts = args.splitn(3, char::is_whitespace);
+            let cid = parts
+                .next()
+                .ok_or("usage: client-auth <cid> <kid> [config-lines]")?
+                .parse::<u64>()
+                .map_err(|_| "cid must be a number")?;
+            let kid = parts
+                .next()
+                .ok_or("usage: client-auth <cid> <kid> [config-lines]")?
+                .parse::<u64>()
+                .map_err(|_| "kid must be a number")?;
+            let config_lines = match parts.next() {
+                Some(rest) => rest.split(',').map(|s| s.trim().to_owned()).collect(),
+                None => vec![],
+            };
+            Ok(OvpnCommand::ClientAuth {
+                cid,
+                kid,
+                config_lines,
+            })
+        }
+
+        "client-auth-nt" => {
+            let (cid_s, kid_s) = args
+                .split_once(char::is_whitespace)
+                .ok_or("usage: client-auth-nt <cid> <kid>")?;
+            Ok(OvpnCommand::ClientAuthNt {
+                cid: cid_s.parse().map_err(|_| "cid must be a number")?,
+                kid: kid_s.trim().parse().map_err(|_| "kid must be a number")?,
+            })
+        }
+
+        "client-deny" => {
+            let mut parts = args.splitn(4, char::is_whitespace);
+            let cid = parts
+                .next()
+                .ok_or("usage: client-deny <cid> <kid> <reason> [client-reason]")?
+                .parse::<u64>()
+                .map_err(|_| "cid must be a number")?;
+            let kid = parts
+                .next()
+                .ok_or("usage: client-deny <cid> <kid> <reason> [client-reason]")?
+                .parse::<u64>()
+                .map_err(|_| "kid must be a number")?;
+            let reason = parts
+                .next()
+                .ok_or("usage: client-deny <cid> <kid> <reason> [client-reason]")?
+                .to_owned();
+            let client_reason = parts.next().map(|s| s.to_owned());
+            Ok(OvpnCommand::ClientDeny {
+                cid,
+                kid,
+                reason,
+                client_reason,
+            })
+        }
+
+        "client-kill" => {
+            let cid = args
+                .parse::<u64>()
+                .map_err(|_| format!("client-kill requires a CID number, got: {args}"))?;
+            Ok(OvpnCommand::ClientKill { cid })
+        }
+
+        // ── Remote/Proxy override ────────────────────────────────
+        "remote" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+            ["accept" | "ACCEPT"] => Ok(OvpnCommand::Remote(RemoteAction::Accept)),
+            ["skip" | "SKIP"] => Ok(OvpnCommand::Remote(RemoteAction::Skip)),
+            ["mod" | "MOD", host, port] => Ok(OvpnCommand::Remote(RemoteAction::Modify {
+                host: host.to_string(),
+                port: port.parse().map_err(|_| "port must be a number")?,
+            })),
+            _ => Err("usage: remote accept|skip|mod <host> <port>".into()),
+        },
+
+        "proxy" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+            ["none" | "NONE"] => Ok(OvpnCommand::Proxy(ProxyAction::None)),
+            ["http" | "HTTP", host, port] => Ok(OvpnCommand::Proxy(ProxyAction::Http {
+                host: host.to_string(),
+                port: port.parse().map_err(|_| "port must be a number")?,
+                non_cleartext_only: false,
+            })),
+            ["http" | "HTTP", host, port, "nct"] => Ok(OvpnCommand::Proxy(ProxyAction::Http {
+                host: host.to_string(),
+                port: port.parse().map_err(|_| "port must be a number")?,
+                non_cleartext_only: true,
+            })),
+            ["socks" | "SOCKS", host, port] => Ok(OvpnCommand::Proxy(ProxyAction::Socks {
+                host: host.to_string(),
+                port: port.parse().map_err(|_| "port must be a number")?,
+            })),
+            _ => Err("usage: proxy none|http <host> <port> [nct]|socks <host> <port>".into()),
+        },
+
+        // ── Lifecycle ────────────────────────────────────────────
         "exit" => Ok(OvpnCommand::Exit),
         "quit" => Ok(OvpnCommand::Quit),
 
-        // Fallback: send as raw command
+        // ── Fallback: send as raw command ────────────────────────
         _ => Ok(OvpnCommand::Raw(line.to_owned())),
     }
 }
@@ -164,7 +341,7 @@ fn parse_stream_mode(args: &str) -> Result<StreamMode, String> {
         n => n
             .parse::<u32>()
             .map(StreamMode::Recent)
-            .map_err(|_| format!("invalid stream mode: {args}")),
+            .map_err(|_| format!("invalid stream mode: {args} (use on/off/all/on all/N)")),
     }
 }
 
@@ -176,6 +353,37 @@ fn parse_auth_type(s: &str) -> AuthType {
         "SOCKSProxy" | "SOCKS Proxy" => AuthType::SocksProxy,
         other => AuthType::Custom(other.to_owned()),
     }
+}
+
+/// Format a Unix timestamp as a local datetime string.
+fn format_timestamp(ts: u64) -> String {
+    // Manual conversion: ts is seconds since Unix epoch.
+    // We format as UTC since we don't have a timezone library.
+    let secs = ts % 60;
+    let mins_total = ts / 60;
+    let mins = mins_total % 60;
+    let hours_total = mins_total / 60;
+    let hours = hours_total % 24;
+    let days_total = hours_total / 24;
+
+    // Days since epoch to Y-M-D (simplified Gregorian).
+    let (year, month, day) = days_to_ymd(days_total);
+    format!("{year:04}-{month:02}-{day:02}T{hours:02}:{mins:02}:{secs:02}Z")
+}
+
+fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
+    // Algorithm from http://howardhinnant.github.io/date_algorithms.html
+    days += 719_468;
+    let era = days / 146_097;
+    let doe = days - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    (y, m, d)
 }
 
 /// Pretty-print a decoded message.
@@ -190,7 +398,9 @@ fn print_message(msg: &OvpnMessage) {
         }
         OvpnMessage::SingleValue(val) => println!("{val}"),
         OvpnMessage::Info(info) => println!("[INFO] {info}"),
-        OvpnMessage::PasswordPrompt => println!("[MGMT] Enter management password:"),
+        OvpnMessage::PasswordPrompt => {
+            println!("[MGMT] Management password required (type the password and press enter)");
+        }
         OvpnMessage::Notification(notif) => print_notification(notif),
         OvpnMessage::Pkcs11IdEntry { index, id, blob } => {
             println!("[PKCS11] index={index} id={id} blob={blob}");
@@ -211,7 +421,8 @@ fn print_notification(notif: &Notification) {
             remote_ip,
             ..
         } => {
-            println!("[STATE] {name} — {description} (local={local_ip}, remote={remote_ip}, t={timestamp})");
+            let ts = format_timestamp(*timestamp);
+            println!("[STATE] {name} — {description} (local={local_ip}, remote={remote_ip}, {ts})");
         }
         Notification::ByteCount {
             bytes_in,
@@ -228,13 +439,15 @@ fn print_notification(notif: &Notification) {
         }
         Notification::Log {
             timestamp,
-            flags,
+            level,
             message,
         } => {
-            println!("[LOG {flags}] {message} (t={timestamp})");
+            let ts = format_timestamp(*timestamp);
+            println!("[LOG {level}] {message} ({ts})");
         }
         Notification::Echo { timestamp, param } => {
-            println!("[ECHO] {param} (t={timestamp})");
+            let ts = format_timestamp(*timestamp);
+            println!("[ECHO] {param} ({ts})");
         }
         Notification::Hold { text } => {
             println!("[HOLD] {text}");
@@ -244,10 +457,14 @@ fn print_notification(notif: &Notification) {
         }
         Notification::Client {
             event,
-            header_args,
+            cid,
+            kid,
             env,
         } => {
-            println!("[CLIENT:{event}] {header_args}");
+            match kid {
+                Some(k) => println!("[CLIENT:{event}] cid={cid} kid={k}"),
+                None => println!("[CLIENT:{event}] cid={cid}"),
+            }
             for (k, v) in env {
                 println!("  {k}={v}");
             }
@@ -290,7 +507,10 @@ fn print_notification(notif: &Notification) {
             println!("[REMOTE] {host}:{port} ({protocol})");
         }
         Notification::Proxy {
-            proto_type, host, port, ..
+            proto_type,
+            host,
+            port,
+            ..
         } => {
             println!("[PROXY] {proto_type} {host}:{port}");
         }
@@ -307,64 +527,84 @@ fn print_notification(notif: &Notification) {
 }
 
 /// Run the event loop over a generic `Framed` transport.
+///
+/// Multiplexes stdin and the management socket in a single `select!` loop —
+/// no spawned tasks, no channels, no `Send` bounds.
 async fn run<T>(framed: Framed<T, OvpnCodec>) -> anyhow::Result<()>
 where
-    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
     let (mut sink, mut stream) = framed.split();
     let stdin = BufReader::new(io::stdin());
     let mut lines = stdin.lines();
+    let mut connected = true;
 
-    // Spawn a task to print incoming messages.
-    let reader = tokio::spawn(async move {
-        while let Some(result) = stream.next().await {
-            match result {
-                Ok(msg) => print_message(&msg),
-                Err(e) => {
-                    eprintln!("[CONN ERROR] {e}");
-                    break;
-                }
-            }
-        }
-        println!("[DISCONNECTED]");
-    });
-
-    // Read commands from stdin.
     loop {
-        eprint!("ovpn> ");
-        let line = match lines.next_line().await? {
-            Some(l) => l,
-            None => break, // EOF
-        };
-        let line = line.trim().to_owned();
-        if line.is_empty() {
-            continue;
+        // Only show the prompt when we're ready for input and still connected.
+        if connected {
+            eprint!("ovpn> ");
+            std::io::stderr().flush().expect("stderr flush failed");
         }
 
-        match parse_input(&line) {
-            Ok(cmd) => {
-                let is_exit = matches!(cmd, OvpnCommand::Exit | OvpnCommand::Quit);
-                if let Err(e) = sink.send(cmd).await {
-                    eprintln!("[SEND ERROR] {e}");
-                    break;
-                }
-                if is_exit {
-                    break;
+        tokio::select! {
+            // Incoming message from the management socket.
+            msg = stream.next(), if connected => {
+                match msg {
+                    Some(Ok(msg)) => print_message(&msg),
+                    Some(Err(e)) => {
+                        eprintln!("[CONN ERROR] {e}");
+                        connected = false;
+                    }
+                    None => {
+                        println!("[DISCONNECTED]");
+                        break;
+                    }
                 }
             }
-            Err(e) => eprintln!("parse error: {e}"),
+            // User input from stdin.
+            result = lines.next_line() => {
+                let line = match result? {
+                    Some(l) => l,
+                    None => break, // EOF
+                };
+                let line = line.trim().to_owned();
+                if line.is_empty() {
+                    continue;
+                }
+                if !connected {
+                    eprintln!("not connected");
+                    break;
+                }
+                match parse_input(&line) {
+                    Ok(cmd) => {
+                        let is_exit = matches!(cmd, OvpnCommand::Exit | OvpnCommand::Quit);
+                        if let Err(e) = sink.send(cmd).await {
+                            eprintln!("[SEND ERROR] {e}");
+                            break;
+                        }
+                        if is_exit {
+                            break;
+                        }
+                    }
+                    Err(e) => eprintln!("parse error: {e}"),
+                }
+            }
         }
     }
 
-    reader.abort();
     Ok(())
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let addr = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:7505".to_owned());
+    let addr = match env::args().nth(1) {
+        Some(a) if a == "--help" || a == "-h" => {
+            println!("{USAGE}");
+            return Ok(());
+        }
+        Some(a) => a,
+        None => "127.0.0.1:7505".to_owned(),
+    };
 
     // If the address looks like a file path, try connecting as a Unix socket.
     #[cfg(unix)]
