@@ -9,10 +9,10 @@
 //! via `include_str!` so the test logic stays readable.
 
 use bytes::BytesMut;
-use ovpn_mgmt_codec::*;
 use ovpn_mgmt_codec::ClientEvent;
 use ovpn_mgmt_codec::OpenVpnState;
 use ovpn_mgmt_codec::PasswordNotification;
+use ovpn_mgmt_codec::*;
 use tokio_util::codec::{Decoder, Encoder};
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -52,7 +52,8 @@ fn encode_then_decode(cmd: OvpnCommand, response: &str) -> Vec<OvpnMessage> {
 
 #[test]
 fn connection_banner() {
-    let msgs = decode_all(">INFO:OpenVPN Management Interface Version 5 -- type 'help' for more info\n");
+    let msgs =
+        decode_all(">INFO:OpenVPN Management Interface Version 5 -- type 'help' for more info\n");
     assert_eq!(msgs.len(), 1);
     assert!(matches!(
         &msgs[0],
@@ -249,7 +250,10 @@ fn bytecount_client_mode() {
     let msgs = decode_all(">BYTECOUNT:256789,128456\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::ByteCount { bytes_in, bytes_out }) => {
+        OvpnMessage::Notification(Notification::ByteCount {
+            bytes_in,
+            bytes_out,
+        }) => {
             assert_eq!(*bytes_in, 256789);
             assert_eq!(*bytes_out, 128456);
         }
@@ -278,10 +282,7 @@ fn bytecount_cli_server_mode() {
 #[test]
 fn bytecount_enable_disable_roundtrip() {
     assert_eq!(encode_to_string(OvpnCommand::ByteCount(5)), "bytecount 5\n");
-    assert_eq!(
-        encode_to_string(OvpnCommand::ByteCount(0)),
-        "bytecount 0\n"
-    );
+    assert_eq!(encode_to_string(OvpnCommand::ByteCount(0)), "bytecount 0\n");
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -402,16 +403,10 @@ fn client_connect_full_env() {
             assert_eq!(*kid, Some(1));
             assert_eq!(env.len(), 19);
             assert_eq!(env[0], ("untrusted_ip".into(), "203.0.113.50".into()));
-            assert_eq!(
-                env[2],
-                ("common_name".into(), "client1.example.com".into())
-            );
+            assert_eq!(env[2], ("common_name".into(), "client1.example.com".into()));
             assert_eq!(env[3], ("username".into(), "jdoe".into()));
             let ciphers = env.iter().find(|(k, _)| k == "IV_CIPHERS").unwrap();
-            assert_eq!(
-                ciphers.1,
-                "AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305"
-            );
+            assert_eq!(ciphers.1, "AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305");
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -537,9 +532,9 @@ fn password_need_auth() {
     let msgs = decode_all(">PASSWORD:Need 'Auth' username/password\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::Password(
-            PasswordNotification::NeedAuth { auth_type },
-        )) => {
+        OvpnMessage::Notification(Notification::Password(PasswordNotification::NeedAuth {
+            auth_type,
+        })) => {
             assert_eq!(*auth_type, AuthType::Auth);
         }
         other => panic!("unexpected: {other:?}"),
@@ -551,9 +546,9 @@ fn password_need_private_key() {
     let msgs = decode_all(">PASSWORD:Need 'Private Key' password\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::Password(
-            PasswordNotification::NeedPassword { auth_type },
-        )) => {
+        OvpnMessage::Notification(Notification::Password(PasswordNotification::NeedPassword {
+            auth_type,
+        })) => {
             assert_eq!(*auth_type, AuthType::PrivateKey);
         }
         other => panic!("unexpected: {other:?}"),
@@ -590,8 +585,9 @@ fn password_verification_failed_private_key() {
 
 #[test]
 fn challenge_response_dynamic_crv1() {
-    let msgs =
-        decode_all(">PASSWORD:Need 'Auth' username/password CRV1:R,E:bXlzdGF0ZQ==:dXNlcg==:Enter PIN\n");
+    let msgs = decode_all(
+        ">PASSWORD:Need 'Auth' username/password CRV1:R,E:bXlzdGF0ZQ==:dXNlcg==:Enter PIN\n",
+    );
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Password(
@@ -682,7 +678,9 @@ END\n";
 
 #[test]
 fn fatal_notification() {
-    let msgs = decode_all(">FATAL:Cannot open TUN/TAP dev /dev/net/tun: No such file or directory (errno=2)\n");
+    let msgs = decode_all(
+        ">FATAL:Cannot open TUN/TAP dev /dev/net/tun: No such file or directory (errno=2)\n",
+    );
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Fatal { message }) => {
@@ -833,10 +831,7 @@ fn encode_all_hold_variants() {
     assert_eq!(encode_to_string(OvpnCommand::HoldQuery), "hold\n");
     assert_eq!(encode_to_string(OvpnCommand::HoldOn), "hold on\n");
     assert_eq!(encode_to_string(OvpnCommand::HoldOff), "hold off\n");
-    assert_eq!(
-        encode_to_string(OvpnCommand::HoldRelease),
-        "hold release\n"
-    );
+    assert_eq!(encode_to_string(OvpnCommand::HoldRelease), "hold release\n");
 }
 
 #[test]
@@ -1119,8 +1114,10 @@ fn error_responses() {
 
 #[test]
 fn crlf_line_endings() {
-    let msgs = decode_all(">INFO:OpenVPN Management Interface Version 5\r\n\
-                           SUCCESS: pid=1234\r\n");
+    let msgs = decode_all(
+        ">INFO:OpenVPN Management Interface Version 5\r\n\
+                           SUCCESS: pid=1234\r\n",
+    );
     assert_eq!(msgs.len(), 2);
     assert!(matches!(&msgs[0], OvpnMessage::Info(s) if s.contains("Version 5")));
     assert!(matches!(&msgs[1], OvpnMessage::Success(s) if s == "pid=1234"));
@@ -1260,20 +1257,14 @@ fn pkcs11_id_get_parsed() {
 #[test]
 fn pkcs11_id_get_malformed_falls_back() {
     // If the format doesn't match, fall back to SingleValue
-    let msgs = encode_then_decode(
-        OvpnCommand::Pkcs11IdGet(0),
-        "some unexpected response\n",
-    );
+    let msgs = encode_then_decode(OvpnCommand::Pkcs11IdGet(0), "some unexpected response\n");
     assert_eq!(msgs.len(), 1);
     assert!(matches!(&msgs[0], OvpnMessage::SingleValue(s) if s == "some unexpected response"));
 }
 
 #[test]
 fn pkcs11_id_count_success() {
-    let msgs = encode_then_decode(
-        OvpnCommand::Pkcs11IdCount,
-        "SUCCESS: 2\n",
-    );
+    let msgs = encode_then_decode(OvpnCommand::Pkcs11IdCount, "SUCCESS: 2\n");
     assert_eq!(msgs.len(), 1);
     assert!(matches!(&msgs[0], OvpnMessage::Success(s) if s == "2"));
 }
@@ -1553,10 +1544,7 @@ fn encode_challenge_response_crv1() {
         state_id: "bXlzdGF0ZQ==".into(),
         response: "123456".into(),
     });
-    assert_eq!(
-        wire,
-        "password \"Auth\" \"CRV1::bXlzdGF0ZQ==::123456\"\n"
-    );
+    assert_eq!(wire, "password \"Auth\" \"CRV1::bXlzdGF0ZQ==::123456\"\n");
 }
 
 #[test]
@@ -1565,10 +1553,7 @@ fn encode_static_challenge_response_scrv1() {
         password_b64: "cGFzc3dvcmQ=".into(),
         response_b64: "MTIzNDU2".into(),
     });
-    assert_eq!(
-        wire,
-        "password \"Auth\" \"SCRV1:cGFzc3dvcmQ=:MTIzNDU2\"\n"
-    );
+    assert_eq!(wire, "password \"Auth\" \"SCRV1:cGFzc3dvcmQ=:MTIzNDU2\"\n");
 }
 
 #[test]
@@ -1610,7 +1595,10 @@ fn management_password_handshake() {
     // Client sends password.
     let mut enc_buf = BytesMut::new();
     codec
-        .encode(OvpnCommand::ManagementPassword("s3cret".into()), &mut enc_buf)
+        .encode(
+            OvpnCommand::ManagementPassword("s3cret".into()),
+            &mut enc_buf,
+        )
         .unwrap();
     assert_eq!(&enc_buf[..], b"s3cret\n");
 
@@ -1633,7 +1621,10 @@ fn management_password_wrong() {
 
     let mut enc_buf = BytesMut::new();
     codec
-        .encode(OvpnCommand::ManagementPassword("wrong".into()), &mut enc_buf)
+        .encode(
+            OvpnCommand::ManagementPassword("wrong".into()),
+            &mut enc_buf,
+        )
         .unwrap();
 
     buf.extend_from_slice(b"ERROR: bad password\n");
@@ -1683,11 +1674,22 @@ fn status_v1_server_empty_no_clients() {
         OvpnMessage::MultiLine(lines) => {
             assert_eq!(lines[0], "OpenVPN CLIENT LIST");
             assert!(lines.iter().any(|l| l.contains("ROUTING TABLE")));
-            assert!(lines.iter().any(|l| l.contains("Max bcast/mcast queue length,0")));
+            assert!(
+                lines
+                    .iter()
+                    .any(|l| l.contains("Max bcast/mcast queue length,0"))
+            );
             // No client lines between the header row and ROUTING TABLE
-            let client_header_idx = lines.iter().position(|l| l.starts_with("Common Name,")).unwrap();
+            let client_header_idx = lines
+                .iter()
+                .position(|l| l.starts_with("Common Name,"))
+                .unwrap();
             let routing_idx = lines.iter().position(|l| l == "ROUTING TABLE").unwrap();
-            assert_eq!(client_header_idx + 1, routing_idx, "no clients between header and routing table");
+            assert_eq!(
+                client_header_idx + 1,
+                routing_idx,
+                "no clients between header and routing table"
+            );
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -1701,8 +1703,14 @@ fn status_v1_server_many_clients() {
     match &msgs[0] {
         OvpnMessage::MultiLine(lines) => {
             // Three clients, three routing entries
-            let client_count = lines.iter().filter(|l| l.contains("@example.com") || l.contains("@corp.local")).count();
-            assert!(client_count >= 3, "should find at least 3 client references");
+            let client_count = lines
+                .iter()
+                .filter(|l| l.contains("@example.com") || l.contains("@corp.local"))
+                .count();
+            assert!(
+                client_count >= 3,
+                "should find at least 3 client references"
+            );
             assert!(lines.iter().any(|l| l.contains("foo@example.com")));
             assert!(lines.iter().any(|l| l.contains("bar@example.com")));
             assert!(lines.iter().any(|l| l.contains("admin@corp.local")));
@@ -1722,7 +1730,10 @@ fn status_v2_full_with_title_time_dco() {
             assert!(lines[0].starts_with("TITLE,OpenVPN 2.6.9"));
             assert!(lines[1].starts_with("TIME,"));
             // Multiple clients
-            let client_lines: Vec<_> = lines.iter().filter(|l| l.starts_with("CLIENT_LIST,")).collect();
+            let client_lines: Vec<_> = lines
+                .iter()
+                .filter(|l| l.starts_with("CLIENT_LIST,"))
+                .collect();
             assert_eq!(client_lines.len(), 2);
             // IPv6 virtual address present for first client
             assert!(client_lines[0].contains("2002:232:324:12::8"));
@@ -1744,7 +1755,10 @@ fn status_v2_old_format_fewer_columns() {
         OvpnMessage::MultiLine(lines) => {
             assert!(lines[0].starts_with("TITLE,OpenVPN 2.3.2"));
             // Old format: no Virtual IPv6 Address, Client ID, Peer ID, Data Channel Cipher
-            let header = lines.iter().find(|l| l.starts_with("HEADER,CLIENT_LIST")).unwrap();
+            let header = lines
+                .iter()
+                .find(|l| l.starts_with("HEADER,CLIENT_LIST"))
+                .unwrap();
             assert!(!header.contains("Virtual IPv6 Address"));
             assert!(!header.contains("Data Channel Cipher"));
         }
@@ -1862,9 +1876,7 @@ fn state_all_known_names() {
 #[test]
 fn state_connected_with_all_fields_populated() {
     // 7 comma-separated fields: timestamp,name,desc,tun_local_ip,remote_ip,local_port,remote_port
-    let msgs = decode_all(
-        ">STATE:1608159538,CONNECTED,SUCCESS,10.10.10.1,1.2.3.4,1194,\n",
-    );
+    let msgs = decode_all(">STATE:1608159538,CONNECTED,SUCCESS,10.10.10.1,1.2.3.4,1194,\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::State {
@@ -1904,7 +1916,9 @@ fn state_reconnecting_various_reasons() {
         let msgs = decode_all(&input);
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::State { name, description, .. }) => {
+            OvpnMessage::Notification(Notification::State {
+                name, description, ..
+            }) => {
                 assert_eq!(*name, OpenVpnState::Reconnecting);
                 assert_eq!(description, *reason);
             }
@@ -1945,7 +1959,10 @@ fn full_connection_lifecycle_from_capture() {
     // Banner
     assert!(matches!(&msgs[0], OvpnMessage::Info(s) if s.contains("Version 5")));
     // HOLD
-    assert!(matches!(&msgs[1], OvpnMessage::Notification(Notification::Hold { .. })));
+    assert!(matches!(
+        &msgs[1],
+        OvpnMessage::Notification(Notification::Hold { .. })
+    ));
     // CONNECTING
     assert!(matches!(
         &msgs[2],
@@ -2003,9 +2020,9 @@ fn password_need_http_proxy() {
     let msgs = decode_all(">PASSWORD:Need 'HTTP Proxy' username/password\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::Password(
-            PasswordNotification::NeedAuth { auth_type },
-        )) => {
+        OvpnMessage::Notification(Notification::Password(PasswordNotification::NeedAuth {
+            auth_type,
+        })) => {
             assert_eq!(*auth_type, AuthType::HttpProxy);
         }
         other => panic!("unexpected: {other:?}"),
@@ -2017,9 +2034,9 @@ fn password_need_socks_proxy() {
     let msgs = decode_all(">PASSWORD:Need 'SOCKS Proxy' username/password\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::Password(
-            PasswordNotification::NeedAuth { auth_type },
-        )) => {
+        OvpnMessage::Notification(Notification::Password(PasswordNotification::NeedAuth {
+            auth_type,
+        })) => {
             assert_eq!(*auth_type, AuthType::SocksProxy);
         }
         other => panic!("unexpected: {other:?}"),
@@ -2056,8 +2073,7 @@ fn password_verification_failed_socks_proxy() {
 
 #[test]
 fn static_challenge_no_echo() {
-    let msgs =
-        decode_all(">PASSWORD:Need 'Auth' username/password SC:0,Enter your OTP code\n");
+    let msgs = decode_all(">PASSWORD:Need 'Auth' username/password SC:0,Enter your OTP code\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Password(
@@ -2076,9 +2092,9 @@ fn password_custom_auth_type() {
     let msgs = decode_all(">PASSWORD:Need 'Management' password\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::Password(
-            PasswordNotification::NeedPassword { auth_type },
-        )) => {
+        OvpnMessage::Notification(Notification::Password(PasswordNotification::NeedPassword {
+            auth_type,
+        })) => {
             assert_eq!(*auth_type, AuthType::Custom("Management".into()));
         }
         other => panic!("unexpected: {other:?}"),
@@ -2105,7 +2121,10 @@ fn client_connect_tls_rich_env() {
             // Should have 22 env vars (rich TLS set)
             assert_eq!(env.len(), 22);
             // X509 fields
-            assert!(env.iter().any(|(k, v)| k == "X509_0_CN" && v == "client_two"));
+            assert!(
+                env.iter()
+                    .any(|(k, v)| k == "X509_0_CN" && v == "client_two")
+            );
             assert!(env.iter().any(|(k, v)| k == "X509_0_C" && v == "DE"));
             // TLS digest
             assert!(env.iter().any(|(k, _)| k == "tls_digest_0"));
@@ -2114,7 +2133,10 @@ fn client_connect_tls_rich_env() {
             let sso = env.iter().find(|(k, _)| k == "IV_SSO").unwrap();
             assert_eq!(sso.1, "webauth,openurl,crtext");
             // Hex serial
-            assert!(env.iter().any(|(k, v)| k == "tls_serial_hex_0" && v == "37:83"));
+            assert!(
+                env.iter()
+                    .any(|(k, v)| k == "tls_serial_hex_0" && v == "37:83")
+            );
             // CA cert info (chain depth 1)
             assert!(env.iter().any(|(k, _)| k == "tls_serial_1"));
             assert!(env.iter().any(|(k, _)| k == "tls_digest_1"));
@@ -2197,7 +2219,10 @@ fn bytecount_zero_values() {
     let msgs = decode_all(">BYTECOUNT:0,0\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::ByteCount { bytes_in, bytes_out }) => {
+        OvpnMessage::Notification(Notification::ByteCount {
+            bytes_in,
+            bytes_out,
+        }) => {
             assert_eq!(*bytes_in, 0);
             assert_eq!(*bytes_out, 0);
         }
@@ -2211,7 +2236,10 @@ fn bytecount_large_values() {
     let msgs = decode_all(">BYTECOUNT:129822996000,126946564000\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::ByteCount { bytes_in, bytes_out }) => {
+        OvpnMessage::Notification(Notification::ByteCount {
+            bytes_in,
+            bytes_out,
+        }) => {
             assert_eq!(*bytes_in, 129822996000);
             assert_eq!(*bytes_out, 126946564000);
         }
@@ -2267,37 +2295,25 @@ fn success_kill_by_address_real_format() {
 
 #[test]
 fn success_verb_level_changed() {
-    let msgs = encode_then_decode(
-        OvpnCommand::Verb(Some(4)),
-        "SUCCESS: verb level changed\n",
-    );
+    let msgs = encode_then_decode(OvpnCommand::Verb(Some(4)), "SUCCESS: verb level changed\n");
     assert!(matches!(&msgs[0], OvpnMessage::Success(s) if s.contains("verb level")));
 }
 
 #[test]
 fn success_verb_query() {
-    let msgs = encode_then_decode(
-        OvpnCommand::Verb(None),
-        "SUCCESS: verb=4\n",
-    );
+    let msgs = encode_then_decode(OvpnCommand::Verb(None), "SUCCESS: verb=4\n");
     assert!(matches!(&msgs[0], OvpnMessage::Success(s) if s == "verb=4"));
 }
 
 #[test]
 fn success_mute_level_changed() {
-    let msgs = encode_then_decode(
-        OvpnCommand::Mute(Some(40)),
-        "SUCCESS: mute level changed\n",
-    );
+    let msgs = encode_then_decode(OvpnCommand::Mute(Some(40)), "SUCCESS: mute level changed\n");
     assert!(matches!(&msgs[0], OvpnMessage::Success(_)));
 }
 
 #[test]
 fn success_mute_query() {
-    let msgs = encode_then_decode(
-        OvpnCommand::Mute(None),
-        "SUCCESS: mute=40\n",
-    );
+    let msgs = encode_then_decode(OvpnCommand::Mute(None), "SUCCESS: mute=40\n");
     assert!(matches!(&msgs[0], OvpnMessage::Success(s) if s == "mute=40"));
 }
 
@@ -2312,10 +2328,7 @@ fn success_auth_retry_changed() {
 
 #[test]
 fn success_hold_on_off() {
-    let msgs = encode_then_decode(
-        OvpnCommand::HoldOn,
-        "SUCCESS: hold on command succeeded\n",
-    );
+    let msgs = encode_then_decode(OvpnCommand::HoldOn, "SUCCESS: hold on command succeeded\n");
     assert!(matches!(&msgs[0], OvpnMessage::Success(_)));
 
     let msgs = encode_then_decode(
@@ -2426,9 +2439,7 @@ fn fatal_tun_tap_device() {
 
 #[test]
 fn fatal_all_adapters_in_use() {
-    let msgs = decode_all(
-        ">FATAL:All TAP-Windows adapters on this system are currently in use.\n",
-    );
+    let msgs = decode_all(">FATAL:All TAP-Windows adapters on this system are currently in use.\n");
     assert!(matches!(
         &msgs[0],
         OvpnMessage::Notification(Notification::Fatal { message })
@@ -2522,7 +2533,10 @@ fn unrecognized_notification_falls_back_to_simple() {
         match &msgs[0] {
             OvpnMessage::Notification(Notification::Simple { kind, payload }) => {
                 assert!(!kind.is_empty(), "kind should not be empty for: {input}");
-                assert!(!payload.is_empty(), "payload should not be empty for: {input}");
+                assert!(
+                    !payload.is_empty(),
+                    "payload should not be empty for: {input}"
+                );
             }
             other => panic!("expected Simple fallback for {input}, got: {other:?}"),
         }
@@ -2674,7 +2688,10 @@ fn encode_client_pf_real_filter() {
             "[END]".into(),
         ],
     });
-    assert_eq!(wire, "client-pf 99\n[CLIENTS DROP]\n+public\n-private\n[SUBNETS ACCEPT]\n+10.10.0.1\n-10.0.0.0/8\n-unknown\n[END]\nEND\n");
+    assert_eq!(
+        wire,
+        "client-pf 99\n[CLIENTS DROP]\n+public\n-private\n[SUBNETS ACCEPT]\n+10.10.0.1\n-10.0.0.0/8\n-unknown\n[END]\nEND\n"
+    );
 }
 
 #[test]
@@ -2727,7 +2744,9 @@ fn server_mode_deny_then_accept_session() {
 
     // Release hold
     let mut enc_buf = BytesMut::new();
-    codec.encode(OvpnCommand::HoldRelease, &mut enc_buf).unwrap();
+    codec
+        .encode(OvpnCommand::HoldRelease, &mut enc_buf)
+        .unwrap();
     buf.extend_from_slice(b"SUCCESS: hold release succeeded\n");
     let _success = codec.decode(&mut buf).unwrap().unwrap();
 
@@ -2799,7 +2818,10 @@ fn server_mode_deny_then_accept_session() {
     match &msg {
         OvpnMessage::Notification(Notification::Client { event, env, .. }) => {
             assert_eq!(*event, ClientEvent::Established);
-            assert!(env.iter().any(|(k, v)| k == "ifconfig_pool_remote_ip" && v == "10.8.0.10"));
+            assert!(
+                env.iter()
+                    .any(|(k, v)| k == "ifconfig_pool_remote_ip" && v == "10.8.0.10")
+            );
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -2821,7 +2843,9 @@ fn client_mode_auth_with_challenge_session() {
 
     // Release hold
     let mut enc_buf = BytesMut::new();
-    codec.encode(OvpnCommand::HoldRelease, &mut enc_buf).unwrap();
+    codec
+        .encode(OvpnCommand::HoldRelease, &mut enc_buf)
+        .unwrap();
     buf.extend_from_slice(b"SUCCESS: hold release succeeded\n");
     let _success = codec.decode(&mut buf).unwrap().unwrap();
 
@@ -2833,7 +2857,10 @@ fn client_mode_auth_with_challenge_session() {
     );
     for _ in 0..3 {
         let msg = codec.decode(&mut buf).unwrap().unwrap();
-        assert!(matches!(msg, OvpnMessage::Notification(Notification::State { .. })));
+        assert!(matches!(
+            msg,
+            OvpnMessage::Notification(Notification::State { .. })
+        ));
     }
 
     // Password prompt with static challenge
@@ -2882,9 +2909,7 @@ fn client_mode_auth_with_challenge_session() {
     assert!(matches!(msg, OvpnMessage::Success(_)));
 
     // Connected
-    buf.extend_from_slice(
-        b">STATE:1711000010,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,,\n",
-    );
+    buf.extend_from_slice(b">STATE:1711000010,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,,\n");
     let msg = codec.decode(&mut buf).unwrap().unwrap();
     match &msg {
         OvpnMessage::Notification(Notification::State { name, local_ip, .. }) => {
@@ -2920,8 +2945,14 @@ fn notification_storm_between_commands() {
 
     assert_eq!(msgs.len(), 10);
     assert!(matches!(&msgs[0], OvpnMessage::Info(_)));
-    assert!(matches!(&msgs[1], OvpnMessage::Notification(Notification::Hold { .. })));
-    assert!(matches!(&msgs[9], OvpnMessage::Notification(Notification::ByteCount { .. })));
+    assert!(matches!(
+        &msgs[1],
+        OvpnMessage::Notification(Notification::Hold { .. })
+    ));
+    assert!(matches!(
+        &msgs[9],
+        OvpnMessage::Notification(Notification::ByteCount { .. })
+    ));
 }
 
 // ── Edge cases: CRLF in various positions ────────────────────────
@@ -3037,9 +3068,18 @@ fn multiple_notifications_interleaved_in_status() {
     );
     // 3 interleaved notifications + 1 multiline response
     assert_eq!(msgs.len(), 4);
-    assert!(matches!(&msgs[0], OvpnMessage::Notification(Notification::State { .. })));
-    assert!(matches!(&msgs[1], OvpnMessage::Notification(Notification::ByteCount { .. })));
-    assert!(matches!(&msgs[2], OvpnMessage::Notification(Notification::Log { .. })));
+    assert!(matches!(
+        &msgs[0],
+        OvpnMessage::Notification(Notification::State { .. })
+    ));
+    assert!(matches!(
+        &msgs[1],
+        OvpnMessage::Notification(Notification::ByteCount { .. })
+    ));
+    assert!(matches!(
+        &msgs[2],
+        OvpnMessage::Notification(Notification::Log { .. })
+    ));
     match &msgs[3] {
         OvpnMessage::MultiLine(lines) => {
             assert_eq!(lines.len(), 2);

@@ -504,7 +504,7 @@ impl OvpnCodec {
                 return Some(OvpnMessage::Unrecognized {
                     line: line.to_owned(),
                     kind: UnrecognizedKind::MalformedNotification,
-                })
+                });
             }
         };
 
@@ -539,10 +539,7 @@ impl OvpnCodec {
             // Some events (e.g. CR_RESPONSE) have extra trailing data after
             // CID,KID — we use splitn(3) and only parse the first two.
             let mut id_parts = args.splitn(3, ',');
-            let cid = id_parts
-                .next()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(0);
+            let cid = id_parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
             let kid = id_parts.next().and_then(|s| s.parse().ok());
 
             // Start accumulation — don't emit anything yet.
@@ -800,11 +797,9 @@ fn parse_password(payload: &str) -> Option<Notification> {
 
     // Need 'type' password
     if rest.starts_with("password") {
-        return Some(Notification::Password(
-            PasswordNotification::NeedPassword {
-                auth_type: parse_auth_type(auth_type_str),
-            },
-        ));
+        return Some(Notification::Password(PasswordNotification::NeedPassword {
+            auth_type: parse_auth_type(auth_type_str),
+        }));
     }
 
     None // Unrecognized PASSWORD sub-format — fall back to Simple
@@ -1157,7 +1152,10 @@ mod tests {
         // First emitted message: the interleaved notification.
         assert!(matches!(
             &msgs[0],
-            OvpnMessage::Notification(Notification::ByteCount { bytes_in: 1000, bytes_out: 2000 })
+            OvpnMessage::Notification(Notification::ByteCount {
+                bytes_in: 1000,
+                bytes_out: 2000
+            })
         ));
         // Second: the completed multi-line block (notification is not included).
         match &msgs[1] {
@@ -1219,7 +1217,12 @@ mod tests {
         let msgs = decode_all(input);
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::Client { event, cid, kid, env }) => {
+            OvpnMessage::Notification(Notification::Client {
+                event,
+                cid,
+                kid,
+                env,
+            }) => {
                 assert_eq!(*event, ClientEvent::Disconnect);
                 assert_eq!(*cid, 5);
                 assert_eq!(*kid, None);
@@ -1234,9 +1237,9 @@ mod tests {
         let msgs = decode_all(">PASSWORD:Need 'Auth' username/password\n");
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::Password(
-                PasswordNotification::NeedAuth { auth_type },
-            )) => {
+            OvpnMessage::Notification(Notification::Password(PasswordNotification::NeedAuth {
+                auth_type,
+            })) => {
                 assert_eq!(*auth_type, AuthType::Auth);
             }
             other => panic!("unexpected: {other:?}"),
