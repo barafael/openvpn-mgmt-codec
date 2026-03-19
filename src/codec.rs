@@ -297,9 +297,10 @@ impl Decoder for OvpnCodec {
             //
             // When we're accumulating a CLIENT notification, >CLIENT:ENV
             // lines belong to it. The block terminates with >CLIENT:ENV,END.
-            // Any other line (SUCCESS, ERROR, other notifications) is
-            // processed normally — the doc guarantees atomicity, but we're
-            // defensive about interleaved output.
+            // The spec guarantees atomicity for CLIENT notifications, so
+            // interleaving here should not occur. Any other line (SUCCESS,
+            // ERROR, other notifications) falls through to normal processing
+            // as a defensive measure.
             if let Some(ref mut accum) = self.client_notif {
                 if let Some(rest) = line.strip_prefix(">CLIENT:ENV,") {
                     if rest == "END" {
@@ -329,8 +330,10 @@ impl Decoder for OvpnCodec {
                     let lines = self.multi_line_buf.take().unwrap();
                     return Ok(Some(OvpnMessage::MultiLine(lines)));
                 }
-                // Notifications can arrive during a multi-line response —
-                // emit them immediately without breaking the accumulation.
+                // The spec only guarantees atomicity for CLIENT notifications,
+                // not for command responses — real-time notifications (>STATE:,
+                // >LOG:, etc.) can arrive mid-response. Emit them immediately
+                // without breaking the accumulation.
                 if line.starts_with('>') {
                     if let Some(msg) = self.parse_notification(&line) {
                         return Ok(Some(msg));

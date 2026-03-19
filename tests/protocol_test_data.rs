@@ -1053,6 +1053,10 @@ fn crlf_line_endings() {
     assert!(matches!(&msgs[1], OvpnMessage::Success(s) if s == "pid=1234"));
 }
 
+/// A real-time `>STATE:` notification injected mid-status response. The spec
+/// only guarantees atomicity for `>CLIENT:` notifications — other real-time
+/// messages can arrive during multi-line command responses. The codec must
+/// emit them immediately without breaking the accumulation.
 #[test]
 fn notification_interleaved_in_multiline_status() {
     let response = include_str!("fixtures/status_interleaved.txt");
