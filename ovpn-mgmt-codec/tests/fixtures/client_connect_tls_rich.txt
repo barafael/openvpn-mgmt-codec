@@ -1,0 +1,24 @@
+>CLIENT:CONNECT,1,2
+>CLIENT:ENV,untrusted_ip=127.0.0.1
+>CLIENT:ENV,untrusted_port=63062
+>CLIENT:ENV,common_name=client_two
+>CLIENT:ENV,username=
+>CLIENT:ENV,password=
+>CLIENT:ENV,IV_VER=2.6.9
+>CLIENT:ENV,IV_PLAT=linux
+>CLIENT:ENV,IV_PROTO=990
+>CLIENT:ENV,IV_SSO=webauth,openurl,crtext
+>CLIENT:ENV,tls_serial_0=14211
+>CLIENT:ENV,tls_serial_hex_0=37:83
+>CLIENT:ENV,tls_digest_0=17:a6:1d:15:a4:00:93:50:c7:80:93:78:80:5c:45:12:f0:04:9d:75
+>CLIENT:ENV,tls_digest_sha256_0=aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99
+>CLIENT:ENV,tls_id_0=C=DE, ST=foo, O=bar, OU=batz, CN=client_two
+>CLIENT:ENV,X509_0_CN=client_two
+>CLIENT:ENV,X509_0_OU=batz
+>CLIENT:ENV,X509_0_O=bar
+>CLIENT:ENV,X509_0_ST=foo
+>CLIENT:ENV,X509_0_C=DE
+>CLIENT:ENV,tls_serial_1=11315633920557459494
+>CLIENT:ENV,tls_digest_1=e8:4a:2f:73:60:d5:72:66:37:f9:e2:49:ec:d8:ec:60:b7:c6:27:5e
+>CLIENT:ENV,n_clients=0
+>CLIENT:ENV,END

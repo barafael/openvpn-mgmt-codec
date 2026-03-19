@@ -1,0 +1,7 @@
+1711000000,I,OpenVPN 2.6.8 x86_64-pc-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] started
+1711000001,D,MANAGEMENT: CMD 'state on'
+1711000002,I,Initialization Sequence Completed
+1711000003,N,TLS Error: TLS handshake failed
+1711000004,W,WARNING: No server certificate verification method has been enabled
+1711000005,I,MANAGEMENT: Client connected from [AF_INET]127.0.0.1:7505
+END

@@ -1,0 +1,5 @@
+>CLIENT:CR_RESPONSE,1,2,SGFsbG8gV2VsdCE=
+>CLIENT:ENV,untrusted_ip=127.0.0.1
+>CLIENT:ENV,untrusted_port=54321
+>CLIENT:ENV,common_name=test
+>CLIENT:ENV,END
