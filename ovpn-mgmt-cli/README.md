@@ -67,13 +67,14 @@ and pause before doing anything — no tunnel, no routing changes.
 
 ### Quick start
 
-Helper scripts in the repository root start OpenVPN in held mode, connect the
-CLI, and clean up on exit:
+Helper scripts in the repository root build the CLI, start OpenVPN in held
+mode, connect the CLI, and clean up on exit:
 
 ```sh
-# Linux / macOS
-sudo ./test-mgmt.sh
-sudo ./test-mgmt.sh /usr/sbin/openvpn   # explicit path
+# Linux / macOS (do NOT run the script itself under sudo — it uses sudo
+# internally only for OpenVPN, so cargo/rustup remain available)
+./test-mgmt.sh
+./test-mgmt.sh /usr/sbin/openvpn   # explicit path
 
 # Windows (elevated PowerShell)
 .\test-mgmt.ps1

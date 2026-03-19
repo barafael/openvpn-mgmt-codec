@@ -9,7 +9,8 @@
 # Usage:
 #   ./test-mgmt.sh [/path/to/openvpn]
 #
-# Requires root/sudo because OpenVPN needs it even with "dev null".
+# Do NOT run this script itself under sudo. The script builds the CLI
+# as your normal user, then uses sudo only for OpenVPN.
 
 set -euo pipefail
 
@@ -35,16 +36,21 @@ fi
 echo "Using OpenVPN: $OPENVPN"
 echo ""
 
-# --- Start OpenVPN --------------------------------------------------------
+# --- Build the CLI first (as the current user) ----------------------------
+echo "Building ovpn-mgmt-cli..."
+cargo build -p ovpn-mgmt-cli
+CLI="$SCRIPT_DIR/target/debug/ovpn-mgmt-cli"
+
+# --- Start OpenVPN (needs root) ------------------------------------------
 echo "Starting OpenVPN (management on 127.0.0.1:7505, held)..."
-"$OPENVPN" --config "$CONFIG" &
+sudo "$OPENVPN" --config "$CONFIG" &
 OVPN_PID=$!
 
 cleanup() {
     if kill -0 "$OVPN_PID" 2>/dev/null; then
         echo ""
         echo "Stopping OpenVPN (PID $OVPN_PID)..."
-        kill "$OVPN_PID"
+        sudo kill "$OVPN_PID"
         wait "$OVPN_PID" 2>/dev/null
     fi
 }
@@ -54,12 +60,12 @@ trap cleanup EXIT
 sleep 2
 
 if ! kill -0 "$OVPN_PID" 2>/dev/null; then
-    echo "error: OpenVPN exited immediately. Run with sudo?" >&2
+    echo "error: OpenVPN exited immediately. Is sudo working?" >&2
     exit 1
 fi
 
 echo "OpenVPN running (PID $OVPN_PID). Connecting CLI..."
 echo ""
 
-# --- Build and run the CLI ------------------------------------------------
-cargo run -p ovpn-mgmt-cli -- 127.0.0.1:7505
+# --- Run the pre-built CLI (as the current user) -------------------------
+"$CLI" 127.0.0.1:7505
