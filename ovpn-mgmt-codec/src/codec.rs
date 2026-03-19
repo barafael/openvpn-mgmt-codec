@@ -33,6 +33,7 @@ fn quote_and_escape(s: &str) -> String {
 }
 
 use crate::client_event::ClientEvent;
+use crate::log_level::LogLevel;
 use crate::openvpn_state::OpenVpnState;
 
 /// Internal state for accumulating multi-line `>CLIENT:` notifications.
@@ -642,10 +643,10 @@ fn parse_bytecount_cli(payload: &str) -> Option<Notification> {
 fn parse_log(payload: &str) -> Option<Notification> {
     let (ts_str, rest) = payload.split_once(',')?;
     let timestamp = ts_str.parse().ok()?;
-    let (flags, message) = rest.split_once(',')?;
+    let (level_str, message) = rest.split_once(',')?;
     Some(Notification::Log {
         timestamp,
-        flags: flags.to_owned(),
+        level: LogLevel::parse(level_str),
         message: message.to_owned(),
     })
 }

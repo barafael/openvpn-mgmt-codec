@@ -1,5 +1,6 @@
 use crate::auth::AuthType;
 use crate::client_event::ClientEvent;
+use crate::log_level::LogLevel;
 use crate::openvpn_state::OpenVpnState;
 
 /// Sub-types of `>PASSWORD:` notifications. The password notification
@@ -11,16 +12,19 @@ pub enum PasswordNotification {
         /// The credential set being requested.
         auth_type: AuthType,
     },
+
     /// `>PASSWORD:Need 'Private Key' password`
     NeedPassword {
         /// The credential set being requested.
         auth_type: AuthType,
     },
+
     /// `>PASSWORD:Verification Failed: 'Auth'`
     VerificationFailed {
         /// The credential set that failed verification.
         auth_type: AuthType,
     },
+
     /// Static challenge: `>PASSWORD:Need 'Auth' username/password SC:{echo},{challenge}`
     StaticChallenge {
         /// Whether to echo the user's response (from the `echo` flag: `0` or `1`).
@@ -28,6 +32,7 @@ pub enum PasswordNotification {
         /// The challenge text presented to the user.
         challenge: String,
     },
+
     /// Dynamic challenge (CRV1):
     /// `>PASSWORD:Need 'Auth' username/password CRV1:{flags}:{state_id}:{username_b64}:{challenge}`
     DynamicChallenge {
@@ -107,12 +112,12 @@ pub enum Notification {
         bytes_out: u64,
     },
 
-    /// `>LOG:timestamp,flags,message`
+    /// `>LOG:timestamp,level,message`
     Log {
         /// Unix timestamp of the log entry.
         timestamp: u64,
-        /// Log level flags (e.g. `"I"` for info, `"D"` for debug).
-        flags: String,
+        /// Log severity level.
+        level: LogLevel,
         /// The log message text.
         message: String,
     },

@@ -13,6 +13,8 @@ pub mod codec;
 pub mod command;
 /// Client kill-target addressing.
 pub mod kill_target;
+/// Log severity levels (Info, Debug, Warning, etc.).
+pub mod log_level;
 /// Decoded messages and real-time notifications.
 pub mod message;
 /// Responses to `>NEED-OK:` prompts.
@@ -37,6 +39,7 @@ pub use client_event::ClientEvent;
 pub use codec::OvpnCodec;
 pub use command::OvpnCommand;
 pub use kill_target::KillTarget;
+pub use log_level::LogLevel;
 pub use message::{Notification, OvpnMessage, PasswordNotification};
 pub use need_ok::NeedOkResponse;
 pub use openvpn_state::OpenVpnState;

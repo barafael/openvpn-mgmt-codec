@@ -294,14 +294,23 @@ fn log_notifications_all_flags() {
     let msgs = decode_all(input);
     assert_eq!(msgs.len(), 5);
 
-    let flags: Vec<&str> = msgs
+    let levels: Vec<LogLevel> = msgs
         .iter()
         .map(|m| match m {
-            OvpnMessage::Notification(Notification::Log { flags, .. }) => flags.as_str(),
+            OvpnMessage::Notification(Notification::Log { level, .. }) => level.clone(),
             other => panic!("unexpected: {other:?}"),
         })
         .collect();
-    assert_eq!(flags, vec!["I", "D", "W", "N", "F"]);
+    assert_eq!(
+        levels,
+        vec![
+            LogLevel::Info,
+            LogLevel::Debug,
+            LogLevel::Warning,
+            LogLevel::NonFatal,
+            LogLevel::Fatal,
+        ]
+    );
 }
 
 #[test]
@@ -2170,11 +2179,11 @@ fn log_with_management_cmd_echo() {
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Log {
             timestamp,
-            flags,
+            level,
             message,
         }) => {
             assert_eq!(*timestamp, 1711000001);
-            assert_eq!(flags, "D");
+            assert_eq!(*level, LogLevel::Debug);
             assert_eq!(message, "MANAGEMENT: CMD 'state on'");
         }
         other => panic!("unexpected: {other:?}"),
