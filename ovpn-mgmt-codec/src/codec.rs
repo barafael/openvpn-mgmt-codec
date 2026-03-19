@@ -523,9 +523,9 @@ impl OvpnCodec {
             // ADDRESS notifications are always single-line (no ENV block).
             if event == "ADDRESS" {
                 let mut parts = args.splitn(3, ',');
-                let cid = parts.next().unwrap_or("").to_owned();
+                let cid = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
                 let addr = parts.next().unwrap_or("").to_owned();
-                let primary = parts.next().unwrap_or("").to_owned();
+                let primary = parts.next().map_or(false, |s| s == "1");
                 return Some(OvpnMessage::Notification(Notification::ClientAddress {
                     cid,
                     addr,
@@ -704,7 +704,7 @@ fn parse_need_str(payload: &str) -> Option<Notification> {
 fn parse_remote(payload: &str) -> Option<Notification> {
     let mut parts = payload.splitn(3, ',');
     let host = parts.next()?.to_owned();
-    let port = parts.next()?.to_owned();
+    let port = parts.next()?.parse().ok()?;
     let protocol = parts.next()?.to_owned();
     Some(Notification::Remote {
         host,
@@ -715,10 +715,10 @@ fn parse_remote(payload: &str) -> Option<Notification> {
 
 fn parse_proxy(payload: &str) -> Option<Notification> {
     let mut parts = payload.splitn(4, ',');
-    let proto_num = parts.next()?.to_owned();
+    let proto_num = parts.next()?.parse().ok()?;
     let proto_type = parts.next()?.to_owned();
     let host = parts.next()?.to_owned();
-    let port = parts.next().unwrap_or("").to_owned();
+    let port = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
     Some(Notification::Proxy {
         proto_num,
         proto_type,
@@ -1200,9 +1200,9 @@ mod tests {
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
             OvpnMessage::Notification(Notification::ClientAddress { cid, addr, primary }) => {
-                assert_eq!(cid, "3");
+                assert_eq!(*cid, 3);
                 assert_eq!(addr, "10.0.0.5");
-                assert_eq!(primary, "1");
+                assert!(*primary);
             }
             other => panic!("unexpected: {other:?}"),
         }

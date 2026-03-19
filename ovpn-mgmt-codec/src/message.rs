@@ -69,11 +69,11 @@ pub enum Notification {
     /// A single-line `>CLIENT:ADDRESS` notification.
     ClientAddress {
         /// Client ID.
-        cid: String,
+        cid: u64,
         /// Assigned virtual address.
         addr: String,
-        /// `"1"` if this is the primary address, `"0"` otherwise.
-        primary: String,
+        /// Whether this is the primary address for the client.
+        primary: bool,
     },
 
     /// `>STATE:timestamp,name,description,local_ip,remote_ip[,local_port,remote_port]`
@@ -175,7 +175,7 @@ pub enum Notification {
         /// Remote server hostname or IP.
         host: String,
         /// Remote server port.
-        port: String,
+        port: u16,
         /// Protocol (e.g. `"udp"`, `"tcp"`).
         protocol: String,
     },
@@ -183,13 +183,13 @@ pub enum Notification {
     /// `>PROXY:proto_num,proto_type,host[,port]`
     Proxy {
         /// Numeric protocol identifier.
-        proto_num: String,
+        proto_num: u32,
         /// Protocol type (e.g. `"udp"`, `"tcp"`).
         proto_type: String,
         /// Server hostname or IP.
         host: String,
-        /// Server port (may be empty if not provided).
-        port: String,
+        /// Server port (`0` if not provided by the server).
+        port: u16,
     },
 
     /// `>PASSWORD:...` — see [`PasswordNotification`] for the sub-types.

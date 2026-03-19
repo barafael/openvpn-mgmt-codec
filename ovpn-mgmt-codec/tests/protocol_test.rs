@@ -493,9 +493,9 @@ fn client_address_notification() {
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::ClientAddress { cid, addr, primary }) => {
-            assert_eq!(cid, "7");
+            assert_eq!(*cid, 7);
             assert_eq!(addr, "10.8.0.14");
-            assert_eq!(primary, "1");
+            assert!(*primary);
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -743,7 +743,7 @@ fn remote_notification() {
             protocol,
         }) => {
             assert_eq!(host, "vpn.example.com");
-            assert_eq!(port, "1194");
+            assert_eq!(*port, 1194);
             assert_eq!(protocol, "udp");
         }
         other => panic!("unexpected: {other:?}"),
@@ -761,10 +761,10 @@ fn proxy_notification() {
             host,
             port,
         }) => {
-            assert_eq!(proto_num, "1");
+            assert_eq!(*proto_num, 1);
             assert_eq!(proto_type, "udp");
             assert_eq!(host, "vpn.example.com");
-            assert_eq!(port, "1194");
+            assert_eq!(*port, 1194);
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -2474,7 +2474,7 @@ fn remote_notification_tcp() {
             protocol,
         }) => {
             assert_eq!(host, "vpn.example.com");
-            assert_eq!(port, "443");
+            assert_eq!(*port, 443);
             assert_eq!(protocol, "tcp-client");
         }
         other => panic!("unexpected: {other:?}"),
@@ -2494,10 +2494,10 @@ fn proxy_notification_tcp() {
             host,
             port,
         }) => {
-            assert_eq!(proto_num, "1");
+            assert_eq!(*proto_num, 1);
             assert_eq!(proto_type, "TCP");
             assert_eq!(host, "vpn.example.com");
-            assert!(port.is_empty(), "port may be absent");
+            assert_eq!(*port, 0, "port may be absent");
         }
         other => panic!("unexpected: {other:?}"),
     }
