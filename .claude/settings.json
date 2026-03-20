@@ -18,7 +18,8 @@
       "Bash(cargo llvm-cov:*)",
       "Bash(gh search:*)",
       "Bash(cargo mutants:*)",
-      "Bash(cargo clippy:*)"
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)"
     ]
   }
 }
