@@ -207,8 +207,19 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             OvpnCommand::Kill(KillTarget::CommonName(ref cn)) => {
                 write_line(dst, &format!("kill {}", sanitize_line(cn)));
             }
-            OvpnCommand::Kill(KillTarget::Address { ref ip, port }) => {
-                write_line(dst, &format!("kill {}:{port}", sanitize_line(ip)));
+            OvpnCommand::Kill(KillTarget::Address {
+                ref protocol,
+                ref ip,
+                port,
+            }) => {
+                write_line(
+                    dst,
+                    &format!(
+                        "kill {}:{}:{port}",
+                        sanitize_line(protocol),
+                        sanitize_line(ip)
+                    ),
+                );
             }
             OvpnCommand::HoldQuery => write_line(dst, "hold"),
             OvpnCommand::HoldOn => write_line(dst, "hold on"),
@@ -317,18 +328,10 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 }
             }
 
-            OvpnCommand::ClientKill { cid } => write_line(dst, &format!("client-kill {cid}")),
-
-            // client-pf is also a multi-line command:
-            //   client-pf {CID}
-            //   [CLIENTS ACCEPT]
-            //   ...
-            //   [END]
-            //   END
-            OvpnCommand::ClientPf {
-                cid,
-                ref filter_lines,
-            } => write_block(dst, &format!("client-pf {cid}"), filter_lines),
+            OvpnCommand::ClientKill { cid, ref message } => match message {
+                Some(msg) => write_line(dst, &format!("client-kill {cid} {}", sanitize_line(msg))),
+                None => write_line(dst, &format!("client-kill {cid}")),
+            },
 
             // ── Server statistics ─────────────────────────────────
             OvpnCommand::LoadStats => write_line(dst, "load-stats"),
@@ -354,12 +357,6 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             // ── External certificate ─────────────────────────────
             OvpnCommand::Certificate { ref pem_lines } => {
                 write_block(dst, "certificate", pem_lines);
-            }
-
-            // ── Windows service bypass ───────────────────────────
-            OvpnCommand::BypassMessage(ref msg) => {
-                let escaped = quote_and_escape(msg);
-                write_line(dst, &format!("bypass-message {escaped}"));
             }
 
             // ── Remote/Proxy ─────────────────────────────────────
@@ -582,12 +579,6 @@ impl Decoder for OvpnCodec {
                     self.multi_line_buf = Some(vec![line]);
                     continue; // Accumulate until END.
                 }
-                ResponseKind::SingleValue => {
-                    if let Some(parsed) = parse_pkcs11id_entry(&line) {
-                        return Ok(Some(parsed));
-                    }
-                    return Ok(Some(OvpnMessage::SingleValue(line)));
-                }
                 ResponseKind::SuccessOrError | ResponseKind::NoResponse => {
                     return Ok(Some(OvpnMessage::Unrecognized {
                         line,
@@ -680,6 +671,14 @@ impl OvpnCodec {
             "REMOTE" => parse_remote(payload),
             "PROXY" => parse_proxy(payload),
             "PASSWORD" => parse_password(payload),
+            "PKCS11ID-ENTRY" => {
+                return parse_pkcs11id_entry_notif(payload).or_else(|| {
+                    Some(OvpnMessage::Notification(Notification::Simple {
+                        kind: kind.to_string(),
+                        payload: payload.to_string(),
+                    }))
+                });
+            }
             _ => None,
         };
 
@@ -700,27 +699,29 @@ impl OvpnCodec {
 // produce an error.
 
 fn parse_state(payload: &str) -> Option<Notification> {
-    // Wire format (OpenVPN 2.1+):
-    //   timestamp,name,desc,local_ip,remote_ip[,local_port[,local_addr[,remote_port]]]
-    // Field 7 (local_addr) was added later; we skip it since the
-    // Notification::State struct doesn't model it.
+    // Wire format per management-notes.txt:
+    //   (a) timestamp, (b) state, (c) desc, (d) local_ip, (e) remote_ip,
+    //   (f) remote_port, (g) local_addr, (h) local_port, (i) local_ipv6
     let mut parts = payload.splitn(9, ',');
     let timestamp = parts.next()?.parse().ok()?;
     let name = OpenVpnState::parse(parts.next()?);
     let description = parts.next()?.to_string();
     let local_ip = parts.next()?.to_string();
     let remote_ip = parts.next()?.to_string();
-    let local_port = parts.next().unwrap_or("").to_string();
-    let _local_addr = parts.next(); // skip local_addr
     let remote_port = parts.next().unwrap_or("").to_string();
+    let local_addr = parts.next().unwrap_or("").to_string();
+    let local_port = parts.next().unwrap_or("").to_string();
+    let local_ipv6 = parts.next().unwrap_or("").to_string();
     Some(Notification::State {
         timestamp,
         name,
         description,
         local_ip,
         remote_ip,
-        local_port,
         remote_port,
+        local_addr,
+        local_port,
+        local_ipv6,
     })
 }
 
@@ -769,9 +770,10 @@ fn parse_pkcs11id_count(payload: &str) -> Option<Notification> {
     Some(Notification::Pkcs11IdCount { count })
 }
 
-/// Parse `PKCS11ID-ENTRY:'idx', ID:'id', BLOB:'blob'` response line.
-fn parse_pkcs11id_entry(line: &str) -> Option<OvpnMessage> {
-    let rest = line.strip_prefix("PKCS11ID-ENTRY:'")?;
+/// Parse `>PKCS11ID-ENTRY:'idx', ID:'id', BLOB:'blob'` from the notification
+/// payload (after the kind and colon have been stripped).
+fn parse_pkcs11id_entry_notif(payload: &str) -> Option<OvpnMessage> {
+    let rest = payload.strip_prefix('\'')?;
     let (index, rest) = rest.split_once("', ID:'")?;
     let (id, rest) = rest.split_once("', BLOB:'")?;
     let blob = rest.strip_suffix('\'')?;
@@ -818,16 +820,15 @@ fn parse_remote(payload: &str) -> Option<Notification> {
 }
 
 fn parse_proxy(payload: &str) -> Option<Notification> {
-    let mut parts = payload.splitn(4, ',');
-    let proto_num = parts.next()?.parse().ok()?;
-    let proto_type = TransportProtocol::parse(parts.next()?);
+    // Wire: >PROXY:{index},{type},{host}  (3 fields per init.c)
+    let mut parts = payload.splitn(3, ',');
+    let index = parts.next()?.parse().ok()?;
+    let proxy_type = parts.next()?.to_string();
     let host = parts.next()?.to_string();
-    let port = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
     Some(Notification::Proxy {
-        proto_num,
-        proto_type,
+        index,
+        proxy_type,
         host,
-        port,
     })
 }
 
@@ -847,40 +848,14 @@ fn parse_auth_type(s: &str) -> AuthType {
 }
 
 fn parse_password(payload: &str) -> Option<Notification> {
-    // Verification Failed: 'type'
+    // Verification Failed: 'Auth' ['CRV1:flags:state_id:user_b64:challenge']
+    // Verification Failed: 'Auth'
     if let Some(rest) = payload.strip_prefix("Verification Failed: '") {
-        let auth_type = rest.strip_suffix('\'')?;
-        return Some(Notification::Password(
-            PasswordNotification::VerificationFailed {
-                auth_type: parse_auth_type(auth_type),
-            },
-        ));
-    }
-
-    // Need 'type' username/password [SC:...|CRV1:...]
-    // Need 'type' password
-    let rest = payload.strip_prefix("Need '")?;
-    let (auth_type_str, rest) = rest.split_once('\'')?;
-    let rest = rest.trim_start();
-
-    // Check for challenge-response suffixes
-    if let Some(after_up) = rest.strip_prefix("username/password") {
-        let after_up = after_up.trim_start();
-
-        // Static challenge: SC:echo_flag,challenge_text
-        if let Some(sc) = after_up.strip_prefix("SC:") {
-            let (echo_str, challenge) = sc.split_once(',')?;
-            return Some(Notification::Password(
-                PasswordNotification::StaticChallenge {
-                    echo: echo_str == "1",
-                    challenge: challenge.to_string(),
-                },
-            ));
-        }
-
-        // Dynamic challenge: CRV1:flags:state_id:username_b64:challenge
-        if let Some(crv1) = after_up.strip_prefix("CRV1:") {
-            let mut parts = crv1.splitn(4, ':');
+        // Check for CRV1 dynamic challenge data
+        if let Some((auth_part, crv1_part)) = rest.split_once("' ['CRV1:") {
+            let _ = auth_part; // auth type is always "Auth" for CRV1
+            let crv1_data = crv1_part.strip_suffix("']")?;
+            let mut parts = crv1_data.splitn(4, ':');
             let flags = parts.next()?.to_string();
             let state_id = parts.next()?.to_string();
             let username_b64 = parts.next()?.to_string();
@@ -891,6 +866,37 @@ fn parse_password(payload: &str) -> Option<Notification> {
                     state_id,
                     username_b64,
                     challenge,
+                },
+            ));
+        }
+        // Bare verification failure
+        let auth_type = rest.strip_suffix('\'')?;
+        return Some(Notification::Password(
+            PasswordNotification::VerificationFailed {
+                auth_type: parse_auth_type(auth_type),
+            },
+        ));
+    }
+
+    // Need 'type' username/password [SC:...]
+    // Need 'type' password
+    let rest = payload.strip_prefix("Need '")?;
+    let (auth_type_str, rest) = rest.split_once('\'')?;
+    let rest = rest.trim_start();
+
+    if let Some(after_up) = rest.strip_prefix("username/password") {
+        let after_up = after_up.trim_start();
+
+        // Static challenge: SC:flag,challenge_text
+        // flag is a multi-bit integer: bit 0 = ECHO, bit 1 = FORMAT/CONCAT
+        if let Some(sc) = after_up.strip_prefix("SC:") {
+            let (flag_str, challenge) = sc.split_once(',')?;
+            let flags: u32 = flag_str.parse().ok()?;
+            return Some(Notification::Password(
+                PasswordNotification::StaticChallenge {
+                    echo: flags & 1 != 0,
+                    response_concat: flags & 2 != 0,
+                    challenge: challenge.to_string(),
                 },
             ));
         }
@@ -1127,30 +1133,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn encode_client_pf() {
-        let wire = encode_to_string(OvpnCommand::ClientPf {
-            cid: 42,
-            filter_lines: vec![
-                "[CLIENTS ACCEPT]".to_string(),
-                "-accounting".to_string(),
-                "[SUBNETS DROP]".to_string(),
-                "+10.0.0.0/8".to_string(),
-                "[END]".to_string(),
-            ],
-        });
-        assert_eq!(
-            wire,
-            "client-pf 42\n\
-             [CLIENTS ACCEPT]\n\
-             -accounting\n\
-             [SUBNETS DROP]\n\
-             +10.0.0.0/8\n\
-             [END]\n\
-             END\n"
-        );
-    }
-
     // ── Decoder tests ────────────────────────────────────────────
 
     #[test]
@@ -1229,21 +1211,28 @@ mod tests {
     }
 
     #[test]
-    fn decode_hold_query_single_value() {
-        // After encoding bare `hold`, the codec expects a single value line.
-        let msgs = encode_then_decode(OvpnCommand::HoldQuery, "0\n");
+    fn decode_hold_query_success() {
+        // Bare `hold` returns SUCCESS: hold=0 or SUCCESS: hold=1
+        let msgs = encode_then_decode(OvpnCommand::HoldQuery, "SUCCESS: hold=0\n");
         assert_eq!(msgs.len(), 1);
-        assert!(matches!(&msgs[0], OvpnMessage::SingleValue(s) if s == "0"));
+        assert!(matches!(&msgs[0], OvpnMessage::Success(s) if s == "hold=0"));
     }
 
     #[test]
-    fn decode_bare_state_single_value() {
+    fn decode_bare_state_multiline() {
+        // Bare `state` returns state history lines + END
         let msgs = encode_then_decode(
             OvpnCommand::State,
-            "1234567890,CONNECTED,SUCCESS,,10.0.0.1,,\n",
+            "1234567890,CONNECTED,SUCCESS,,10.0.0.1,,,,\nEND\n",
         );
         assert_eq!(msgs.len(), 1);
-        assert!(matches!(&msgs[0], OvpnMessage::SingleValue(s) if s.starts_with("1234567890")));
+        match &msgs[0] {
+            OvpnMessage::MultiLine(lines) => {
+                assert_eq!(lines.len(), 1);
+                assert!(lines[0].starts_with("1234567890"));
+            }
+            other => panic!("unexpected: {other:?}"),
+        }
     }
 
     #[test]

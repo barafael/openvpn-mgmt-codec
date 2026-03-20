@@ -87,7 +87,7 @@ fn full_state_transition_sequence() {
             description,
             local_ip,
             remote_ip,
-            local_port,
+            remote_port,
             ..
         }) => {
             assert_eq!(*timestamp, 1711000006);
@@ -95,7 +95,7 @@ fn full_state_transition_sequence() {
             assert_eq!(description, "SUCCESS");
             assert_eq!(local_ip, "10.8.0.6");
             assert_eq!(remote_ip, "198.51.100.1");
-            assert_eq!(local_port, "1194");
+            assert_eq!(remote_port, "1194");
         }
         other => panic!("expected STATE notification, got: {other:?}"),
     }
@@ -586,7 +586,7 @@ fn password_verification_failed_private_key() {
 #[test]
 fn challenge_response_dynamic_crv1() {
     let msgs = decode_all(
-        ">PASSWORD:Need 'Auth' username/password CRV1:R,E:bXlzdGF0ZQ==:dXNlcg==:Enter PIN\n",
+        ">PASSWORD:Verification Failed: 'Auth' ['CRV1:R,E:bXlzdGF0ZQ==:dXNlcg==:Enter PIN']\n",
     );
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
@@ -614,7 +614,9 @@ fn challenge_response_static_scrv1() {
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Password(
-            PasswordNotification::StaticChallenge { echo, challenge },
+            PasswordNotification::StaticChallenge {
+                echo, challenge, ..
+            },
         )) => {
             assert!(*echo);
             assert_eq!(challenge, "Please enter your OTP token");
@@ -750,19 +752,17 @@ fn remote_notification() {
 
 #[test]
 fn proxy_notification() {
-    let msgs = decode_all(">PROXY:1,udp,vpn.example.com,1194\n");
+    let msgs = decode_all(">PROXY:1,udp,vpn.example.com\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Proxy {
-            proto_num,
-            proto_type,
+            index,
+            proxy_type,
             host,
-            port,
         }) => {
-            assert_eq!(*proto_num, 1);
-            assert_eq!(*proto_type, TransportProtocol::Udp);
+            assert_eq!(*index, 1);
+            assert_eq!(proxy_type, "udp");
             assert_eq!(host, "vpn.example.com");
-            assert_eq!(*port, 1194);
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -864,10 +864,11 @@ fn encode_kill_by_common_name() {
 fn encode_kill_by_address() {
     assert_eq!(
         encode_to_string(OvpnCommand::Kill(KillTarget::Address {
+            protocol: "tcp".into(),
             ip: "203.0.113.10".into(),
             port: 52841,
         })),
-        "kill 203.0.113.10:52841\n"
+        "kill tcp:203.0.113.10:52841\n"
     );
 }
 
@@ -939,7 +940,10 @@ fn encode_client_deny_no_client_reason() {
 #[test]
 fn encode_client_kill() {
     assert_eq!(
-        encode_to_string(OvpnCommand::ClientKill { cid: 42 }),
+        encode_to_string(OvpnCommand::ClientKill {
+            cid: 42,
+            message: None
+        }),
         "client-kill 42\n"
     );
 }
@@ -1064,7 +1068,10 @@ fn success_responses() {
     assert!(matches!(&msgs[0], OvpnMessage::Success(_)));
 
     let msgs = encode_then_decode(
-        OvpnCommand::ClientKill { cid: 5 },
+        OvpnCommand::ClientKill {
+            cid: 5,
+            message: None,
+        },
         "SUCCESS: client-kill command succeeded\n",
     );
     assert!(matches!(&msgs[0], OvpnMessage::Success(_)));
@@ -1232,16 +1239,16 @@ fn empty_success_and_error() {
 
 #[test]
 fn hold_query_returns_one() {
-    let msgs = encode_then_decode(OvpnCommand::HoldQuery, "1\n");
+    let msgs = encode_then_decode(OvpnCommand::HoldQuery, "SUCCESS: hold=1\n");
     assert_eq!(msgs.len(), 1);
-    assert!(matches!(&msgs[0], OvpnMessage::SingleValue(s) if s == "1"));
+    assert!(matches!(&msgs[0], OvpnMessage::Success(s) if s == "hold=1"));
 }
 
 #[test]
 fn pkcs11_id_get_parsed() {
     let msgs = encode_then_decode(
         OvpnCommand::Pkcs11IdGet(0),
-        "PKCS11ID-ENTRY:'0', ID:'MY_ID', BLOB:'MY_BLOB'\n",
+        ">PKCS11ID-ENTRY:'0', ID:'MY_ID', BLOB:'MY_BLOB'\n",
     );
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
@@ -1256,10 +1263,10 @@ fn pkcs11_id_get_parsed() {
 
 #[test]
 fn pkcs11_id_get_malformed_falls_back() {
-    // If the format doesn't match, fall back to SingleValue
+    // If the format doesn't match, fall back to Unrecognized
     let msgs = encode_then_decode(OvpnCommand::Pkcs11IdGet(0), "some unexpected response\n");
     assert_eq!(msgs.len(), 1);
-    assert!(matches!(&msgs[0], OvpnMessage::SingleValue(s) if s == "some unexpected response"));
+    assert!(matches!(&msgs[0], OvpnMessage::Unrecognized { .. }));
 }
 
 #[test]
@@ -1491,18 +1498,6 @@ fn encode_certificate() {
          -----END CERTIFICATE-----\n\
          END\n"
     );
-}
-
-#[test]
-fn encode_bypass_message() {
-    let wire = encode_to_string(OvpnCommand::BypassMessage("dns 1.2.3.4".into()));
-    assert_eq!(wire, "bypass-message \"dns 1.2.3.4\"\n");
-}
-
-#[test]
-fn encode_bypass_message_with_special_chars() {
-    let wire = encode_to_string(OvpnCommand::BypassMessage("msg with \"quotes\"".into()));
-    assert_eq!(wire, "bypass-message \"msg with \\\"quotes\\\"\"\n");
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1829,7 +1824,7 @@ fn state_all_known_names() {
         ("EXITING", OpenVpnState::Exiting),
         ("RESOLVE", OpenVpnState::Resolve),
         ("TCP_CONNECT", OpenVpnState::TcpConnect),
-        ("AUTH_PENDING", OpenVpnState::Custom("AUTH_PENDING".into())),
+        ("AUTH_PENDING", OpenVpnState::AuthPending),
     ];
     for (i, (state_str, expected)) in states.iter().enumerate() {
         let input = format!(">STATE:{},{state_str},,,,,,\n", 1700000000 + i as u64);
@@ -1846,7 +1841,7 @@ fn state_all_known_names() {
 
 #[test]
 fn state_connected_with_all_fields_populated() {
-    // 7 comma-separated fields: timestamp,name,desc,tun_local_ip,remote_ip,local_port,remote_port
+    // 9 comma-separated fields: timestamp,name,desc,local_ip,remote_ip,remote_port,local_addr,local_port,local_ipv6
     let msgs = decode_all(">STATE:1608159538,CONNECTED,SUCCESS,10.10.10.1,1.2.3.4,1194,\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
@@ -1856,16 +1851,15 @@ fn state_connected_with_all_fields_populated() {
             description,
             local_ip,
             remote_ip,
-            local_port,
             remote_port,
+            ..
         }) => {
             assert_eq!(*timestamp, 1608159538);
             assert_eq!(*name, OpenVpnState::Connected);
             assert_eq!(description, "SUCCESS");
             assert_eq!(local_ip, "10.10.10.1");
             assert_eq!(remote_ip, "1.2.3.4");
-            assert_eq!(local_port, "1194");
-            assert_eq!(remote_port, "");
+            assert_eq!(remote_port, "1194");
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -1970,15 +1964,13 @@ fn full_connection_lifecycle_from_capture() {
             name,
             local_ip,
             remote_ip,
-            local_port,
             remote_port,
             ..
         }) => {
             assert_eq!(*name, OpenVpnState::Connected);
             assert_eq!(local_ip, "10.10.10.1");
             assert_eq!(remote_ip, "1.2.3.4");
-            assert_eq!(local_port, "1194");
-            assert_eq!(remote_port, "");
+            assert_eq!(remote_port, "1194");
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -2048,7 +2040,9 @@ fn static_challenge_no_echo() {
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Password(
-            PasswordNotification::StaticChallenge { echo, challenge },
+            PasswordNotification::StaticChallenge {
+                echo, challenge, ..
+            },
         )) => {
             assert!(!*echo);
             assert_eq!(challenge, "Enter your OTP code");
@@ -2256,10 +2250,11 @@ fn success_load_stats_real_format() {
 fn success_kill_by_address_real_format() {
     let msgs = encode_then_decode(
         OvpnCommand::Kill(KillTarget::Address {
+            protocol: "tcp".into(),
             ip: "1.2.3.4".into(),
             port: 4000,
         }),
-        "SUCCESS: 1 client(s) at address 1.2.3.4:4000 killed\n",
+        "SUCCESS: 1 client(s) at address tcp:1.2.3.4:4000 killed\n",
     );
     assert!(matches!(&msgs[0], OvpnMessage::Success(s) if s.contains("1.2.3.4:4000")));
 }
@@ -2471,15 +2466,13 @@ fn proxy_notification_tcp() {
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Proxy {
-            proto_num,
-            proto_type,
+            index,
+            proxy_type,
             host,
-            port,
         }) => {
-            assert_eq!(*proto_num, 1);
-            assert_eq!(*proto_type, TransportProtocol::Tcp);
+            assert_eq!(*index, 1);
+            assert_eq!(proxy_type, "TCP");
             assert_eq!(host, "vpn.example.com");
-            assert_eq!(*port, 0, "port may be absent");
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -2644,28 +2637,6 @@ fn encode_client_auth_with_multiple_push_directives() {
 }
 
 #[test]
-fn encode_client_pf_real_filter() {
-    // Real packet filter from management-notes.txt
-    let wire = encode_to_string(OvpnCommand::ClientPf {
-        cid: 99,
-        filter_lines: vec![
-            "[CLIENTS DROP]".into(),
-            "+public".into(),
-            "-private".into(),
-            "[SUBNETS ACCEPT]".into(),
-            "+10.10.0.1".into(),
-            "-10.0.0.0/8".into(),
-            "-unknown".into(),
-            "[END]".into(),
-        ],
-    });
-    assert_eq!(
-        wire,
-        "client-pf 99\n[CLIENTS DROP]\n+public\n-private\n[SUBNETS ACCEPT]\n+10.10.0.1\n-10.0.0.0/8\n-unknown\n[END]\nEND\n"
-    );
-}
-
-#[test]
 fn encode_rsa_sig_real_base64() {
     let wire = encode_to_string(OvpnCommand::RsaSig {
         base64_lines: vec![
@@ -2694,9 +2665,9 @@ fn hold_waiting_with_seconds() {
 
 #[test]
 fn hold_query_returns_zero() {
-    let msgs = encode_then_decode(OvpnCommand::HoldQuery, "0\n");
+    let msgs = encode_then_decode(OvpnCommand::HoldQuery, "SUCCESS: hold=0\n");
     assert_eq!(msgs.len(), 1);
-    assert!(matches!(&msgs[0], OvpnMessage::SingleValue(s) if s == "0"));
+    assert!(matches!(&msgs[0], OvpnMessage::Success(s) if s == "hold=0"));
 }
 
 // ── Complex session simulations from real usage patterns ─────────
@@ -2841,7 +2812,9 @@ fn client_mode_auth_with_challenge_session() {
     let msg = codec.decode(&mut buf).unwrap().unwrap();
     match &msg {
         OvpnMessage::Notification(Notification::Password(
-            PasswordNotification::StaticChallenge { echo, challenge },
+            PasswordNotification::StaticChallenge {
+                echo, challenge, ..
+            },
         )) => {
             assert!(*echo);
             assert_eq!(challenge, "Please enter your OTP token");

@@ -104,9 +104,15 @@ fn arb_password_notification() -> BoxedStrategy<PasswordNotification> {
         arb_auth_type().prop_map(|at| PasswordNotification::NeedAuth { auth_type: at }),
         arb_auth_type().prop_map(|at| PasswordNotification::NeedPassword { auth_type: at }),
         arb_auth_type().prop_map(|at| PasswordNotification::VerificationFailed { auth_type: at }),
-        (any::<bool>(), safe_text()).prop_map(|(echo, challenge)| {
-            PasswordNotification::StaticChallenge { echo, challenge }
-        }),
+        (any::<bool>(), any::<bool>(), safe_text()).prop_map(
+            |(echo, response_concat, challenge)| {
+                PasswordNotification::StaticChallenge {
+                    echo,
+                    response_concat,
+                    challenge,
+                }
+            },
+        ),
         (safe_field(), safe_field(), safe_field(), safe_text()).prop_map(
             |(flags, state_id, username_b64, challenge)| {
                 PasswordNotification::DynamicChallenge {
@@ -135,13 +141,14 @@ fn notification_to_wire(notif: &Notification) -> String {
             description,
             local_ip,
             remote_ip,
-            local_port,
             remote_port,
+            local_addr,
+            local_port,
+            local_ipv6,
         } => {
-            // Field 7 (local_addr) is skipped by the decoder; emit as empty.
             format!(
                 ">STATE:{timestamp},{name},{description},{local_ip},\
-                 {remote_ip},{local_port},,{remote_port}\n"
+                 {remote_ip},{remote_port},{local_addr},{local_port},{local_ipv6}\n"
             )
         }
         Notification::ByteCount {
@@ -175,11 +182,10 @@ fn notification_to_wire(notif: &Notification) -> String {
             protocol,
         } => format!(">REMOTE:{host},{port},{protocol}\n"),
         Notification::Proxy {
-            proto_num,
-            proto_type,
+            index,
+            proxy_type,
             host,
-            port,
-        } => format!(">PROXY:{proto_num},{proto_type},{host},{port}\n"),
+        } => format!(">PROXY:{index},{proxy_type},{host}\n"),
         Notification::Password(pw) => match pw {
             PasswordNotification::NeedAuth { auth_type } => {
                 format!(">PASSWORD:Need '{auth_type}' username/password\n")
@@ -190,8 +196,12 @@ fn notification_to_wire(notif: &Notification) -> String {
             PasswordNotification::VerificationFailed { auth_type } => {
                 format!(">PASSWORD:Verification Failed: '{auth_type}'\n")
             }
-            PasswordNotification::StaticChallenge { echo, challenge } => {
-                let flag = if *echo { "1" } else { "0" };
+            PasswordNotification::StaticChallenge {
+                echo,
+                response_concat,
+                challenge,
+            } => {
+                let flag = (*echo as u32) | ((*response_concat as u32) << 1);
                 format!(">PASSWORD:Need 'Auth' username/password SC:{flag},{challenge}\n")
             }
             PasswordNotification::DynamicChallenge {
@@ -200,8 +210,8 @@ fn notification_to_wire(notif: &Notification) -> String {
                 username_b64,
                 challenge,
             } => format!(
-                ">PASSWORD:Need 'Auth' username/password \
-                 CRV1:{flags}:{state_id}:{username_b64}:{challenge}\n"
+                ">PASSWORD:Verification Failed: 'Auth' \
+                 ['CRV1:{flags}:{state_id}:{username_b64}:{challenge}']\n"
             ),
         },
         Notification::Client {
@@ -308,25 +318,16 @@ proptest! {
     }
 
     #[test]
-    fn roundtrip_single_value(text in safe_field()) {
-        let wire = format!("{text}\n");
-        // Bare `state` expects a single-value response.
-        let msgs = decode_with_command(OvpnCommand::State, &wire);
-        prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::SingleValue(text));
-    }
-
-    #[test]
     fn roundtrip_pkcs11id_entry(
         index in safe_field(),
         id in safe_field(),
         blob in safe_field(),
     ) {
         let wire = format!(
-            "PKCS11ID-ENTRY:'{index}', ID:'{id}', BLOB:'{blob}'\n"
+            ">PKCS11ID-ENTRY:'{index}', ID:'{id}', BLOB:'{blob}'\n"
         );
-        // pkcs11-id-get expects a single-value response.
-        let msgs = decode_with_command(OvpnCommand::Pkcs11IdGet(0), &wire);
+        // >PKCS11ID-ENTRY: is a self-describing notification (has > prefix).
+        let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
         prop_assert_eq!(
             &msgs[0],
@@ -347,8 +348,10 @@ proptest! {
         description in safe_field(),
         local_ip in safe_field(),
         remote_ip in safe_field(),
-        local_port in safe_field(),
         remote_port in safe_field(),
+        local_addr in safe_field(),
+        local_port in safe_field(),
+        local_ipv6 in safe_field(),
     ) {
         let notif = Notification::State {
             timestamp,
@@ -356,8 +359,10 @@ proptest! {
             description,
             local_ip,
             remote_ip,
-            local_port,
             remote_port,
+            local_addr,
+            local_port,
+            local_ipv6,
         };
         let wire = notification_to_wire(&notif);
         let msgs = decode_all(&wire);
@@ -490,12 +495,11 @@ proptest! {
 
     #[test]
     fn roundtrip_notif_proxy(
-        proto_num in any::<u32>(),
-        proto_type in arb_transport_protocol(),
+        index in any::<u32>(),
+        proxy_type in safe_field(),
         host in safe_field(),
-        port in any::<u16>(),
     ) {
-        let notif = Notification::Proxy { proto_num, proto_type, host, port };
+        let notif = Notification::Proxy { index, proxy_type, host };
         let wire = notification_to_wire(&notif);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
@@ -645,10 +649,12 @@ fn arb_need_ok_response() -> BoxedStrategy<NeedOkResponse> {
 /// well-formed commands; using `adversarial_string()` exercises the
 /// encoder's sanitization defenses.
 fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand> {
-    let kill = prop_oneof![
-        s.clone().prop_map(KillTarget::CommonName),
-        (s.clone(), any::<u16>()).prop_map(|(ip, port)| KillTarget::Address { ip, port }),
-    ];
+    let kill =
+        prop_oneof![
+            s.clone().prop_map(KillTarget::CommonName),
+            (s.clone(), s.clone(), any::<u16>())
+                .prop_map(|(protocol, ip, port)| KillTarget::Address { protocol, ip, port }),
+        ];
     let remote = prop_oneof![
         Just(RemoteAction::Accept),
         Just(RemoteAction::Skip),
@@ -734,7 +740,6 @@ fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand>
         (s.clone(), s.clone())
             .prop_map(|(n, v)| OvpnCommand::NeedStr { name: n, value: v })
             .boxed(),
-        s.clone().prop_map(OvpnCommand::BypassMessage).boxed(),
         s.clone().prop_map(OvpnCommand::ManagementPassword).boxed(),
         s.clone().prop_map(OvpnCommand::Raw).boxed(),
         s.clone()
@@ -779,12 +784,6 @@ fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand>
                 config_lines: lines,
             })
             .boxed(),
-        (any::<u64>(), prop::collection::vec(s.clone(), 0..5))
-            .prop_map(|(c, lines)| OvpnCommand::ClientPf {
-                cid: c,
-                filter_lines: lines,
-            })
-            .boxed(),
         prop::collection::vec(s.clone(), 0..5)
             .prop_map(|lines| OvpnCommand::Certificate { pem_lines: lines })
             .boxed(),
@@ -792,8 +791,8 @@ fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand>
         (any::<u64>(), any::<u64>())
             .prop_map(|(c, k)| OvpnCommand::ClientAuthNt { cid: c, kid: k })
             .boxed(),
-        any::<u64>()
-            .prop_map(|c| OvpnCommand::ClientKill { cid: c })
+        (any::<u64>(), prop::option::of(s.clone()))
+            .prop_map(|(c, m)| OvpnCommand::ClientKill { cid: c, message: m })
             .boxed(),
     ])
     .boxed()
@@ -820,18 +819,22 @@ fn arb_single_line_notification() -> BoxedStrategy<Notification> {
             safe_field(),
             safe_field(),
             safe_field(),
+            safe_field(),
+            safe_field(),
         )
-            .prop_map(
-                |(ts, name, desc, lip, rip, lport, rport)| Notification::State {
+            .prop_map(|(ts, name, desc, lip, rip, rport, laddr, lport, lipv6)| {
+                Notification::State {
                     timestamp: ts,
                     name,
                     description: desc,
                     local_ip: lip,
                     remote_ip: rip,
-                    local_port: lport,
                     remote_port: rport,
+                    local_addr: laddr,
+                    local_port: lport,
+                    local_ipv6: lipv6,
                 }
-            ),
+            }),
         (any::<u64>(), any::<u64>()).prop_map(|(bi, bo)| Notification::ByteCount {
             bytes_in: bi,
             bytes_out: bo,
@@ -873,18 +876,11 @@ fn arb_single_line_notification() -> BoxedStrategy<Notification> {
                 protocol: pr,
             }
         }),
-        (
-            any::<u32>(),
-            arb_transport_protocol(),
-            safe_field(),
-            any::<u16>(),
-        )
-            .prop_map(|(pn, pt, h, p)| Notification::Proxy {
-                proto_num: pn,
-                proto_type: pt,
-                host: h,
-                port: p,
-            }),
+        (any::<u32>(), safe_field(), safe_field()).prop_map(|(idx, pt, h)| Notification::Proxy {
+            index: idx,
+            proxy_type: pt,
+            host: h,
+        }),
         arb_password_notification().prop_map(Notification::Password),
         (any::<u64>(), safe_field(), any::<bool>()).prop_map(|(c, a, p)| {
             Notification::ClientAddress {
@@ -975,7 +971,6 @@ proptest! {
         let expected_lines = match &cmd {
             OvpnCommand::RsaSig { base64_lines } => base64_lines.len() + 2,
             OvpnCommand::ClientAuth { config_lines, .. } => config_lines.len() + 2,
-            OvpnCommand::ClientPf { filter_lines, .. } => filter_lines.len() + 2,
             OvpnCommand::Certificate { pem_lines } => pem_lines.len() + 2,
             _ => 1,
         };

@@ -51,6 +51,7 @@ fn state_all_fields_empty_trailing_commas() {
             remote_ip,
             local_port,
             remote_port,
+            ..
         }) => {
             assert_eq!(*timestamp, 1676768325);
             assert_eq!(*name, OpenVpnState::Wait);

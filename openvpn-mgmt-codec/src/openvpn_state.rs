@@ -36,6 +36,9 @@ pub enum OpenVpnState {
     /// Resolving remote hostname.
     Resolve,
 
+    /// Waiting for authentication to complete (OpenVPN 2.5+).
+    AuthPending,
+
     /// An unrecognized state (forward compatibility).
     Custom(String),
 }
@@ -55,6 +58,7 @@ impl OpenVpnState {
             "EXITING" => Self::Exiting,
             "TCP_CONNECT" => Self::TcpConnect,
             "RESOLVE" => Self::Resolve,
+            "AUTH_PENDING" => Self::AuthPending,
             other => Self::Custom(other.to_string()),
         }
     }
@@ -74,6 +78,7 @@ impl fmt::Display for OpenVpnState {
             Self::Exiting => f.write_str("EXITING"),
             Self::TcpConnect => f.write_str("TCP_CONNECT"),
             Self::Resolve => f.write_str("RESOLVE"),
+            Self::AuthPending => f.write_str("AUTH_PENDING"),
             Self::Custom(s) => f.write_str(s),
         }
     }

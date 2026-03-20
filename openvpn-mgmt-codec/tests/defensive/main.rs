@@ -117,18 +117,6 @@ fn needstr_value_newline_must_not_inject_command() {
 }
 
 #[test]
-fn bypass_message_newline_must_not_inject_command() {
-    let wire = encode(OvpnCommand::BypassMessage("msg\nsignal SIGTERM".into()));
-
-    let line_count = wire.lines().count();
-    assert_eq!(
-        line_count, 1,
-        "bypass-message with embedded newline produced {line_count} wire \
-         lines — command injection!\nwire: {wire:?}"
-    );
-}
-
-#[test]
 fn challenge_response_newline_must_not_inject_command() {
     let wire = encode(OvpnCommand::ChallengeResponse {
         state_id: "state123".into(),
@@ -350,26 +338,6 @@ fn certificate_end_in_pem_must_not_split_block() {
 }
 
 #[test]
-fn client_pf_end_in_filter_must_not_split_block() {
-    let wire = encode(OvpnCommand::ClientPf {
-        cid: 5,
-        filter_lines: vec![
-            "[CLIENTS ACCEPT]".into(),
-            "END".into(),
-            "signal SIGTERM".into(),
-            "[END]".into(),
-        ],
-    });
-
-    let end_count = wire.lines().filter(|l| *l == "END").count();
-    assert_eq!(
-        end_count, 1,
-        "client-pf filter_lines containing 'END' produced {end_count} \
-         END markers — block split / command injection!\nwire: {wire:?}"
-    );
-}
-
-#[test]
 fn client_auth_newline_in_config_line_must_not_inject() {
     let wire = encode(OvpnCommand::ClientAuth {
         cid: 0,
@@ -551,7 +519,8 @@ fn client_auth_end_injection_roundtrip() {
 #[test]
 fn kill_address_ip_newline_must_not_inject_command() {
     let wire = encode(OvpnCommand::Kill(KillTarget::Address {
-        ip: "10.0.0.1\nsignal SIGTERM".into(),
+        protocol: "tcp".to_string(),
+        ip: "10.0.0.1\nsignal SIGTERM".to_string(),
         port: 1194,
     }));
 

@@ -2,7 +2,6 @@ use crate::auth::AuthType;
 use crate::client_event::ClientEvent;
 use crate::log_level::LogLevel;
 use crate::openvpn_state::OpenVpnState;
-use crate::transport_protocol::TransportProtocol;
 
 /// Sub-types of `>PASSWORD:` notifications. The password notification
 /// has several distinct forms with completely different structures.
@@ -26,16 +25,21 @@ pub enum PasswordNotification {
         auth_type: AuthType,
     },
 
-    /// Static challenge: `>PASSWORD:Need 'Auth' username/password SC:{echo},{challenge}`
+    /// Static challenge: `>PASSWORD:Need 'Auth' username/password SC:{flag},{challenge}`
+    /// The flag is a multi-bit integer: bit 0 = ECHO, bit 1 = FORMAT.
     StaticChallenge {
-        /// Whether to echo the user's response (from the `echo` flag: `0` or `1`).
+        /// Whether to echo the user's response (bit 0 of the SC flag).
         echo: bool,
+        /// Whether the response should be concatenated with the password
+        /// as plain text (bit 1 of the SC flag). When `false`, the response
+        /// and password are base64-encoded per the SCRV1 format.
+        response_concat: bool,
         /// The challenge text presented to the user.
         challenge: String,
     },
 
     /// Dynamic challenge (CRV1):
-    /// `>PASSWORD:Need 'Auth' username/password CRV1:{flags}:{state_id}:{username_b64}:{challenge}`
+    /// `>PASSWORD:Verification Failed: 'Auth' ['CRV1:{flags}:{state_id}:{username_b64}:{challenge}']`
     DynamicChallenge {
         /// Comma-separated CRV1 flags.
         flags: String,
@@ -77,22 +81,31 @@ pub enum Notification {
         primary: bool,
     },
 
-    /// `>STATE:timestamp,name,description,local_ip,remote_ip[,local_port,remote_port]`
+    /// `>STATE:timestamp,name,desc,local_ip,remote_ip,remote_port,local_addr,local_port,local_ipv6`
+    ///
+    /// Field order per management-notes.txt: (a) timestamp, (b) state name,
+    /// (c) description, (d) TUN/TAP local IPv4, (e) remote server address,
+    /// (f) remote server port, (g) local address, (h) local port,
+    /// (i) TUN/TAP local IPv6.
     State {
-        /// Unix timestamp of the state change.
+        /// (a) Unix timestamp of the state change.
         timestamp: u64,
-        /// State name (e.g. `Connected`, `Reconnecting`).
+        /// (b) State name (e.g. `Connected`, `Reconnecting`).
         name: OpenVpnState,
-        /// Verbose description of the state.
+        /// (c) Verbose description (mostly for RECONNECTING/EXITING).
         description: String,
-        /// Local tunnel IP address (may be empty).
+        /// (d) TUN/TAP local IPv4 address (may be empty).
         local_ip: String,
-        /// Remote server IP address (may be empty).
+        /// (e) Remote server address (may be empty).
         remote_ip: String,
-        /// Local port (may be empty, OpenVPN 2.1+).
-        local_port: String,
-        /// Remote port (may be empty, OpenVPN 2.1+).
+        /// (f) Remote server port (may be empty).
         remote_port: String,
+        /// (g) Local address (may be empty).
+        local_addr: String,
+        /// (h) Local port (may be empty).
+        local_port: String,
+        /// (i) TUN/TAP local IPv6 address (may be empty).
+        local_ipv6: String,
     },
 
     /// `>BYTECOUNT:bytes_in,bytes_out` (client mode)
@@ -178,19 +191,21 @@ pub enum Notification {
         /// Remote server port.
         port: u16,
         /// Transport protocol.
-        protocol: TransportProtocol,
+        protocol: crate::transport_protocol::TransportProtocol,
     },
 
-    /// `>PROXY:proto_num,proto_type,host[,port]`
+    /// `>PROXY:index,proxy_type,host`
+    ///
+    /// Sent when OpenVPN needs proxy information (requires
+    /// `--management-query-proxy`). The management client responds
+    /// with a `proxy` command.
     Proxy {
-        /// Numeric protocol identifier.
-        proto_num: u32,
-        /// Transport protocol type.
-        proto_type: TransportProtocol,
-        /// Server hostname or IP.
+        /// Connection index (1-based).
+        index: u32,
+        /// Proxy type string (e.g. `"TCP"`, `"UDP"`).
+        proxy_type: String,
+        /// Server hostname or IP to connect through.
         host: String,
-        /// Server port (`0` if not provided by the server).
-        port: u16,
     },
 
     /// `>PASSWORD:...` — see [`PasswordNotification`] for the sub-types.
@@ -219,12 +234,8 @@ pub enum OvpnMessage {
     /// The terminating `END` line is consumed but not included.
     MultiLine(Vec<String>),
 
-    /// A single non-SUCCESS/ERROR value line (from bare `hold`, bare `state`,
-    /// etc.).
-    SingleValue(String),
-
-    /// Parsed response from `pkcs11-id-get`. The wire format is:
-    /// `PKCS11ID-ENTRY:'index', ID:'id', BLOB:'base64_cert'`
+    /// Parsed response from `>PKCS11ID-ENTRY:` notification (sent by
+    /// `pkcs11-id-get`). Wire: `>PKCS11ID-ENTRY:'index', ID:'id', BLOB:'blob'`
     Pkcs11IdEntry {
         /// Certificate index.
         index: String,

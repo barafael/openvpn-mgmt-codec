@@ -75,8 +75,9 @@ pub enum OvpnCommand {
     /// Wire: `kill Test-Client` / `kill 1.2.3.4:4000`
     Kill(KillTarget),
 
-    /// Query the current hold flag. Returns `0` (off) or `1` (on).
+    /// Query the current hold flag.
     /// Wire: `hold`
+    /// Response: `SUCCESS: hold=0` or `SUCCESS: hold=1`
     HoldQuery,
 
     /// Set the hold flag on — future restarts will pause until released.
@@ -215,20 +216,15 @@ pub enum OvpnCommand {
         client_reason: Option<String>,
     },
 
-    /// Immediately kill a client session by CID.
-    /// Wire: `client-kill {CID}`
+    /// Kill a client session by CID, optionally with a custom message.
+    /// Wire: `client-kill {CID}` or `client-kill {CID} {message}`
+    /// Default message is `RESTART` if omitted.
     ClientKill {
         /// Client ID.
         cid: u64,
-    },
-
-    /// Push a packet filter to a specific client. Multi-line command:
-    /// header, filter block, `END`. Requires `--management-client-pf`.
-    ClientPf {
-        /// Client ID.
-        cid: u64,
-        /// Packet filter rules (e.g. `[CLIENTS ACCEPT]`, `+10.0.0.0/8`).
-        filter_lines: Vec<String>,
+        /// Optional kill message (e.g. `"HALT"`, `"RESTART"`). Defaults to
+        /// `RESTART` on the server if `None`.
+        message: Option<String>,
     },
 
     // ── Remote/Proxy override ────────────────────────────────────
@@ -276,11 +272,6 @@ pub enum OvpnCommand {
         pem_lines: Vec<String>,
     },
 
-    // ── Windows service bypass message ──────────────────────────
-    /// (Windows only) Send a bypass message to the OpenVPN service.
-    /// Wire: `bypass-message "message"`
-    BypassMessage(String),
-
     // ── Management interface authentication ────────────────────────
     /// Authenticate to the management interface itself. Sent as a bare
     /// line (no command prefix, no quoting) in response to
@@ -321,9 +312,6 @@ pub(crate) enum ResponseKind {
     /// Expect multiple lines terminated by a bare `END`.
     MultiLine,
 
-    /// Expect a single non-SUCCESS/ERROR value line (e.g. bare `hold` → "0").
-    SingleValue,
-
     /// No response expected (connection may close).
     NoResponse,
 }
@@ -344,14 +332,8 @@ impl OvpnCommand {
                 StreamMode::On | StreamMode::Off => ResponseKind::SuccessOrError,
             },
 
-            // Bare `state` returns a single comma-delimited state line.
-            Self::State => ResponseKind::SingleValue,
-
-            // Bare `hold` returns "0" or "1".
-            Self::HoldQuery => ResponseKind::SingleValue,
-
-            // `pkcs11-id-get N` returns a single PKCS11ID-ENTRY line.
-            Self::Pkcs11IdGet(_) => ResponseKind::SingleValue,
+            // Bare `state` returns state history (END-terminated).
+            Self::State => ResponseKind::MultiLine,
 
             // Raw multi-line expects END-terminated response.
             Self::RawMultiLine(_) => ResponseKind::MultiLine,

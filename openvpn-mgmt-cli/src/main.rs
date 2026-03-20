@@ -141,13 +141,15 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
 
         "kill" => {
             if args.is_empty() {
-                return Err("kill requires a target (common name or ip:port)".into());
+                return Err("kill requires a target (common name or proto:ip:port)".into());
             }
-            if let Some((ip, port_str)) = args.rsplit_once(':')
-                && let Ok(port) = port_str.parse::<u16>()
+            let parts: Vec<&str> = args.splitn(3, ':').collect();
+            if parts.len() == 3
+                && let Ok(port) = parts[2].parse::<u16>()
             {
                 return Ok(OvpnCommand::Kill(KillTarget::Address {
-                    ip: ip.to_string(),
+                    protocol: parts[0].to_string(),
+                    ip: parts[1].to_string(),
                     port,
                 }));
             }
@@ -288,10 +290,14 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
         }
 
         "client-kill" => {
-            let cid = args
+            let (cid_str, message) = match args.split_once(char::is_whitespace) {
+                Some((c, m)) => (c, Some(m.trim().to_string())),
+                None => (args, None),
+            };
+            let cid = cid_str
                 .parse::<u64>()
-                .map_err(|_| format!("client-kill requires a CID number, got: {args}"))?;
-            Ok(OvpnCommand::ClientKill { cid })
+                .map_err(|_| format!("client-kill requires a CID number, got: {cid_str}"))?;
+            Ok(OvpnCommand::ClientKill { cid, message })
         }
 
         // ── Remote/Proxy override ────────────────────────────────
@@ -405,7 +411,6 @@ fn print_message(msg: &OvpnMessage) {
                 println!("  {line}");
             }
         }
-        OvpnMessage::SingleValue(val) => println!("{val}"),
         OvpnMessage::Info(info) => println!("[INFO] {info}"),
         OvpnMessage::PasswordPrompt => {
             println!("[MGMT] Management password required (type the password and press enter)");
@@ -491,7 +496,9 @@ fn print_notification(notif: &Notification) {
             PasswordNotification::VerificationFailed { auth_type } => {
                 eprintln!("[PASSWORD] Verification failed: '{auth_type}'");
             }
-            PasswordNotification::StaticChallenge { echo, challenge } => {
+            PasswordNotification::StaticChallenge {
+                echo, challenge, ..
+            } => {
                 println!("[PASSWORD] Static challenge (echo={echo}): {challenge}");
             }
             PasswordNotification::DynamicChallenge {
@@ -516,12 +523,11 @@ fn print_notification(notif: &Notification) {
             println!("[REMOTE] {host}:{port} ({protocol})");
         }
         Notification::Proxy {
-            proto_type,
+            index,
+            proxy_type,
             host,
-            port,
-            ..
         } => {
-            println!("[PROXY] {proto_type} {host}:{port}");
+            println!("[PROXY] #{index} {proxy_type} {host}");
         }
         Notification::RsaSign { data } => {
             println!("[RSA_SIGN] {data}");
