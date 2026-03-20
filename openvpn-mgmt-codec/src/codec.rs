@@ -342,39 +342,14 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             } => write_line(
                 dst,
                 &format!(
-                    "client-pending-auth {cid} {kid} {timeout} {}",
+                    "client-pending-auth {cid} {kid} {} {timeout}",
                     sanitize_line(extra)
                 ),
             ),
 
-            OvpnCommand::ClientDenyV2 {
-                cid,
-                kid,
-                ref reason,
-                ref client_reason,
-                ref redirect_url,
-            } => {
-                let r = quote_and_escape(reason);
-                let mut cmd = format!("client-deny-v2 {cid} {kid} {r}");
-                if let Some(cr) = client_reason {
-                    cmd.push(' ');
-                    cmd.push_str(&quote_and_escape(cr));
-                    if let Some(url) = redirect_url {
-                        cmd.push(' ');
-                        cmd.push_str(&quote_and_escape(url));
-                    }
-                }
-                write_line(dst, &cmd);
+            OvpnCommand::CrResponse { ref response } => {
+                write_line(dst, &format!("cr-response {}", sanitize_line(response)))
             }
-
-            OvpnCommand::CrResponse {
-                cid,
-                kid,
-                ref response,
-            } => write_line(
-                dst,
-                &format!("cr-response {cid} {kid} {}", sanitize_line(response)),
-            ),
 
             // ── External certificate ─────────────────────────────
             OvpnCommand::Certificate { ref pem_lines } => {

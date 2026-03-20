@@ -1463,44 +1463,15 @@ fn encode_client_pending_auth() {
         timeout: 120,
         extra: "my-auth-session-id".into(),
     });
-    assert_eq!(wire, "client-pending-auth 0 1 120 my-auth-session-id\n");
-}
-
-#[test]
-fn encode_client_deny_v2_full() {
-    let wire = encode_to_string(OvpnCommand::ClientDenyV2 {
-        cid: 5,
-        kid: 0,
-        reason: "cert revoked".into(),
-        client_reason: Some("Access denied".into()),
-        redirect_url: Some("https://example.com/reauth".into()),
-    });
-    assert_eq!(
-        wire,
-        "client-deny-v2 5 0 \"cert revoked\" \"Access denied\" \"https://example.com/reauth\"\n"
-    );
-}
-
-#[test]
-fn encode_client_deny_v2_no_optionals() {
-    let wire = encode_to_string(OvpnCommand::ClientDenyV2 {
-        cid: 3,
-        kid: 0,
-        reason: "policy".into(),
-        client_reason: None,
-        redirect_url: None,
-    });
-    assert_eq!(wire, "client-deny-v2 3 0 \"policy\"\n");
+    assert_eq!(wire, "client-pending-auth 0 1 my-auth-session-id 120\n");
 }
 
 #[test]
 fn encode_cr_response() {
     let wire = encode_to_string(OvpnCommand::CrResponse {
-        cid: 0,
-        kid: 1,
-        response: "123456".into(),
+        response: "SGFsbG8gV2VsdCE=".into(),
     });
-    assert_eq!(wire, "cr-response 0 1 123456\n");
+    assert_eq!(wire, "cr-response SGFsbG8gV2VsdCE=\n");
 }
 
 #[test]
@@ -3135,21 +3106,6 @@ fn encode_client_deny_with_both_reasons() {
 }
 
 #[test]
-fn encode_client_deny_v2_with_all_fields() {
-    let wire = encode_to_string(OvpnCommand::ClientDenyV2 {
-        cid: 5,
-        kid: 0,
-        reason: "cert revoked".into(),
-        client_reason: Some("Access denied".into()),
-        redirect_url: Some("https://example.com/reauth".into()),
-    });
-    assert_eq!(
-        wire,
-        "client-deny-v2 5 0 \"cert revoked\" \"Access denied\" \"https://example.com/reauth\"\n"
-    );
-}
-
-#[test]
 fn encode_client_pending_auth_web_auth() {
     // Real-world: WEB_AUTH SSO flow
     let wire = encode_to_string(OvpnCommand::ClientPendingAuth {
@@ -3160,7 +3116,7 @@ fn encode_client_pending_auth_web_auth() {
     });
     assert_eq!(
         wire,
-        "client-pending-auth 1 2 300 WEB_AUTH::https://auth.example.com/login\n"
+        "client-pending-auth 1 2 WEB_AUTH::https://auth.example.com/login 300\n"
     );
 }
 
@@ -3471,21 +3427,4 @@ fn client_notification_interleaved_in_multiline_response() {
         assert!(lines.iter().any(|l| l.contains("TITLE")));
         assert!(lines.iter().any(|l| l.contains("TIME")));
     }
-}
-
-// ── Encoder: ClientDenyV2 with client_reason but no redirect_url ────
-
-#[test]
-fn encode_client_deny_v2_client_reason_without_redirect_url() {
-    let wire = encode_to_string(OvpnCommand::ClientDenyV2 {
-        cid: 7,
-        kid: 1,
-        reason: "expired".into(),
-        client_reason: Some("Your cert has expired".into()),
-        redirect_url: None,
-    });
-    assert_eq!(
-        wire,
-        "client-deny-v2 7 1 \"expired\" \"Your cert has expired\"\n"
-    );
 }

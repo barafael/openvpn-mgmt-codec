@@ -258,8 +258,6 @@ fn needstr_name_newline_must_not_inject_command() {
 #[test]
 fn cr_response_newline_must_not_inject_command() {
     let wire = encode(OvpnCommand::CrResponse {
-        cid: 0,
-        kid: 0,
         response: "resp\nexit".into(),
     });
 
@@ -284,24 +282,6 @@ fn client_pending_auth_extra_newline_must_not_inject_command() {
     assert_eq!(
         line_count, 1,
         "client-pending-auth extra with embedded newline produced \
-         {line_count} wire lines — command injection!\nwire: {wire:?}"
-    );
-}
-
-#[test]
-fn client_deny_v2_redirect_url_newline_must_not_inject_command() {
-    let wire = encode(OvpnCommand::ClientDenyV2 {
-        cid: 1,
-        kid: 0,
-        reason: "policy".into(),
-        client_reason: Some("denied".into()),
-        redirect_url: Some("http://evil\nexit".into()),
-    });
-
-    let line_count = wire.lines().count();
-    assert_eq!(
-        line_count, 1,
-        "client-deny-v2 redirect_url with embedded newline produced \
          {line_count} wire lines — command injection!\nwire: {wire:?}"
     );
 }

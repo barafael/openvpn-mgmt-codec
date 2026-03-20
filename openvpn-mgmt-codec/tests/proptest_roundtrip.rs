@@ -737,12 +737,8 @@ fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand>
         s.clone().prop_map(OvpnCommand::BypassMessage).boxed(),
         s.clone().prop_map(OvpnCommand::ManagementPassword).boxed(),
         s.clone().prop_map(OvpnCommand::Raw).boxed(),
-        (any::<u64>(), any::<u64>(), s.clone())
-            .prop_map(|(c, k, r)| OvpnCommand::CrResponse {
-                cid: c,
-                kid: k,
-                response: r,
-            })
+        s.clone()
+            .prop_map(|r| OvpnCommand::CrResponse { response: r })
             .boxed(),
         (any::<u64>(), any::<u64>(), any::<u32>(), s.clone())
             .prop_map(|(c, k, t, e)| OvpnCommand::ClientPendingAuth {
@@ -764,21 +760,6 @@ fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand>
                 kid: k,
                 reason: r,
                 client_reason: cr,
-            })
-            .boxed(),
-        (
-            any::<u64>(),
-            any::<u64>(),
-            s.clone(),
-            prop::option::of(s.clone()),
-            prop::option::of(s.clone()),
-        )
-            .prop_map(|(c, k, r, cr, url)| OvpnCommand::ClientDenyV2 {
-                cid: c,
-                kid: k,
-                reason: r,
-                client_reason: cr,
-                redirect_url: url,
             })
             .boxed(),
         // ── Multi-line commands ────────────────────────────────

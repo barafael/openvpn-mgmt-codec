@@ -248,7 +248,7 @@ pub enum OvpnCommand {
 
     // ── Extended client management (OpenVPN 2.5+) ────────────────
     /// Defer authentication for a client, allowing async auth backends.
-    /// Wire: `client-pending-auth {CID} {KID} {TIMEOUT} {EXTRA}`
+    /// Wire: `client-pending-auth {CID} {KID} {EXTRA} {TIMEOUT}`
     ClientPendingAuth {
         /// Client ID.
         cid: u64,
@@ -260,29 +260,10 @@ pub enum OvpnCommand {
         extra: String,
     },
 
-    /// Extended deny with optional redirect URL (OpenVPN 2.5+).
-    /// Wire: `client-deny-v2 {CID} {KID} "reason" ["client-reason"] ["redirect-url"]`
-    ClientDenyV2 {
-        /// Client ID.
-        cid: u64,
-        /// Key ID.
-        kid: u64,
-        /// Server-side reason string.
-        reason: String,
-        /// Optional message sent to the client.
-        client_reason: Option<String>,
-        /// Optional URL the client should be redirected to.
-        redirect_url: Option<String>,
-    },
-
-    /// Respond to a challenge-response authentication (OpenVPN 2.5+).
-    /// Wire: `cr-response {CID} {KID} {RESPONSE}`
+    /// Respond to a CR_TEXT challenge (client-side, OpenVPN 2.6+).
+    /// Wire: `cr-response {base64-response}`
     CrResponse {
-        /// Client ID.
-        cid: u64,
-        /// Key ID.
-        kid: u64,
-        /// The challenge-response answer.
+        /// The base64-encoded challenge-response answer.
         response: String,
     },
 
