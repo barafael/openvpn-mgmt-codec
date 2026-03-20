@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:openvpn.net)"
+      "WebFetch(domain:openvpn.net)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:forums.openvpn.net)",
+      "WebFetch(domain:blog.mdminhazulhaque.io)",
+      "WebFetch(domain:bozza.ru)",
+      "WebFetch(domain:deepwiki.com)",
+      "Bash(mkdir -p openvpn-mgmt-codec/src)",
+      "Bash(mv src/*.rs openvpn-mgmt-codec/src/)",
+      "Bash(mv tests:*)",
+      "Bash(mv examples/cli.rs openvpn-mgmt-cli/src/main.rs)",
+      "Bash(rmdir examples:*)",
+      "Bash(rm -rf examples)",
+      "Bash(cargo check:*)",
+      "Bash(cargo llvm-cov:*)",
+      "Bash(gh search:*)",
+      "Bash(cargo mutants:*)",
+      "Bash(cargo clippy:*)"
     ]
   }
 }
