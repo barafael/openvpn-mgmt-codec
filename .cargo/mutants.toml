@@ -1,0 +1,9 @@
+# Exclude mutations to buffer capacity pre-allocation hints.
+# BytesMut::reserve is advisory — output is always correct regardless of the
+# initial reservation size. These mutants can never be killed by functional
+# tests; they only affect allocation performance.
+
+exclude_re = [
+    "replace \\+ with .* in write_line",
+    "replace \\+ with .* in write_block",
+]
