@@ -25,11 +25,24 @@ fn quote_and_escape(s: &str) -> String {
         match c {
             '\\' => out.push_str("\\\\"),
             '"' => out.push_str("\\\""),
+            '\n' | '\r' | '\0' => {} // Strip — line-oriented protocol targeting C code.
             _ => out.push(c),
         }
     }
     out.push('"');
     out
+}
+
+/// Strip `\n`, `\r`, and `\0` from a string that will be interpolated
+/// into a single-line command without quoting.
+fn sanitize_line(s: &str) -> String {
+    if s.contains('\n') || s.contains('\r') || s.contains('\0') {
+        s.chars()
+            .filter(|&c| c != '\n' && c != '\r' && c != '\0')
+            .collect()
+    } else {
+        s.to_string()
+    }
 }
 
 use crate::client_event::ClientEvent;
@@ -46,6 +59,16 @@ struct ClientNotifAccum {
     env: Vec<(String, String)>,
 }
 
+/// Controls how many items the decoder will accumulate in a multi-line
+/// response or `>CLIENT:` ENV block before returning an error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AccumulationLimit {
+    /// No limit on accumulated items (the default).
+    Unlimited,
+    /// At most this many items before the decoder returns an error.
+    Max(usize),
+}
+
 /// Tokio codec for the OpenVPN management interface.
 ///
 /// The encoder serializes typed `OvpnCommand` values into correct wire-format
@@ -53,6 +76,20 @@ struct ClientNotifAccum {
 /// uses command-tracking state to correctly distinguish single-line from
 /// multi-line responses, and accumulates multi-line `>CLIENT:` notifications
 /// into a single `OvpnMessage` before emitting them.
+///
+/// # Sequential usage
+///
+/// The OpenVPN management protocol is strictly sequential: each command
+/// produces exactly one response, and the server processes commands one
+/// at a time. This codec tracks which response type to expect from the
+/// last encoded command. **You must fully drain [`decode()`] (until it
+/// returns `Ok(None)` or the expected response is received) before
+/// calling [`encode()`] again.** Encoding a new command while a
+/// multi-line response or CLIENT notification is still being accumulated
+/// will overwrite the tracking state and corrupt decoding.
+///
+/// In debug builds, `encode()` asserts that no accumulation is in
+/// progress.
 pub struct OvpnCodec {
     /// What kind of response we expect from the last command we encoded.
     /// This resolves the protocol's ambiguity: when we see a line that is
@@ -67,6 +104,12 @@ pub struct OvpnCodec {
     /// Accumulator for multi-line `>CLIENT:` notifications. When this is
     /// `Some(...)`, the decoder is waiting for `>CLIENT:ENV,END`.
     client_notif: Option<ClientNotifAccum>,
+
+    /// Maximum lines to accumulate in a multi-line response.
+    max_multi_line_lines: AccumulationLimit,
+
+    /// Maximum ENV entries to accumulate for a `>CLIENT:` notification.
+    max_client_env_entries: AccumulationLimit,
 }
 
 impl OvpnCodec {
@@ -81,8 +124,39 @@ impl OvpnCodec {
             expected: ResponseKind::SuccessOrError,
             multi_line_buf: None,
             client_notif: None,
+            max_multi_line_lines: AccumulationLimit::Unlimited,
+            max_client_env_entries: AccumulationLimit::Unlimited,
         }
     }
+
+    /// Set the maximum number of lines accumulated in a multi-line
+    /// response before the decoder returns an error.
+    pub fn with_max_multi_line_lines(mut self, limit: AccumulationLimit) -> Self {
+        self.max_multi_line_lines = limit;
+        self
+    }
+
+    /// Set the maximum number of ENV entries accumulated for
+    /// `>CLIENT:` notifications before the decoder returns an error.
+    pub fn with_max_client_env_entries(mut self, limit: AccumulationLimit) -> Self {
+        self.max_client_env_entries = limit;
+        self
+    }
+}
+
+fn check_accumulation_limit(
+    current_len: usize,
+    limit: AccumulationLimit,
+    what: &str,
+) -> Result<(), io::Error> {
+    if let AccumulationLimit::Max(max) = limit
+        && current_len >= max
+    {
+        return Err(io::Error::other(format!(
+            "{what} accumulation limit exceeded ({max})"
+        )));
+    }
+    Ok(())
 }
 
 impl Default for OvpnCodec {
@@ -97,6 +171,13 @@ impl Encoder<OvpnCommand> for OvpnCodec {
     type Error = io::Error;
 
     fn encode(&mut self, item: OvpnCommand, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        debug_assert!(
+            self.multi_line_buf.is_none() && self.client_notif.is_none(),
+            "encode() called while the decoder is mid-accumulation \
+             (multi_line_buf or client_notif is active). \
+             Drain decode() before sending a new command."
+        );
+
         // Record the expected response kind BEFORE writing, so the decoder
         // is ready when data starts arriving.
         self.expected = item.expected_response();
@@ -124,10 +205,10 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             // ── Connection control ───────────────────────────────
             OvpnCommand::Signal(sig) => write_line(dst, &format!("signal {sig}")),
             OvpnCommand::Kill(KillTarget::CommonName(ref cn)) => {
-                write_line(dst, &format!("kill {cn}"));
+                write_line(dst, &format!("kill {}", sanitize_line(cn)));
             }
             OvpnCommand::Kill(KillTarget::Address { ref ip, port }) => {
-                write_line(dst, &format!("kill {ip}:{port}"));
+                write_line(dst, &format!("kill {}:{port}", sanitize_line(ip)));
             }
             OvpnCommand::HoldQuery => write_line(dst, "hold"),
             OvpnCommand::HoldOn => write_line(dst, "hold on"),
@@ -145,15 +226,17 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 // Per the doc: username "Auth" foo
                 // Values containing special chars must be quoted+escaped:
                 //   username "Auth" "foo\"bar"
-                let escaped = quote_and_escape(value);
-                write_line(dst, &format!("username \"{auth_type}\" {escaped}"));
+                let at = quote_and_escape(&auth_type.to_string());
+                let val = quote_and_escape(value);
+                write_line(dst, &format!("username {at} {val}"));
             }
             OvpnCommand::Password {
                 ref auth_type,
                 ref value,
             } => {
-                let escaped = quote_and_escape(value);
-                write_line(dst, &format!("password \"{auth_type}\" {escaped}"));
+                let at = quote_and_escape(&auth_type.to_string());
+                let val = quote_and_escape(value);
+                write_line(dst, &format!("password {at} {val}"));
             }
             OvpnCommand::AuthRetry(mode) => write_line(dst, &format!("auth-retry {mode}")),
             OvpnCommand::ForgetPasswords => write_line(dst, "forget-passwords"),
@@ -178,14 +261,14 @@ impl Encoder<OvpnCommand> for OvpnCodec {
 
             // ── Interactive prompts ──────────────────────────────
             OvpnCommand::NeedOk { ref name, response } => {
-                write_line(dst, &format!("needok {name} {response}"));
+                write_line(dst, &format!("needok {} {response}", sanitize_line(name)));
             }
             OvpnCommand::NeedStr {
                 ref name,
                 ref value,
             } => {
                 let escaped = quote_and_escape(value);
-                write_line(dst, &format!("needstr {name} {escaped}"));
+                write_line(dst, &format!("needstr {} {escaped}", sanitize_line(name)));
             }
 
             // ── PKCS#11 ─────────────────────────────────────────
@@ -258,7 +341,10 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref extra,
             } => write_line(
                 dst,
-                &format!("client-pending-auth {cid} {kid} {timeout} {extra}"),
+                &format!(
+                    "client-pending-auth {cid} {kid} {timeout} {}",
+                    sanitize_line(extra)
+                ),
             ),
 
             OvpnCommand::ClientDenyV2 {
@@ -285,7 +371,10 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 cid,
                 kid,
                 ref response,
-            } => write_line(dst, &format!("cr-response {cid} {kid} {response}")),
+            } => write_line(
+                dst,
+                &format!("cr-response {cid} {kid} {}", sanitize_line(response)),
+            ),
 
             // ── External certificate ─────────────────────────────
             OvpnCommand::Certificate { ref pem_lines } => {
@@ -302,7 +391,7 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             OvpnCommand::Remote(RemoteAction::Accept) => write_line(dst, "remote ACCEPT"),
             OvpnCommand::Remote(RemoteAction::Skip) => write_line(dst, "remote SKIP"),
             OvpnCommand::Remote(RemoteAction::Modify { ref host, port }) => {
-                write_line(dst, &format!("remote MOD {host} {port}"));
+                write_line(dst, &format!("remote MOD {} {port}", sanitize_line(host)));
             }
             OvpnCommand::Proxy(ProxyAction::None) => write_line(dst, "proxy NONE"),
             OvpnCommand::Proxy(ProxyAction::Http {
@@ -311,23 +400,30 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 non_cleartext_only,
             }) => {
                 let nct = if non_cleartext_only { " nct" } else { "" };
-                write_line(dst, &format!("proxy HTTP {host} {port}{nct}"));
+                write_line(
+                    dst,
+                    &format!("proxy HTTP {} {port}{nct}", sanitize_line(host)),
+                );
             }
             OvpnCommand::Proxy(ProxyAction::Socks { ref host, port }) => {
-                write_line(dst, &format!("proxy SOCKS {host} {port}"));
+                write_line(dst, &format!("proxy SOCKS {} {port}", sanitize_line(host)));
             }
 
             // ── Management interface auth ─────────────────────────
             // Bare line, no quoting — the management password protocol
             // does not use the config-file lexer.
-            OvpnCommand::ManagementPassword(ref pw) => write_line(dst, pw),
+            OvpnCommand::ManagementPassword(ref pw) => {
+                write_line(dst, &sanitize_line(pw));
+            }
 
             // ── Lifecycle ────────────────────────────────────────
             OvpnCommand::Exit => write_line(dst, "exit"),
             OvpnCommand::Quit => write_line(dst, "quit"),
 
             // ── Escape hatch ─────────────────────────────────────
-            OvpnCommand::Raw(ref cmd) => write_line(dst, cmd),
+            OvpnCommand::Raw(ref cmd) | OvpnCommand::RawMultiLine(ref cmd) => {
+                write_line(dst, &sanitize_line(cmd));
+            }
         }
 
         Ok(())
@@ -342,13 +438,33 @@ fn write_line(dst: &mut BytesMut, s: &str) {
 }
 
 /// Write a multi-line block: header line, body lines, and a terminating `END`.
+///
+/// Body lines are sanitized: `\n`, `\r`, and `\0` are stripped, and any
+/// line that would be exactly `"END"` is escaped to `" END"` so the
+/// server does not treat it as the block terminator.
 fn write_block(dst: &mut BytesMut, header: &str, lines: &[String]) {
-    let total: usize = header.len() + 1 + lines.iter().map(|l| l.len() + 1).sum::<usize>() + 4;
+    let total: usize = header.len() + 1 + lines.iter().map(|l| l.len() + 2).sum::<usize>() + 4;
     dst.reserve(total);
     dst.put_slice(header.as_bytes());
     dst.put_u8(b'\n');
     for line in lines {
-        dst.put_slice(line.as_bytes());
+        let needs_sanitize = line.contains('\n') || line.contains('\r') || line.contains('\0');
+        if !needs_sanitize && line != "END" {
+            dst.put_slice(line.as_bytes());
+        } else {
+            let sanitized: String = if needs_sanitize {
+                line.chars()
+                    .filter(|&c| c != '\n' && c != '\r' && c != '\0')
+                    .collect()
+            } else {
+                line.to_string()
+            };
+            if sanitized == "END" {
+                dst.put_slice(b" END");
+            } else {
+                dst.put_slice(sanitized.as_bytes());
+            }
+        }
         dst.put_u8(b'\n');
     }
     dst.put_slice(b"END\n");
@@ -369,10 +485,19 @@ impl Decoder for OvpnCodec {
 
             // Extract the line and advance the buffer past the newline.
             let line_bytes = src.split_to(newline_pos + 1);
-            let line = std::str::from_utf8(&line_bytes)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
-                .trim_end_matches(['\r', '\n'])
-                .to_string();
+            let line = match std::str::from_utf8(&line_bytes) {
+                Ok(s) => s,
+                Err(e) => {
+                    // Reset all accumulation state so the decoder doesn't
+                    // remain stuck in a half-finished multi-line block.
+                    self.multi_line_buf = None;
+                    self.client_notif = None;
+                    self.expected = ResponseKind::SuccessOrError;
+                    return Err(io::Error::new(io::ErrorKind::InvalidData, e));
+                }
+            }
+            .trim_end_matches(['\r', '\n'])
+            .to_string();
 
             // ── Phase 1: Multi-line >CLIENT: accumulation ────────
             //
@@ -399,6 +524,11 @@ impl Decoder for OvpnCodec {
                         .split_once('=')
                         .map(|(k, v)| (k.to_string(), v.to_string()))
                         .unwrap_or_else(|| (rest.to_string(), String::new()));
+                    check_accumulation_limit(
+                        accum.env.len(),
+                        self.max_client_env_entries,
+                        "client ENV",
+                    )?;
                     accum.env.push((k, v));
                     continue; // Next line.
                 }
@@ -424,6 +554,11 @@ impl Decoder for OvpnCodec {
                     // accumulation. Loop to read the next line.
                     continue;
                 }
+                check_accumulation_limit(
+                    buf.len(),
+                    self.max_multi_line_lines,
+                    "multi-line response",
+                )?;
                 buf.push(line);
                 continue; // Next line.
             }
@@ -1284,6 +1419,208 @@ mod tests {
                 assert_eq!(text, "Waiting for hold release");
             }
             other => panic!("unexpected: {other:?}"),
+        }
+    }
+
+    // ── RawMultiLine tests ──────────────────────────────────────
+
+    #[test]
+    fn encode_raw_multiline() {
+        assert_eq!(
+            encode_to_string(OvpnCommand::RawMultiLine("custom-cmd arg".to_string())),
+            "custom-cmd arg\n"
+        );
+    }
+
+    #[test]
+    fn raw_multiline_expects_multiline_response() {
+        let msgs = encode_then_decode(
+            OvpnCommand::RawMultiLine("custom".to_string()),
+            "line1\nline2\nEND\n",
+        );
+        assert_eq!(msgs.len(), 1);
+        match &msgs[0] {
+            OvpnMessage::MultiLine(lines) => {
+                assert_eq!(lines, &["line1", "line2"]);
+            }
+            other => panic!("expected MultiLine, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn raw_multiline_sanitizes_newlines() {
+        let wire = encode_to_string(OvpnCommand::RawMultiLine("cmd\ninjected".to_string()));
+        assert_eq!(wire, "cmdinjected\n");
+    }
+
+    // ── Sequential encode/decode assertion tests ────────────────
+
+    #[test]
+    #[should_panic(expected = "mid-accumulation")]
+    fn encode_during_multiline_accumulation_panics() {
+        let mut codec = OvpnCodec::new();
+        let mut buf = BytesMut::new();
+        // Encode a command that expects multi-line response.
+        codec
+            .encode(OvpnCommand::Status(StatusFormat::V1), &mut buf)
+            .unwrap();
+        // Feed partial multi-line response (no END yet).
+        let mut dec = BytesMut::from("header line\n");
+        let _ = codec.decode(&mut dec); // starts multi_line_buf accumulation
+        // Encoding again while accumulating should panic in debug.
+        codec.encode(OvpnCommand::Pid, &mut buf).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "mid-accumulation")]
+    fn encode_during_client_notif_accumulation_panics() {
+        let mut codec = OvpnCodec::new();
+        let mut buf = BytesMut::new();
+        // Feed a CLIENT header — starts client_notif accumulation.
+        let mut dec = BytesMut::from(">CLIENT:CONNECT,0,1\n");
+        let _ = codec.decode(&mut dec);
+        // Encoding while client_notif is active should panic.
+        codec.encode(OvpnCommand::Pid, &mut buf).unwrap();
+    }
+
+    // ── Accumulation limit tests ────────────────────────────────
+
+    #[test]
+    fn unlimited_accumulation_default() {
+        let mut codec = OvpnCodec::new();
+        let mut enc = BytesMut::new();
+        codec
+            .encode(OvpnCommand::Status(StatusFormat::V1), &mut enc)
+            .unwrap();
+        // Feed 500 lines + END — should succeed with Unlimited default.
+        let mut data = String::new();
+        for i in 0..500 {
+            data.push_str(&format!("line {i}\n"));
+        }
+        data.push_str("END\n");
+        let mut dec = BytesMut::from(data.as_str());
+        let mut msgs = Vec::new();
+        while let Some(msg) = codec.decode(&mut dec).unwrap() {
+            msgs.push(msg);
+        }
+        assert_eq!(msgs.len(), 1);
+        match &msgs[0] {
+            OvpnMessage::MultiLine(lines) => assert_eq!(lines.len(), 500),
+            other => panic!("expected MultiLine, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn multi_line_limit_exceeded() {
+        let mut codec = OvpnCodec::new().with_max_multi_line_lines(AccumulationLimit::Max(3));
+        let mut enc = BytesMut::new();
+        codec
+            .encode(OvpnCommand::Status(StatusFormat::V1), &mut enc)
+            .unwrap();
+        let mut dec = BytesMut::from("a\nb\nc\nd\nEND\n");
+        let result = loop {
+            match codec.decode(&mut dec) {
+                Ok(Some(msg)) => break Ok(msg),
+                Ok(None) => continue,
+                Err(e) => break Err(e),
+            }
+        };
+        assert!(result.is_err(), "expected error when limit exceeded");
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("multi-line response"),
+            "error should mention multi-line: {err}"
+        );
+    }
+
+    #[test]
+    fn multi_line_limit_exact_boundary_passes() {
+        let mut codec = OvpnCodec::new().with_max_multi_line_lines(AccumulationLimit::Max(3));
+        let mut enc = BytesMut::new();
+        codec
+            .encode(OvpnCommand::Status(StatusFormat::V1), &mut enc)
+            .unwrap();
+        // Exactly 3 lines should succeed.
+        let mut dec = BytesMut::from("a\nb\nc\nEND\n");
+        let mut msgs = Vec::new();
+        while let Some(msg) = codec.decode(&mut dec).unwrap() {
+            msgs.push(msg);
+        }
+        assert_eq!(msgs.len(), 1);
+        match &msgs[0] {
+            OvpnMessage::MultiLine(lines) => assert_eq!(lines.len(), 3),
+            other => panic!("expected MultiLine, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn client_env_limit_exceeded() {
+        let mut codec = OvpnCodec::new().with_max_client_env_entries(AccumulationLimit::Max(2));
+        let mut dec = BytesMut::from(
+            ">CLIENT:CONNECT,0,1\n\
+             >CLIENT:ENV,a=1\n\
+             >CLIENT:ENV,b=2\n\
+             >CLIENT:ENV,c=3\n\
+             >CLIENT:ENV,END\n",
+        );
+        let result = loop {
+            match codec.decode(&mut dec) {
+                Ok(Some(msg)) => break Ok(msg),
+                Ok(None) => continue,
+                Err(e) => break Err(e),
+            }
+        };
+        assert!(
+            result.is_err(),
+            "expected error when client ENV limit exceeded"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("client ENV"),
+            "error should mention client ENV: {err}"
+        );
+    }
+
+    // ── UTF-8 error state reset tests ───────────────────────────
+
+    #[test]
+    fn utf8_error_resets_multiline_state() {
+        let mut codec = OvpnCodec::new();
+        let mut enc = BytesMut::new();
+        codec
+            .encode(OvpnCommand::Status(StatusFormat::V1), &mut enc)
+            .unwrap();
+        // Feed a valid first line to start multi-line accumulation.
+        let mut dec = BytesMut::from("header\n");
+        assert!(codec.decode(&mut dec).unwrap().is_none());
+        // Feed invalid UTF-8.
+        dec.extend_from_slice(b"bad \xff line\n");
+        assert!(codec.decode(&mut dec).is_err());
+        // State should be reset — next valid line should decode cleanly
+        // as an Unrecognized (since expected was reset to SuccessOrError).
+        dec.extend_from_slice(b"SUCCESS: recovered\n");
+        let msg = codec.decode(&mut dec).unwrap();
+        match msg {
+            Some(OvpnMessage::Success(ref s)) if s.contains("recovered") => {}
+            other => panic!("expected Success after UTF-8 reset, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn utf8_error_resets_client_notif_state() {
+        let mut codec = OvpnCodec::new();
+        // Start CLIENT accumulation.
+        let mut dec = BytesMut::from(">CLIENT:CONNECT,0,1\n");
+        assert!(codec.decode(&mut dec).unwrap().is_none());
+        // Feed invalid UTF-8 within the ENV block.
+        dec.extend_from_slice(b">CLIENT:ENV,\xff\n");
+        assert!(codec.decode(&mut dec).is_err());
+        // State should be reset.
+        dec.extend_from_slice(b"SUCCESS: ok\n");
+        let msg = codec.decode(&mut dec).unwrap();
+        match msg {
+            Some(OvpnMessage::Success(_)) => {}
+            other => panic!("expected Success after UTF-8 reset, got: {other:?}"),
         }
     }
 }

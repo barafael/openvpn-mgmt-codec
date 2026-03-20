@@ -317,7 +317,16 @@ pub enum OvpnCommand {
 
     // ── Escape hatch ─────────────────────────────────────────────
     /// Send a raw command string for anything not yet modeled above.
+    /// The decoder expects a `SUCCESS:`/`ERROR:` response.
     Raw(String),
+
+    /// Send a raw command string, expecting a multi-line (END-terminated)
+    /// response.
+    ///
+    /// Like [`Raw`], the string is sanitized (newlines/NUL stripped)
+    /// before sending. Unlike `Raw`, the decoder accumulates the response
+    /// into [`OvpnMessage::MultiLine`].
+    RawMultiLine(String),
 }
 
 /// What kind of response the decoder should expect after a given command.
@@ -363,10 +372,13 @@ impl OvpnCommand {
             // `pkcs11-id-get N` returns a single PKCS11ID-ENTRY line.
             Self::Pkcs11IdGet(_) => ResponseKind::SingleValue,
 
+            // Raw multi-line expects END-terminated response.
+            Self::RawMultiLine(_) => ResponseKind::MultiLine,
+
             // exit/quit close the connection.
             Self::Exit | Self::Quit => ResponseKind::NoResponse,
 
-            // Everything else produces SUCCESS: or ERROR:.
+            // Everything else (including Raw) produces SUCCESS: or ERROR:.
             _ => ResponseKind::SuccessOrError,
         }
     }

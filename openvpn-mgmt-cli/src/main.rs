@@ -68,6 +68,7 @@ COMMANDS (at the ovpn> prompt):
     client-kill <cid>              Kill client by CID
     remote accept|skip|mod <h> <p> Respond to REMOTE prompt
     proxy none|http|socks ...      Respond to PROXY prompt
+    raw-ml <command>               Send raw command, expect multi-line response
     exit / quit                    Disconnect
     <anything else>                Sent as raw command";
 
@@ -322,6 +323,14 @@ fn parse_input(line: &str) -> Result<OvpnCommand, String> {
             })),
             _ => Err("usage: proxy none|http <host> <port> [nct]|socks <host> <port>".into()),
         },
+
+        // ── Raw multi-line ──────────────────────────────────────
+        "raw-ml" => {
+            if args.is_empty() {
+                return Err("usage: raw-ml <command>".into());
+            }
+            Ok(OvpnCommand::RawMultiLine(args.to_string()))
+        }
 
         // ── Lifecycle ────────────────────────────────────────────
         "exit" => Ok(OvpnCommand::Exit),
@@ -614,8 +623,35 @@ async fn main() -> anyhow::Result<()> {
         return run(framed).await;
     }
 
+    warn_if_non_loopback(&addr);
     println!("Connecting to {addr}...");
     let stream = TcpStream::connect(&addr).await?;
     let framed = Framed::new(stream, OvpnCodec::new());
     run(framed).await
+}
+
+/// Warn on stderr if the TCP address is not a loopback address.
+/// The management protocol is unencrypted — non-local connections
+/// expose passwords and session data in cleartext.
+fn warn_if_non_loopback(addr: &str) {
+    let host = match addr.rsplit_once(':') {
+        Some((h, _)) => h,
+        None => addr,
+    };
+    // Strip IPv6 brackets: [::1] → ::1
+    let host = host
+        .strip_prefix('[')
+        .and_then(|h| h.strip_suffix(']'))
+        .unwrap_or(host);
+    match host {
+        "127.0.0.1" | "localhost" | "::1" => {}
+        _ => {
+            eprintln!(
+                "WARNING: connecting to non-loopback address '{addr}'.\n\
+                 The management protocol is unencrypted — passwords and\n\
+                 session data will be sent in cleartext.\n\
+                 See: https://openvpn.net/community-docs/management-interface.html"
+            );
+        }
+    }
 }
