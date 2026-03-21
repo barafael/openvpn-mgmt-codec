@@ -6,12 +6,6 @@
 //! interface accepts only one client at a time, and the server container
 //! needs time to reset between sessions that we cannot reliably wait for.
 //!
-//! # Prerequisites
-//!
-//! Three Docker containers: `openvpn` (basic), `openvpn-server`
-//! (server-mode with `--management-client-auth` on port 7506), and
-//! `openvpn-client` (auto-connecting VPN client).
-//!
 //! # Running
 //!
 //! ```sh
@@ -23,9 +17,12 @@
 
 #![cfg(feature = "conformance-tests")]
 
+mod common;
+
 use std::process::Command;
 use std::time::Duration;
 
+use common::{connect_and_auth, recv_raw, recv_response, send_ok, MSG_TIMEOUT};
 use futures::{SinkExt, StreamExt};
 use openvpn_mgmt_codec::*;
 use tokio::net::TcpStream;
@@ -34,56 +31,8 @@ use tokio_util::codec::Framed;
 use tracing_test::traced_test;
 
 const SERVER_ADDR: &str = "127.0.0.1:7506";
-const MGMT_PASSWORD: &str = "test-password";
-
-/// How long to wait for a message before giving up.
-const MSG_TIMEOUT: Duration = Duration::from_secs(120);
 
 // ── Helpers ──────────────────────────────────────────────────────────
-
-/// Receive the next message, no timeout. Use inside an outer `timeout()`.
-async fn recv_raw(framed: &mut Framed<TcpStream, OvpnCodec>) -> OvpnMessage {
-    framed
-        .next()
-        .await
-        .expect("stream ended unexpectedly")
-        .expect("decode error")
-}
-
-/// Receive the next message with the standard timeout.
-async fn recv(framed: &mut Framed<TcpStream, OvpnCodec>) -> OvpnMessage {
-    timeout(MSG_TIMEOUT, recv_raw(framed))
-        .await
-        .expect("timed out waiting for message")
-}
-
-/// Receive the next command response, skipping real-time notifications.
-async fn recv_response(framed: &mut Framed<TcpStream, OvpnCodec>) -> OvpnMessage {
-    loop {
-        let msg = recv(framed).await;
-        match &msg {
-            OvpnMessage::Notification(Notification::State { .. })
-            | OvpnMessage::Notification(Notification::Log { .. })
-            | OvpnMessage::Notification(Notification::ByteCount { .. })
-            | OvpnMessage::Notification(Notification::ByteCountCli { .. }) => continue,
-            _ => return msg,
-        }
-    }
-}
-
-/// Send a command and assert the response is `Success` containing `expected`.
-async fn send_ok(
-    framed: &mut Framed<TcpStream, OvpnCodec>,
-    cmd: OvpnCommand,
-    expected: &str,
-) {
-    framed.send(cmd).await.unwrap();
-    let msg = recv_response(framed).await;
-    assert!(
-        matches!(&msg, OvpnMessage::Success(s) if s.contains(expected)),
-        "expected Success containing {expected:?}, got {msg:?}",
-    );
-}
 
 /// Send a status query and return the multi-line response.
 async fn query_status(
@@ -148,8 +97,16 @@ async fn wait_for_client_event(
     .expect(timeout_msg)
 }
 
-// ═════════════════════════════════════════════════════════════════════
-// Single comprehensive server-mode test
+/// RAII guard that kills a child process on drop.
+struct ChildGuard(std::process::Child);
+
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        self.0.kill().ok();
+        self.0.wait().ok();
+    }
+}
+
 // ═════════════════════════════════════════════════════════════════════
 
 /// Exercises the entire server-mode management flow in one connection:
@@ -175,38 +132,7 @@ async fn wait_for_client_event(
 #[traced_test]
 async fn server_mode_lifecycle() {
     // ── Connect & authenticate ──────────────────────────────────────
-    let stream = TcpStream::connect(SERVER_ADDR)
-        .await
-        .expect("cannot connect to openvpn-server:7506 — is `docker compose up -d` running?");
-    let mut framed = Framed::new(stream, OvpnCodec::new());
-
-    let msg = recv(&mut framed).await;
-    assert!(
-        matches!(msg, OvpnMessage::PasswordPrompt),
-        "expected password prompt, got {msg:?}",
-    );
-
-    framed
-        .send(OvpnCommand::ManagementPassword(MGMT_PASSWORD.into()))
-        .await
-        .unwrap();
-    let msg = recv(&mut framed).await;
-    assert!(
-        matches!(&msg, OvpnMessage::Success(s) if s.contains("password is correct")),
-        "expected auth success, got {msg:?}",
-    );
-
-    let msg = recv(&mut framed).await;
-    assert!(
-        matches!(&msg, OvpnMessage::Info(_)),
-        "expected >INFO banner, got {msg:?}",
-    );
-
-    let msg = recv(&mut framed).await;
-    assert!(
-        matches!(&msg, OvpnMessage::Notification(Notification::Hold { .. })),
-        "expected >HOLD notification, got {msg:?}",
-    );
+    let mut framed = connect_and_auth(SERVER_ADDR).await;
     eprintln!("=== authenticated, in hold mode ===");
 
     // ── Enable notifications & release hold ─────────────────────────
@@ -306,24 +232,23 @@ async fn server_mode_lifecycle() {
     .expect("expected bytecount notification within 10s");
 
     // ── Interleaved notifications under real traffic ─────────────────
-    // Generate tunnel traffic while rapidly querying status. This
-    // exercises the codec's ability to demultiplex >BYTECOUNT: and
-    // >STATE: notifications that arrive mid-multi-line-response.
-    let mut ping = Command::new("docker")
-        .args(["compose", "exec", "-T", "openvpn-client", "ping", "-i", "0.2", "-w", "6", "10.8.0.1"])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .expect("failed to start ping in client container");
+    // Exercises the codec's ability to demultiplex >BYTECOUNT:
+    // notifications that arrive mid-multi-line-response.
+    let _ping = ChildGuard(
+        Command::new("docker")
+            .args(["compose", "exec", "-T", "openvpn-client", "ping", "-i", "0.2", "-w", "6", "10.8.0.1"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .expect("failed to start ping in client container"),
+    );
 
-    // Ensure bytecount is at 1s interval for maximum interleaving.
     send_ok(&mut framed, OvpnCommand::ByteCount(1), "").await;
 
     let mut status_count = 0u32;
     let mut bytecount_count = 0u32;
     let mut state_count = 0u32;
 
-    // Send rapid status queries for ~5 seconds, collecting all messages.
     let interleave_result = timeout(Duration::from_secs(10), async {
         for _ in 0..25 {
             framed
@@ -331,7 +256,6 @@ async fn server_mode_lifecycle() {
                 .await
                 .unwrap();
 
-            // Drain all available messages until we get the MultiLine response.
             loop {
                 let msg = recv_raw(&mut framed).await;
                 match &msg {
@@ -362,9 +286,6 @@ async fn server_mode_lifecycle() {
         interleave_result.is_ok(),
         "interleave test timed out after collecting {status_count} status, {bytecount_count} bytecount",
     );
-
-    let _ = ping.kill();
-    let _ = ping.wait();
 
     assert_eq!(status_count, 25, "should have received all 25 status responses");
     assert!(
@@ -492,7 +413,7 @@ async fn server_mode_lifecycle() {
 
     let mut states = Vec::new();
     // Drain state notifications for 5 seconds after SIGUSR1.
-    let _ = timeout(Duration::from_secs(5), async {
+    timeout(Duration::from_secs(5), async {
         loop {
             let msg = recv_raw(&mut framed).await;
             if let OvpnMessage::Notification(Notification::State { name, .. }) = msg {
@@ -500,7 +421,8 @@ async fn server_mode_lifecycle() {
             }
         }
     })
-    .await;
+    .await
+    .ok();
     assert!(
         !states.is_empty(),
         "should observe state transitions after SIGUSR1",

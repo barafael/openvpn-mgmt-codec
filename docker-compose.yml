@@ -1,3 +1,10 @@
+x-openvpn-healthcheck: &openvpn-healthcheck
+  test: ["CMD-SHELL", "pidof openvpn"]
+  interval: 5s
+  timeout: 2s
+  retries: 5
+  start_period: 3s
+
 services:
   # ── Basic: management-only, no tunnel ──────────────────────────────
   openvpn:
@@ -12,10 +19,7 @@ services:
     healthcheck:
       # Use pidof instead of nc — nc -z would repeatedly connect to the
       # management interface and steal the single-client slot from tests.
-      test: ["CMD-SHELL", "pidof openvpn"]
-      interval: 5s
-      timeout: 2s
-      retries: 5
+      <<: *openvpn-healthcheck
       start_period: 2s
 
   # ── Server-mode: full tunnel with management-client-auth ───────────
@@ -30,12 +34,7 @@ services:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
-    healthcheck:
-      test: ["CMD-SHELL", "pidof openvpn"]
-      interval: 5s
-      timeout: 2s
-      retries: 5
-      start_period: 3s
+    healthcheck: *openvpn-healthcheck
 
   openvpn-client:
     build:
@@ -51,8 +50,6 @@ services:
         condition: service_healthy
 
   # ── Client with management-query-remote/proxy ────────────────────
-  # Has its own management interface on port 7507 so the test can
-  # observe >REMOTE: and >PROXY: notifications and respond to them.
   openvpn-client-remote:
     build:
       context: conformance
@@ -67,16 +64,9 @@ services:
     depends_on:
       openvpn-server:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "pidof openvpn"]
-      interval: 5s
-      timeout: 2s
-      retries: 5
-      start_period: 3s
+    healthcheck: *openvpn-healthcheck
 
   # ── Client with management-query-passwords ───────────────────────
-  # No auth-user-pass file — OpenVPN asks the management client for
-  # credentials via >PASSWORD:Need 'Auth' username/password.
   openvpn-client-password:
     build:
       context: conformance
@@ -91,9 +81,4 @@ services:
     depends_on:
       openvpn-server:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "pidof openvpn"]
-      interval: 5s
-      timeout: 2s
-      retries: 5
-      start_period: 3s
+    healthcheck: *openvpn-healthcheck
