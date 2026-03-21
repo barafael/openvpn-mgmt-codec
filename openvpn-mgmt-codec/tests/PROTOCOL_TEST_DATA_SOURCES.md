@@ -20,30 +20,30 @@ suite in `tests/protocol_test.rs` and `tests/fixtures/`.
 | [kumina/openvpn_exporter](https://github.com/kumina/openvpn_exporter)           | Go      | Status V2 with TITLE/TIME rows and `dco_enabled` GLOBAL_STAT, status V2 old format (2.3.2 — no `Virtual IPv6 Address`, `Client ID`, `Peer ID`, `Data Channel Cipher`), status V3 tab-delimited, `load-stats` response format                                                                                                                                                                                                                                        |
 | [Jamie-/openvpn-api](https://github.com/Jamie-/openvpn-api)                     | Python  | State history query format, status V1 client/P2P mode (`OpenVPN STATISTICS` with `TUN/TAP read bytes`, compression stats), empty server status                                                                                                                                                                                                                                                                                                                      |
 | [tonyseek/openvpn-status](https://github.com/tonyseek/openvpn-status)           | Python  | Status V1 server with email-style CNs (`foo@example.com`), multiple clients and routing entries                                                                                                                                                                                                                                                                                                                                                                     |
-| [mysteriumnetwork/go-openvpn](https://github.com/mysteriumnetwork/go-openvpn)   | Go      | Reconnecting reasons (`tls-error`, `connection-reset`, `ping-restart`, `server-poll-timeout`), full connection state sequences, `>HOLD:Waiting for hold release:0`                                                                                                                                                                                                                                                                                                  |
-| [NordSecurity/gopenvpn](https://github.com/NordSecurity/gopenvpn)               | Go      | `>STATE:` with hostname as remote IP, `>PASSWORD:Auth-Token:` notification                                                                                                                                                                                                                                                                                                                                                                                          |
+| [mysteriumnetwork/go-openvpn](https://github.com/mysteriumnetwork/go-openvpn)   | Go      | Full connection state sequences, `>HOLD:Waiting for hold release:0` (archived repo)                                                                                                                                                                                                                                                                                                                                                                                 |
+| [NordSecurity/gopenvpn](https://github.com/NordSecurity/gopenvpn)               | Go      | `>STATE:` with hostname as remote IP                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | [OpenVPN/openvpn-gui](https://github.com/OpenVPN/openvpn-gui)                   | C       | All parsed notification types in the official GUI, state transition handling, password prompt flow with static/dynamic challenges                                                                                                                                                                                                                                                                                                                                   |
 | [smithp1992/telnet-openvpn](https://github.com/smithp1992/telnet-openvpn)       | Node.js | `kill` response formats (by CN: `common name 'X' found, N client(s) killed`; by address: `N client(s) at address X killed`)                                                                                                                                                                                                                                                                                                                                         |
 
 ## Notification Formats
 
-| Notification            | Source               | Wire Format                                                                    |
-| ----------------------- | -------------------- | ------------------------------------------------------------------------------ |
-| `>STATE:` (13 states)   | manage.h             | `{ts},{state},{desc},{tun_ip},{remote},{port},{local},{port}`                  |
-| `>BYTECOUNT_CLI:`       | manage.c             | `{CID},{bytes_in},{bytes_out}`                                                 |
-| `>PASSWORD:` + `SC:`    | management-notes.txt | `Need 'Auth' username/password SC:{0\|1},{challenge}`                          |
-| `>PASSWORD:` + `CRV1:`  | management-notes.txt | `Need 'Auth' username/password CRV1:{flags}:{state_id}:{user_b64}:{challenge}` |
-| `>PASSWORD:Auth-Token:` | gopenvpn             | `Auth-Token:{token}`                                                           |
-| `>CLIENT:CR_RESPONSE`   | openvpn-auth-oauth2  | `CR_RESPONSE,{CID},{KID},{base64_response}`                                    |
-| `>CLIENT:ADDRESS`       | manage.c             | `ADDRESS,{CID},{IP},{PRIMARY}` (single-line, no ENV)                           |
-| `>INFOMSG:WEB_AUTH::`   | openvpn-auth-oauth2  | SSO web auth URL                                                               |
-| `>INFOMSG:CR_TEXT:`     | openvpn-auth-oauth2  | `CR_TEXT:{flags}:{challenge_text}`                                             |
-| `>PK_SIGN:` (mgmt v>2)  | manage.c             | `{base64_data},{algorithm}` (`RSA_PKCS1_PSS_PADDING`/`ECDSA`/…)                |
-| `>NEED-CERTIFICATE:`    | manage.c             | `macosx-keychain:subject:o=OpenVPN-TEST`                                       |
-| `>NOTIFY:`              | manage.c             | `info,remote-exit,EXIT`                                                        |
-| `>UPDOWN:`              | manage.c             | `UP,tun0,1500,1500,10.8.0.2,10.8.0.1,init`                                     |
-| `>PKCS11ID-COUNT:`      | management-notes.txt | `{count}`                                                                      |
-| `>FATAL:`               | multiple             | TUN/TAP errno, TAP-Windows adapters, connection timeout                        |
+| Notification            | Source               | Wire Format                                                                      |
+| ----------------------- | -------------------- | -------------------------------------------------------------------------------- |
+| `>STATE:` (13 states)   | manage.h             | `{ts},{state},{desc},{tun_ip},{remote},{port},{local},{port}`                    |
+| `>BYTECOUNT_CLI:`       | manage.c             | `{CID},{bytes_in},{bytes_out}`                                                   |
+| `>PASSWORD:` + `SC:`    | management-notes.txt | `Need 'Auth' username/password SC:{0\|1},{challenge}`                            |
+| `>PASSWORD:` + `CRV1:`  | management-notes.txt | `Verification Failed: 'Auth' ['CRV1:{flags}:{state_id}:{user_b64}:{challenge}']` |
+| `>PASSWORD:Auth-Token:` | manage.c             | `Auth-Token:{token}`                                                             |
+| `>CLIENT:CR_RESPONSE`   | openvpn-auth-oauth2  | `CR_RESPONSE,{CID},{KID},{base64_response}`                                      |
+| `>CLIENT:ADDRESS`       | manage.c             | `ADDRESS,{CID},{IP},{PRIMARY}` (single-line, no ENV)                             |
+| `>INFOMSG:WEB_AUTH::`   | openvpn-auth-oauth2  | SSO web auth URL                                                                 |
+| `>INFOMSG:CR_TEXT:`     | openvpn-auth-oauth2  | `CR_TEXT:{flags}:{challenge_text}`                                               |
+| `>PK_SIGN:` (mgmt v>2)  | manage.c             | `{base64_data},{algorithm}` (`RSA_PKCS1_PSS_PADDING`/`ECDSA`/…)                  |
+| `>NEED-CERTIFICATE:`    | manage.c             | `macosx-keychain:subject:o=OpenVPN-TEST`                                         |
+| `>NOTIFY:`              | manage.c             | `info,remote-exit,EXIT`                                                          |
+| `>UPDOWN:`              | manage.c             | `UP,tun0,1500,1500,10.8.0.2,10.8.0.1,init`                                       |
+| `>PKCS11ID-COUNT:`      | management-notes.txt | `{count}`                                                                        |
+| `>FATAL:`               | multiple             | TUN/TAP errno, TAP-Windows adapters, connection timeout                          |
 
 ## Protocol Framing
 
