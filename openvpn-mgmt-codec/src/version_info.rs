@@ -10,6 +10,9 @@ use std::fmt;
 /// END
 /// ```
 ///
+/// Note: OpenVPN ≥ 2.6.16 shortened the header to `Management Version: 5`
+/// (without "Interface"). Both forms are accepted.
+///
 /// This struct extracts the management interface version (which is the
 /// field most consumers need for feature-gating) and keeps the raw lines
 /// for anything else.
@@ -47,9 +50,23 @@ impl VersionInfo {
         let mut openvpn_version_line = None;
 
         for line in lines {
-            if let Some(rest) = line.strip_prefix("Management Interface Version:") {
-                management_version = rest.trim().parse().ok();
-            } else if line.starts_with("OpenVPN Version:") {
+            let lower = line.to_ascii_lowercase();
+
+            // Match the management version line regardless of exact
+            // wording. Known variants:
+            //   "Management Interface Version: 5"  (OpenVPN ≤ 2.6.9)
+            //   "Management Version: 5"            (OpenVPN ≥ 2.6.16)
+            // Future-proof: accept any line starting with "management"
+            // that contains "version" followed by a number.
+            if management_version.is_none()
+                && lower.starts_with("management")
+                && lower.contains("version")
+            {
+                management_version = line
+                    .rsplit(|c: char| !c.is_ascii_digit())
+                    .find(|s| !s.is_empty())
+                    .and_then(|s| s.parse().ok());
+            } else if lower.starts_with("openvpn version") {
                 openvpn_version_line = Some(line.clone());
             }
         }
@@ -114,6 +131,18 @@ mod tests {
     }
 
     #[test]
+    fn parse_short_management_version_header() {
+        // OpenVPN ≥ 2.6.16 uses "Management Version:" without "Interface".
+        let lines = vec![
+            "OpenVPN Version: OpenVPN 2.6.16 x86_64-alpine-linux-musl [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [MH/PKTINFO] [AEAD]".to_string(),
+            "Management Version: 5".to_string(),
+        ];
+        let info = VersionInfo::parse(&lines);
+        assert_eq!(info.management_version(), Some(5));
+        assert!(info.openvpn_version_line().unwrap().contains("2.6.16"));
+    }
+
+    #[test]
     fn parse_old_version_without_management_line() {
         let lines = vec!["OpenVPN Version: OpenVPN 2.3.2 i686-pc-linux-gnu".to_string()];
         let info = VersionInfo::parse(&lines);
@@ -127,6 +156,15 @@ mod tests {
         assert_eq!(info.management_version(), None);
         assert_eq!(info.openvpn_version_line(), None);
         assert!(info.raw_lines().is_empty());
+    }
+
+    #[test]
+    fn parse_hypothetical_future_format() {
+        // Resilient to wording changes as long as "management" and
+        // "version" appear and a trailing number is present.
+        let lines = vec!["Management Protocol Version: 6".to_string()];
+        let info = VersionInfo::parse(&lines);
+        assert_eq!(info.management_version(), Some(6));
     }
 
     #[test]

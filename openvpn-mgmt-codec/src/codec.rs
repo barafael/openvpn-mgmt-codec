@@ -1,4 +1,4 @@
-use bytes::{BufMut, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use std::borrow::Cow;
 use std::io;
 use tokio_util::codec::{Decoder, Encoder};
@@ -595,8 +595,29 @@ impl Decoder for OvpnCodec {
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         loop {
+            // The password prompt may arrive without a trailing newline
+            // (OpenVPN ≥ 2.6 sends it as an interactive prompt, expecting
+            // the password on the same line). Handle this only when no
+            // complete line is available — if `\n` is in the buffer, the
+            // normal line-based path below handles it correctly.
+            const PW_PROMPT: &[u8] = b"ENTER PASSWORD:";
+
             // Find the next complete line.
             let Some(newline_pos) = src.iter().position(|&b| b == b'\n') else {
+                // No complete line yet. Check for a password prompt
+                // without a trailing newline (OpenVPN ≥ 2.6 sends it as
+                // an interactive prompt with no line terminator).
+                // We accept any buffer that starts with the prompt text
+                // since no `\n` is present (checked above). Consume the
+                // prompt and any trailing `\r`.
+                if src.starts_with(PW_PROMPT) {
+                    let mut consume = PW_PROMPT.len();
+                    if src.get(consume) == Some(&b'\r') {
+                        consume += 1;
+                    }
+                    src.advance(consume);
+                    return Ok(Some(OvpnMessage::PasswordPrompt));
+                }
                 return Ok(None); // Need more data.
             };
 
@@ -615,6 +636,20 @@ impl Decoder for OvpnCodec {
             }
             .trim_end_matches(['\r', '\n'])
             .to_string();
+
+            // Bare newlines (empty lines) carry no information when the
+            // decoder is not inside an accumulation context AND is not
+            // expecting a multi-line response. Skip them silently rather
+            // than emitting Unrecognized. This also absorbs the trailing
+            // `\n` when the password prompt was already consumed without
+            // a line terminator (OpenVPN ≥ 2.6).
+            if line.is_empty()
+                && self.multi_line_buf.is_none()
+                && self.client_notif.is_none()
+                && !matches!(self.expected, ResponseKind::MultiLine)
+            {
+                continue;
+            }
 
             // ── Phase 1: Multi-line >CLIENT: accumulation ────────
             //

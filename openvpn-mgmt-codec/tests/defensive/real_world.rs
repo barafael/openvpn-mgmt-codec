@@ -413,31 +413,28 @@ fn client_unknown_event_type_still_accumulates_env() {
 // ═════════════════════════════════════════════════════════════════════
 
 #[test]
-fn empty_line_becomes_unrecognized() {
-    // An empty line is not SUCCESS/ERROR/notification — should not panic.
+fn empty_line_is_silently_skipped() {
+    // Empty lines carry no information and are silently discarded.
+    // This absorbs spurious newlines from TCP reconnects, buffer
+    // corruption, and the password prompt's missing line terminator
+    // (OpenVPN ≥ 2.6).
     let msgs = decode_all("\n");
-    assert_eq!(msgs.len(), 1);
-    assert!(matches!(
-        &msgs[0],
-        OvpnMessage::Unrecognized {
-            kind: UnrecognizedKind::UnexpectedLine,
-            ..
-        }
-    ));
+    assert_eq!(msgs.len(), 0);
 }
 
 #[test]
-fn blank_line_between_notifications_handled() {
+fn blank_line_between_notifications_skipped() {
+    // Empty lines between real messages are skipped — only the
+    // meaningful messages are emitted.
     let msgs = decode_all(
         ">INFO:OpenVPN Management Interface Version 5\n\
          \n\
          >STATE:1234567890,CONNECTING,,,,,,\n",
     );
-    assert_eq!(msgs.len(), 3);
+    assert_eq!(msgs.len(), 2);
     assert!(matches!(&msgs[0], OvpnMessage::Info(_)));
-    assert!(matches!(&msgs[1], OvpnMessage::Unrecognized { .. }));
     assert!(matches!(
-        &msgs[2],
+        &msgs[1],
         OvpnMessage::Notification(Notification::State { .. })
     ));
 }
