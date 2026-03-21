@@ -1,0 +1,37 @@
+# Multi-stage build: generate a throwaway test PKI, then produce
+# minimal server and client images.
+
+# ── Stage 1: generate test PKI ──────────────────────────────────────
+FROM alpine:latest AS pki
+RUN apk add --no-cache easy-rsa
+ENV EASYRSA_BATCH=1
+WORKDIR /pki
+RUN /usr/share/easy-rsa/easyrsa init-pki && \
+    /usr/share/easy-rsa/easyrsa build-ca nopass && \
+    /usr/share/easy-rsa/easyrsa build-server-full server nopass && \
+    /usr/share/easy-rsa/easyrsa build-client-full client nopass
+
+# ── Stage 2: OpenVPN server ─────────────────────────────────────────
+FROM alpine:latest AS server
+RUN apk add --no-cache openvpn
+COPY --from=pki /pki/pki/ca.crt        /etc/openvpn/
+COPY --from=pki /pki/pki/issued/server.crt  /etc/openvpn/
+COPY --from=pki /pki/pki/private/server.key /etc/openvpn/
+COPY server.ovpn  /etc/openvpn/server.ovpn
+# Ensure Unix line endings regardless of host OS.
+RUN printf 'test-password\n' > /etc/openvpn/mgmt-pw.txt
+EXPOSE 7506 1194/udp
+CMD ["openvpn", "--config", "/etc/openvpn/server.ovpn"]
+
+# ── Stage 3: OpenVPN client ─────────────────────────────────────────
+FROM alpine:latest AS client
+RUN apk add --no-cache openvpn
+COPY --from=pki /pki/pki/ca.crt            /etc/openvpn/
+COPY --from=pki /pki/pki/issued/client.crt  /etc/openvpn/
+COPY --from=pki /pki/pki/private/client.key /etc/openvpn/
+COPY client.ovpn  /etc/openvpn/client.ovpn
+# Dummy auth credentials — management-client-auth requires
+# the client to send username/password, which the management
+# interface then approves or denies.
+RUN printf 'testuser\ntestpass\n' > /etc/openvpn/auth.txt
+CMD ["openvpn", "--config", "/etc/openvpn/client.ovpn"]

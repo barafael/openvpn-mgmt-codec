@@ -1,0 +1,51 @@
+services:
+  # ── Basic: management-only, no tunnel ──────────────────────────────
+  openvpn:
+    build:
+      context: conformance
+    ports:
+      - "7505:7505"
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    healthcheck:
+      # Use pidof instead of nc — nc -z would repeatedly connect to the
+      # management interface and steal the single-client slot from tests.
+      test: ["CMD-SHELL", "pidof openvpn"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+
+  # ── Server-mode: full tunnel with management-client-auth ───────────
+  openvpn-server:
+    build:
+      context: conformance
+      dockerfile: Dockerfile.server
+      target: server
+    ports:
+      - "7506:7506"
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    healthcheck:
+      test: ["CMD-SHELL", "pidof openvpn"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 3s
+
+  openvpn-client:
+    build:
+      context: conformance
+      dockerfile: Dockerfile.server
+      target: client
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    depends_on:
+      openvpn-server:
+        condition: service_healthy

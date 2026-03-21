@@ -16,7 +16,11 @@ thiserror = "2"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = "0.1"
 
+[features]
+conformance-tests = []
+
 [dev-dependencies]
 futures = "0.3"
 proptest = "1"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time", "io-util"] }
+tracing-test = "0.2"
