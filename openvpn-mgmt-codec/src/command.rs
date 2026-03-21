@@ -325,7 +325,6 @@ pub(crate) enum ResponseKind {
 impl OvpnCommand {
     /// Determine what kind of response this command produces, so the
     /// decoder knows how to frame the next incoming bytes.
-    #[allow(clippy::match_same_arms)]
     pub(crate) fn expected_response(&self) -> ResponseKind {
         match self {
             // These always produce multi-line (END-terminated) responses.
@@ -352,6 +351,60 @@ impl OvpnCommand {
             _ => ResponseKind::SuccessOrError,
         }
     }
+}
+
+/// The standard startup sequence that most management clients send after
+/// connecting.
+///
+/// This is the pattern used by `node-openvpn` and other clients: enable
+/// log streaming, request the PID, start byte-count notifications, and
+/// release the hold so OpenVPN begins connecting.
+///
+/// # Arguments
+///
+/// * `bytecount_interval` — seconds between `>BYTECOUNT:` notifications
+///   (pass `0` to skip enabling byte counts).
+///
+/// # Examples
+///
+/// ```
+/// use openvpn_mgmt_codec::command::connection_sequence;
+/// use openvpn_mgmt_codec::OvpnCommand;
+///
+/// let cmds = connection_sequence(5);
+/// assert!(cmds.iter().any(|c| matches!(c, OvpnCommand::HoldRelease)));
+/// ```
+///
+/// To send these over a framed connection:
+///
+/// ```no_run
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// use tokio::net::TcpStream;
+/// use tokio_util::codec::Framed;
+/// use futures::SinkExt;
+/// use openvpn_mgmt_codec::{OvpnCodec, OvpnCommand};
+/// use openvpn_mgmt_codec::command::connection_sequence;
+///
+/// let stream = TcpStream::connect("127.0.0.1:7505").await?;
+/// let mut framed = Framed::new(stream, OvpnCodec::new());
+///
+/// for cmd in connection_sequence(5) {
+///     framed.send(cmd).await?;
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub fn connection_sequence(bytecount_interval: u32) -> Vec<OvpnCommand> {
+    let mut cmds = vec![
+        OvpnCommand::Log(StreamMode::OnAll),
+        OvpnCommand::StateStream(StreamMode::OnAll),
+        OvpnCommand::Pid,
+    ];
+    if bytecount_interval > 0 {
+        cmds.push(OvpnCommand::ByteCount(bytecount_interval));
+    }
+    cmds.push(OvpnCommand::HoldRelease);
+    cmds
 }
 
 #[cfg(test)]

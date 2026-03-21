@@ -20,6 +20,8 @@ pub mod message;
 pub mod need_ok;
 /// OpenVPN connection states (CONNECTING, CONNECTED, etc.).
 pub mod openvpn_state;
+/// Typed parsers for `SUCCESS:` payloads and multi-line responses.
+pub mod parsed_response;
 /// Proxy configuration for `>PROXY:` responses.
 pub mod proxy_action;
 /// A wrapper type that masks sensitive values in debug/display output.
@@ -30,12 +32,16 @@ pub mod remote_action;
 pub mod signal;
 /// Status output format versions (V1/V2/V3).
 pub mod status_format;
+/// Stream adapter categorizing messages as responses or notifications.
+pub mod stream;
 /// Stream mode selectors (on/off/all/recent).
 pub mod stream_mode;
 /// Transport protocol (UDP, TCP) for remote/proxy notifications.
 pub mod transport_protocol;
 /// Error classification for unrecognized protocol lines.
 pub mod unrecognized;
+/// Parsed version information from the `version` command.
+pub mod version_info;
 
 pub use auth::{AuthRetryMode, AuthType};
 pub use client_event::ClientEvent;
@@ -54,3 +60,4 @@ pub use status_format::StatusFormat;
 pub use stream_mode::StreamMode;
 pub use transport_protocol::TransportProtocol;
 pub use unrecognized::UnrecognizedKind;
+pub use version_info::VersionInfo;

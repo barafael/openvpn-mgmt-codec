@@ -334,6 +334,8 @@ dependencies = [
  "bytes",
  "derive_more",
  "futures",
+ "futures-core",
+ "pin-project-lite",
  "proptest",
  "strum",
  "thiserror",
