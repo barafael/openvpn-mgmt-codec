@@ -117,19 +117,20 @@ async fn connect_client_mgmt() -> Framed<TcpStream, OvpnCodec> {
 
 /// After hold release, a client with `--management-query-remote` sends
 /// `>REMOTE:host,port,protocol` and waits for a response before connecting.
-/// With `--management-query-proxy`, it also sends `>PROXY:`.
 ///
 /// This test:
 /// 1. Connects to the client's management interface, authenticates
 /// 2. Enables state notifications, releases hold
 /// 3. Observes `>REMOTE:openvpn-server,1194,udp`
 /// 4. Responds with `Remote(Accept)`
-/// 5. Observes `>PROXY:` notification
-/// 6. Responds with `Proxy(None)` (direct connection)
-/// 7. Verifies the client proceeds to connect (state transitions)
+/// 5. Verifies the client proceeds to connect (state transitions)
+///
+/// Note: `--management-query-proxy` is also enabled but OpenVPN 2.6.16
+/// does not send `>PROXY:` for UDP connections. The PROXY notification
+/// parsing is covered by unit tests.
 #[tokio::test]
 #[traced_test]
-async fn remote_and_proxy_accept() {
+async fn remote_accept() {
     let mut framed = connect_client_mgmt().await;
     eprintln!("=== authenticated to client-remote management ===");
 
@@ -162,43 +163,16 @@ async fn remote_and_proxy_accept() {
     send_ok(&mut framed, OvpnCommand::Remote(RemoteAction::Accept), "").await;
     eprintln!("=== Remote(Accept) sent ===");
 
-    // Next, OpenVPN queries for proxy settings.
-    let proxy = timeout(MSG_TIMEOUT, async {
-        loop {
-            let msg = recv_raw(&mut framed).await;
-            if let OvpnMessage::Notification(Notification::Proxy { index, proxy_type, host }) = msg
-            {
-                return (index, proxy_type, host);
-            }
-        }
-    })
-    .await
-    .expect("timed out waiting for >PROXY: notification");
-
-    eprintln!(
-        "=== >PROXY: index={} type={} host={} ===",
-        proxy.0, proxy.1, proxy.2,
-    );
-
-    // Connect directly, no proxy.
-    send_ok(&mut framed, OvpnCommand::Proxy(ProxyAction::None), "").await;
-    eprintln!("=== Proxy(None) sent ===");
-
-    // The client should now proceed to connect. Watch for state transitions
-    // indicating the connection is progressing (CONNECTING, WAIT, AUTH, etc.).
+    // After accepting, the client proceeds to connect. Watch for state
+    // transitions — RESOLVE and WAIT confirm the client acted on our
+    // response. The VPN connection itself may or may not succeed
+    // depending on whether the server is available.
     let mut states = Vec::new();
-    let _ = timeout(Duration::from_secs(30), async {
+    let _ = timeout(Duration::from_secs(10), async {
         loop {
             let msg = recv_raw(&mut framed).await;
             if let OvpnMessage::Notification(Notification::State { name, .. }) = msg {
-                let done = matches!(
-                    name,
-                    OpenVpnState::Connected | OpenVpnState::Auth | OpenVpnState::GetConfig
-                );
                 states.push(name);
-                if done {
-                    return;
-                }
             }
         }
     })
@@ -206,11 +180,11 @@ async fn remote_and_proxy_accept() {
 
     assert!(
         !states.is_empty(),
-        "should observe state transitions after REMOTE+PROXY accept",
+        "should observe state transitions after Remote(Accept)",
     );
     eprintln!("=== states after accept: {states:?} ===");
 
     // Clean exit.
     framed.send(OvpnCommand::Exit).await.unwrap();
-    eprintln!("=== remote/proxy conformance test complete ===");
+    eprintln!("=== remote conformance test complete ===");
 }
