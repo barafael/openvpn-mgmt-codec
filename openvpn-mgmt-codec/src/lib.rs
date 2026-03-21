@@ -39,7 +39,7 @@ pub mod unrecognized;
 
 pub use auth::{AuthRetryMode, AuthType};
 pub use client_event::ClientEvent;
-pub use codec::{AccumulationLimit, OvpnCodec};
+pub use codec::{AccumulationLimit, EncodeError, EncoderMode, OvpnCodec};
 pub use command::OvpnCommand;
 pub use kill_target::KillTarget;
 pub use log_level::LogLevel;

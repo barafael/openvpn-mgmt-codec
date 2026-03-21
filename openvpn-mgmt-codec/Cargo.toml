@@ -12,6 +12,7 @@ derive_more = { version = "1", features = ["debug", "display"] }
 strum = { version = "0.27", features = ["derive"] }
 thiserror = "2"
 tokio-util = { version = "0.7", features = ["codec"] }
+tracing = "0.1"
 
 [dev-dependencies]
 futures = "0.3"

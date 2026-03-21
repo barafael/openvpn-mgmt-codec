@@ -1,14 +1,81 @@
 use bytes::{BufMut, BytesMut};
+use std::borrow::Cow;
 use std::io;
 use tokio_util::codec::{Decoder, Encoder};
+use tracing::{debug, warn};
 
 use crate::command::{OvpnCommand, ResponseKind};
 use crate::kill_target::KillTarget;
 use crate::message::{Notification, OvpnMessage};
 use crate::proxy_action::ProxyAction;
+use crate::redacted::Redacted;
 use crate::remote_action::RemoteAction;
 use crate::status_format::StatusFormat;
 use crate::unrecognized::UnrecognizedKind;
+
+/// Controls how the encoder handles characters that are unsafe for the
+/// line-oriented management protocol (`\n`, `\r`, `\0`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum EncoderMode {
+    /// Silently strip unsafe characters (default, defensive).
+    ///
+    /// `\n`, `\r`, and `\0` are removed from all user-supplied strings.
+    /// Block body lines equaling `"END"` are escaped to `" END"`.
+    #[default]
+    Sanitize,
+
+    /// Reject inputs containing unsafe characters with an error.
+    ///
+    /// [`Encoder::encode`] returns `Err(io::Error)` if any field contains
+    /// `\n`, `\r`, or `\0`, or if a block body line equals `"END"`.
+    /// The inner error can be downcast to [`EncodeError`] for structured
+    /// matching.
+    Strict,
+}
+
+/// Structured error for encoder-side validation failures.
+///
+/// Returned as the inner error of [`std::io::Error`] when [`EncoderMode::Strict`]
+/// is active and the input contains characters that would corrupt the wire protocol.
+/// Callers can recover it via [`std::io::Error::get_ref`] and
+/// [`downcast_ref::<EncodeError>()`](std::error::Error::downcast_ref).
+#[derive(Debug, thiserror::Error)]
+pub enum EncodeError {
+    /// A field contains `\n`, `\r`, or `\0`.
+    #[error("{0} contains characters unsafe for the management protocol (\\n, \\r, or \\0)")]
+    UnsafeCharacters(&'static str),
+
+    /// A multi-line block body line equals `"END"`.
+    #[error("block body line equals \"END\", which would terminate the block early")]
+    EndInBlockBody,
+}
+
+/// Characters that are unsafe in the line-oriented management protocol:
+/// `\n` and `\r` split commands; `\0` truncates at the C layer.
+const WIRE_UNSAFE: &[char] = &['\n', '\r', '\0'];
+
+/// Ensure a string is safe for the wire protocol.
+///
+/// In [`EncoderMode::Sanitize`]: strips `\n`, `\r`, and `\0`, returning
+/// the cleaned string (or borrowing the original if already clean).
+///
+/// In [`EncoderMode::Strict`]: returns `Err` if any unsafe characters
+/// are present.
+fn wire_safe<'a>(
+    s: &'a str,
+    field: &'static str,
+    mode: EncoderMode,
+) -> Result<Cow<'a, str>, io::Error> {
+    if !s.contains(WIRE_UNSAFE) {
+        return Ok(Cow::Borrowed(s));
+    }
+    match mode {
+        EncoderMode::Sanitize => Ok(Cow::Owned(
+            s.chars().filter(|c| !WIRE_UNSAFE.contains(c)).collect(),
+        )),
+        EncoderMode::Strict => Err(io::Error::other(EncodeError::UnsafeCharacters(field))),
+    }
+}
 
 /// Escape a string value per the OpenVPN config-file lexer rules and
 /// wrap it in double quotes. This is required for any user-supplied
@@ -18,6 +85,9 @@ use crate::unrecognized::UnrecognizedKind;
 /// The escaping rules from the "Command Parsing" section:
 ///   `\` → `\\`
 ///   `"` → `\"`
+///
+/// This function performs *only* lexer escaping. Wire-safety validation
+/// or sanitization must happen upstream via [`wire_safe`].
 fn quote_and_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');
@@ -25,24 +95,11 @@ fn quote_and_escape(s: &str) -> String {
         match c {
             '\\' => out.push_str("\\\\"),
             '"' => out.push_str("\\\""),
-            '\n' | '\r' | '\0' => {} // Strip — line-oriented protocol targeting C code.
             _ => out.push(c),
         }
     }
     out.push('"');
     out
-}
-
-/// Strip `\n`, `\r`, and `\0` from a string that will be interpolated
-/// into a single-line command without quoting.
-fn sanitize_line(s: &str) -> String {
-    if s.contains('\n') || s.contains('\r') || s.contains('\0') {
-        s.chars()
-            .filter(|&c| c != '\n' && c != '\r' && c != '\0')
-            .collect()
-    } else {
-        s.to_string()
-    }
 }
 
 use crate::client_event::ClientEvent;
@@ -110,6 +167,9 @@ pub struct OvpnCodec {
 
     /// Maximum ENV entries to accumulate for a `>CLIENT:` notification.
     max_client_env_entries: AccumulationLimit,
+
+    /// How the encoder handles unsafe characters in user-supplied strings.
+    encoder_mode: EncoderMode,
 }
 
 impl OvpnCodec {
@@ -126,6 +186,7 @@ impl OvpnCodec {
             client_notif: None,
             max_multi_line_lines: AccumulationLimit::Unlimited,
             max_client_env_entries: AccumulationLimit::Unlimited,
+            encoder_mode: EncoderMode::default(),
         }
     }
 
@@ -140,6 +201,17 @@ impl OvpnCodec {
     /// `>CLIENT:` notifications before the decoder returns an error.
     pub fn with_max_client_env_entries(mut self, limit: AccumulationLimit) -> Self {
         self.max_client_env_entries = limit;
+        self
+    }
+
+    /// Set the encoder mode for handling unsafe characters in user-supplied
+    /// strings.
+    ///
+    /// The default is [`EncoderMode::Sanitize`], which silently strips
+    /// `\n`, `\r`, and `\0`. Use [`EncoderMode::Strict`] to reject inputs
+    /// containing those characters with an error instead.
+    pub fn with_encoder_mode(mut self, mode: EncoderMode) -> Self {
+        self.encoder_mode = mode;
         self
     }
 }
@@ -181,6 +253,10 @@ impl Encoder<OvpnCommand> for OvpnCodec {
         // Record the expected response kind BEFORE writing, so the decoder
         // is ready when data starts arriving.
         self.expected = item.expected_response();
+        let label: &'static str = (&item).into();
+        debug!(cmd = %label, expected = ?self.expected, "encoding command");
+
+        let mode = self.encoder_mode;
 
         match item {
             // ── Informational ────────────────────────────────────
@@ -205,7 +281,7 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             // ── Connection control ───────────────────────────────
             OvpnCommand::Signal(sig) => write_line(dst, &format!("signal {sig}")),
             OvpnCommand::Kill(KillTarget::CommonName(ref cn)) => {
-                write_line(dst, &format!("kill {}", sanitize_line(cn)));
+                write_line(dst, &format!("kill {}", wire_safe(cn, "kill CN", mode)?));
             }
             OvpnCommand::Kill(KillTarget::Address {
                 ref protocol,
@@ -216,8 +292,8 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                     dst,
                     &format!(
                         "kill {}:{}:{port}",
-                        sanitize_line(protocol),
-                        sanitize_line(ip)
+                        wire_safe(protocol, "kill address protocol", mode)?,
+                        wire_safe(ip, "kill address ip", mode)?
                     ),
                 );
             }
@@ -237,19 +313,29 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 // Per the doc: username "Auth" foo
                 // Values containing special chars must be quoted+escaped:
                 //   username "Auth" "foo\"bar"
-                let at = quote_and_escape(&auth_type.to_string());
-                let val = quote_and_escape(value.expose());
+                let at = quote_and_escape(&wire_safe(
+                    &auth_type.to_string(),
+                    "username auth_type",
+                    mode,
+                )?);
+                let val = quote_and_escape(&wire_safe(value.expose(), "username value", mode)?);
                 write_line(dst, &format!("username {at} {val}"));
             }
             OvpnCommand::Password {
                 ref auth_type,
                 ref value,
             } => {
-                let at = quote_and_escape(&auth_type.to_string());
-                let val = quote_and_escape(value.expose());
+                let at = quote_and_escape(&wire_safe(
+                    &auth_type.to_string(),
+                    "password auth_type",
+                    mode,
+                )?);
+                let val = quote_and_escape(&wire_safe(value.expose(), "password value", mode)?);
                 write_line(dst, &format!("password {at} {val}"));
             }
-            OvpnCommand::AuthRetry(mode) => write_line(dst, &format!("auth-retry {mode}")),
+            OvpnCommand::AuthRetry(auth_retry_mode) => {
+                write_line(dst, &format!("auth-retry {auth_retry_mode}"));
+            }
             OvpnCommand::ForgetPasswords => write_line(dst, "forget-passwords"),
 
             // ── Challenge-response ──────────────────────────────
@@ -257,7 +343,9 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref state_id,
                 ref response,
             } => {
-                let value = format!("CRV1::{state_id}::{}", response.expose());
+                let sid = wire_safe(state_id, "challenge-response state_id", mode)?;
+                let resp = wire_safe(response.expose(), "challenge-response response", mode)?;
+                let value = format!("CRV1::{sid}::{resp}");
                 let escaped = quote_and_escape(&value);
                 write_line(dst, &format!("password \"Auth\" {escaped}"));
             }
@@ -265,21 +353,35 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref password_b64,
                 ref response_b64,
             } => {
-                let value = format!("SCRV1:{}:{}", password_b64.expose(), response_b64.expose());
+                let pw = wire_safe(password_b64.expose(), "static-challenge password_b64", mode)?;
+                let resp = wire_safe(response_b64.expose(), "static-challenge response_b64", mode)?;
+                let value = format!("SCRV1:{pw}:{resp}");
                 let escaped = quote_and_escape(&value);
                 write_line(dst, &format!("password \"Auth\" {escaped}"));
             }
 
             // ── Interactive prompts ──────────────────────────────
             OvpnCommand::NeedOk { ref name, response } => {
-                write_line(dst, &format!("needok {} {response}", sanitize_line(name)));
+                write_line(
+                    dst,
+                    &format!(
+                        "needok {} {response}",
+                        wire_safe(name, "needok name", mode)?
+                    ),
+                );
             }
             OvpnCommand::NeedStr {
                 ref name,
                 ref value,
             } => {
-                let escaped = quote_and_escape(value);
-                write_line(dst, &format!("needstr {} {escaped}", sanitize_line(name)));
+                let escaped = quote_and_escape(&wire_safe(value, "needstr value", mode)?);
+                write_line(
+                    dst,
+                    &format!(
+                        "needstr {} {escaped}",
+                        wire_safe(name, "needstr name", mode)?
+                    ),
+                );
             }
 
             // ── PKCS#11 ─────────────────────────────────────────
@@ -293,7 +395,9 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             //   BASE64_LINE_1
             //   BASE64_LINE_2
             //   END
-            OvpnCommand::RsaSig { ref base64_lines } => write_block(dst, "rsa-sig", base64_lines),
+            OvpnCommand::RsaSig { ref base64_lines } => {
+                write_block(dst, "rsa-sig", base64_lines, mode)?;
+            }
 
             // ── Client management ────────────────────────────────
             //
@@ -306,7 +410,9 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 cid,
                 kid,
                 ref config_lines,
-            } => write_block(dst, &format!("client-auth {cid} {kid}"), config_lines),
+            } => {
+                write_block(dst, &format!("client-auth {cid} {kid}"), config_lines, mode)?;
+            }
 
             OvpnCommand::ClientAuthNt { cid, kid } => {
                 write_line(dst, &format!("client-auth-nt {cid} {kid}"));
@@ -318,10 +424,11 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref reason,
                 ref client_reason,
             } => {
-                let r = quote_and_escape(reason);
+                let r = quote_and_escape(&wire_safe(reason, "client-deny reason", mode)?);
                 match client_reason {
                     Some(cr) => {
-                        let cr_esc = quote_and_escape(cr);
+                        let cr_esc =
+                            quote_and_escape(&wire_safe(cr, "client-deny client_reason", mode)?);
                         write_line(dst, &format!("client-deny {cid} {kid} {r} {cr_esc}"));
                     }
                     None => write_line(dst, &format!("client-deny {cid} {kid} {r}")),
@@ -329,7 +436,13 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             }
 
             OvpnCommand::ClientKill { cid, ref message } => match message {
-                Some(msg) => write_line(dst, &format!("client-kill {cid} {}", sanitize_line(msg))),
+                Some(msg) => write_line(
+                    dst,
+                    &format!(
+                        "client-kill {cid} {}",
+                        wire_safe(msg, "client-kill message", mode)?
+                    ),
+                ),
                 None => write_line(dst, &format!("client-kill {cid}")),
             },
 
@@ -337,6 +450,11 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             OvpnCommand::LoadStats => write_line(dst, "load-stats"),
 
             // ── Extended client management ───────────────────────
+            //
+            // TODO: warn when `extra` exceeds 245 characters — real-world
+            // limit discovered by jkroepke/openvpn-auth-oauth2 (used for
+            // WEB_AUTH URLs). Not documented in management-notes.txt.
+            // Will address when adding tracing support.
             OvpnCommand::ClientPendingAuth {
                 cid,
                 kid,
@@ -346,24 +464,33 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 dst,
                 &format!(
                     "client-pending-auth {cid} {kid} {} {timeout}",
-                    sanitize_line(extra)
+                    wire_safe(extra, "client-pending-auth extra", mode)?
                 ),
             ),
 
             OvpnCommand::CrResponse { ref response } => {
-                write_line(dst, &format!("cr-response {}", sanitize_line(response.expose())))
+                write_line(
+                    dst,
+                    &format!("cr-response {}", wire_safe(response.expose(), "cr-response", mode)?),
+                );
             }
 
             // ── External certificate ─────────────────────────────
             OvpnCommand::Certificate { ref pem_lines } => {
-                write_block(dst, "certificate", pem_lines);
+                write_block(dst, "certificate", pem_lines, mode)?;
             }
 
             // ── Remote/Proxy ─────────────────────────────────────
             OvpnCommand::Remote(RemoteAction::Accept) => write_line(dst, "remote ACCEPT"),
             OvpnCommand::Remote(RemoteAction::Skip) => write_line(dst, "remote SKIP"),
             OvpnCommand::Remote(RemoteAction::Modify { ref host, port }) => {
-                write_line(dst, &format!("remote MOD {} {port}", sanitize_line(host)));
+                write_line(
+                    dst,
+                    &format!(
+                        "remote MOD {} {port}",
+                        wire_safe(host, "remote MOD host", mode)?
+                    ),
+                );
             }
             OvpnCommand::Proxy(ProxyAction::None) => write_line(dst, "proxy NONE"),
             OvpnCommand::Proxy(ProxyAction::Http {
@@ -374,18 +501,27 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 let nct = if non_cleartext_only { " nct" } else { "" };
                 write_line(
                     dst,
-                    &format!("proxy HTTP {} {port}{nct}", sanitize_line(host)),
+                    &format!(
+                        "proxy HTTP {} {port}{nct}",
+                        wire_safe(host, "proxy HTTP host", mode)?
+                    ),
                 );
             }
             OvpnCommand::Proxy(ProxyAction::Socks { ref host, port }) => {
-                write_line(dst, &format!("proxy SOCKS {} {port}", sanitize_line(host)));
+                write_line(
+                    dst,
+                    &format!(
+                        "proxy SOCKS {} {port}",
+                        wire_safe(host, "proxy SOCKS host", mode)?
+                    ),
+                );
             }
 
             // ── Management interface auth ─────────────────────────
             // Bare line, no quoting — the management password protocol
             // does not use the config-file lexer.
             OvpnCommand::ManagementPassword(ref pw) => {
-                write_line(dst, &sanitize_line(pw.expose()));
+                write_line(dst, &wire_safe(pw.expose(), "management password", mode)?);
             }
 
             // ── Lifecycle ────────────────────────────────────────
@@ -394,7 +530,7 @@ impl Encoder<OvpnCommand> for OvpnCodec {
 
             // ── Escape hatch ─────────────────────────────────────
             OvpnCommand::Raw(ref cmd) | OvpnCommand::RawMultiLine(ref cmd) => {
-                write_line(dst, &sanitize_line(cmd));
+                write_line(dst, &wire_safe(cmd, "raw command", mode)?);
             }
         }
 
@@ -411,35 +547,41 @@ fn write_line(dst: &mut BytesMut, s: &str) {
 
 /// Write a multi-line block: header line, body lines, and a terminating `END`.
 ///
-/// Body lines are sanitized: `\n`, `\r`, and `\0` are stripped, and any
-/// line that would be exactly `"END"` is escaped to `" END"` so the
-/// server does not treat it as the block terminator.
-fn write_block(dst: &mut BytesMut, header: &str, lines: &[String]) {
+/// In [`EncoderMode::Sanitize`] mode, body lines have `\n`, `\r`, and `\0`
+/// stripped, and any line that would be exactly `"END"` is escaped to
+/// `" END"` so the server does not treat it as the block terminator.
+///
+/// In [`EncoderMode::Strict`] mode, body lines containing unsafe characters
+/// or equaling `"END"` cause an error.
+fn write_block(
+    dst: &mut BytesMut,
+    header: &str,
+    lines: &[String],
+    mode: EncoderMode,
+) -> Result<(), io::Error> {
     let total: usize = header.len() + 1 + lines.iter().map(|l| l.len() + 2).sum::<usize>() + 4;
     dst.reserve(total);
     dst.put_slice(header.as_bytes());
     dst.put_u8(b'\n');
     for line in lines {
-        let needs_sanitize = line.contains('\n') || line.contains('\r') || line.contains('\0');
-        if !needs_sanitize && line != "END" {
-            dst.put_slice(line.as_bytes());
-        } else {
-            let sanitized: String = if needs_sanitize {
-                line.chars()
-                    .filter(|&c| c != '\n' && c != '\r' && c != '\0')
-                    .collect()
-            } else {
-                line.to_string()
-            };
-            if sanitized == "END" {
-                dst.put_slice(b" END");
-            } else {
-                dst.put_slice(sanitized.as_bytes());
+        let clean = wire_safe(line, "block body line", mode)?;
+        if *clean == *"END" {
+            match mode {
+                EncoderMode::Sanitize => {
+                    dst.put_slice(b" END");
+                    dst.put_u8(b'\n');
+                    continue;
+                }
+                EncoderMode::Strict => {
+                    return Err(io::Error::other(EncodeError::EndInBlockBody));
+                }
             }
         }
+        dst.put_slice(clean.as_bytes());
         dst.put_u8(b'\n');
     }
     dst.put_slice(b"END\n");
+    Ok(())
 }
 
 // ── Decoder ───────────────────────────────────────────────────────
@@ -484,6 +626,7 @@ impl Decoder for OvpnCodec {
             {
                 if rest == "END" {
                     let finished = self.client_notif.take().expect("guarded by if-let");
+                    debug!(event = ?finished.event, cid = finished.cid, env_count = finished.env.len(), "decoded CLIENT notification");
                     return Ok(Some(OvpnMessage::Notification(Notification::Client {
                         event: finished.event,
                         cid: finished.cid,
@@ -512,6 +655,7 @@ impl Decoder for OvpnCodec {
             if let Some(ref mut buf) = self.multi_line_buf {
                 if line == "END" {
                     let lines = self.multi_line_buf.take().expect("guarded by if-let");
+                    debug!(line_count = lines.len(), "decoded multi-line response");
                     return Ok(Some(OvpnMessage::MultiLine(lines)));
                 }
                 // The spec only guarantees atomicity for CLIENT notifications,
@@ -580,6 +724,7 @@ impl Decoder for OvpnCodec {
                     continue; // Accumulate until END.
                 }
                 ResponseKind::SuccessOrError | ResponseKind::NoResponse => {
+                    warn!(line = %line, "unrecognized line from server");
                     return Ok(Some(OvpnMessage::Unrecognized {
                         line,
                         kind: UnrecognizedKind::UnexpectedLine,
@@ -599,6 +744,7 @@ impl OvpnCodec {
 
         let Some((kind, payload)) = inner.split_once(':') else {
             // Malformed notification — no colon.
+            warn!(line = %line, "malformed notification (no colon)");
             return Some(OvpnMessage::Unrecognized {
                 line: line.to_string(),
                 kind: UnrecognizedKind::MalformedNotification,
@@ -631,17 +777,23 @@ impl OvpnCodec {
                 }));
             }
 
-            // CONNECT, REAUTH, ESTABLISHED, DISCONNECT all have ENV blocks.
-            // Parse CID and optional KID from the args (e.g. "0,1" or "5").
-            // Some events (e.g. CR_RESPONSE) have extra trailing data after
-            // CID,KID — we use splitn(3) and only parse the first two.
+            // CONNECT, REAUTH, ESTABLISHED, DISCONNECT, and CR_RESPONSE all
+            // have ENV blocks. Parse CID, optional KID, and (for CR_RESPONSE)
+            // the trailing base64 response from the args.
             let mut id_parts = args.splitn(3, ',');
             let cid = id_parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
             let kid = id_parts.next().and_then(|s| s.parse().ok());
 
+            let parsed_event = if event == "CR_RESPONSE" {
+                let response = id_parts.next().unwrap_or("").to_string();
+                ClientEvent::CrResponse(response)
+            } else {
+                ClientEvent::parse(&event)
+            };
+
             // Start accumulation — don't emit anything yet.
             self.client_notif = Some(ClientNotifAccum {
-                event: ClientEvent::parse(&event),
+                event: parsed_event,
                 cid,
                 kid,
                 env: Vec::new(),
@@ -848,6 +1000,14 @@ fn parse_auth_type(s: &str) -> AuthType {
 }
 
 fn parse_password(payload: &str) -> Option<Notification> {
+    // Auth-Token:{token}
+    // Source: manage.c management_auth_token()
+    if let Some(token) = payload.strip_prefix("Auth-Token:") {
+        return Some(Notification::Password(PasswordNotification::AuthToken {
+            token: Redacted::new(token),
+        }));
+    }
+
     // Verification Failed: 'Auth' ['CRV1:flags:state_id:user_b64:challenge']
     // Verification Failed: 'Auth'
     if let Some(rest) = payload.strip_prefix("Verification Failed: '") {
@@ -1413,8 +1573,20 @@ mod tests {
 
     #[test]
     fn raw_multiline_sanitizes_newlines() {
+        // Default mode is Sanitize — newlines are stripped.
         let wire = encode_to_string(OvpnCommand::RawMultiLine("cmd\ninjected".to_string()));
         assert_eq!(wire, "cmdinjected\n");
+    }
+
+    #[test]
+    fn raw_multiline_strict_rejects_newlines() {
+        let mut codec = OvpnCodec::new().with_encoder_mode(EncoderMode::Strict);
+        let mut buf = BytesMut::new();
+        let result = codec.encode(
+            OvpnCommand::RawMultiLine("cmd\ninjected".to_string()),
+            &mut buf,
+        );
+        assert!(result.is_err());
     }
 
     // ── Sequential encode/decode assertion tests ────────────────
