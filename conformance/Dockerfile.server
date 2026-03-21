@@ -35,3 +35,15 @@ COPY client.ovpn  /etc/openvpn/client.ovpn
 # interface then approves or denies.
 RUN printf 'testuser\ntestpass\n' > /etc/openvpn/auth.txt
 CMD ["openvpn", "--config", "/etc/openvpn/client.ovpn"]
+
+# ── Stage 4: OpenVPN client with management-query-remote/proxy ────
+FROM alpine:latest AS client-remote
+RUN apk add --no-cache openvpn
+COPY --from=pki /pki/pki/ca.crt            /etc/openvpn/
+COPY --from=pki /pki/pki/issued/client.crt  /etc/openvpn/
+COPY --from=pki /pki/pki/private/client.key /etc/openvpn/
+COPY client-remote.ovpn  /etc/openvpn/client-remote.ovpn
+RUN printf 'testuser\ntestpass\n' > /etc/openvpn/auth.txt
+RUN printf 'test-password\n' > /etc/openvpn/mgmt-pw.txt
+EXPOSE 7507
+CMD ["openvpn", "--config", "/etc/openvpn/client-remote.ovpn"]

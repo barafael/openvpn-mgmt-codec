@@ -49,3 +49,27 @@ services:
     depends_on:
       openvpn-server:
         condition: service_healthy
+
+  # ── Client with management-query-remote/proxy ────────────────────
+  # Has its own management interface on port 7507 so the test can
+  # observe >REMOTE: and >PROXY: notifications and respond to them.
+  openvpn-client-remote:
+    build:
+      context: conformance
+      dockerfile: Dockerfile.server
+      target: client-remote
+    ports:
+      - "7507:7507"
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    depends_on:
+      openvpn-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pidof openvpn"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 3s
