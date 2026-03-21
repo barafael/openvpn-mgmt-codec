@@ -385,6 +385,298 @@ impl fmt::Debug for Notification {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::transport_protocol::TransportProtocol;
+
+    // ── Debug redaction ──────────────────────────────────────────
+
+    #[test]
+    fn debug_redacts_password_env_key() {
+        let notif = Notification::Client {
+            event: ClientEvent::Connect,
+            cid: 1,
+            kid: Some(0),
+            env: vec![
+                ("common_name".to_string(), "alice".to_string()),
+                ("password".to_string(), "s3cret".to_string()),
+            ],
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("alice"), "non-sensitive values should appear");
+        assert!(
+            !dbg.contains("s3cret"),
+            "password value must not appear in Debug output"
+        );
+        assert!(
+            dbg.contains("<redacted>"),
+            "password value should be replaced with <redacted>"
+        );
+    }
+
+    #[test]
+    fn debug_does_not_redact_non_sensitive_keys() {
+        let notif = Notification::Client {
+            event: ClientEvent::Disconnect,
+            cid: 5,
+            kid: None,
+            env: vec![("untrusted_ip".to_string(), "10.0.0.1".to_string())],
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("10.0.0.1"));
+    }
+
+    // ── PasswordNotification variants ────────────────────────────
+
+    #[test]
+    fn password_notification_debug_redacts_token() {
+        let notif = PasswordNotification::AuthToken {
+            token: Redacted::new("super-secret-token".to_string()),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(
+            !dbg.contains("super-secret-token"),
+            "auth token must not appear in Debug output"
+        );
+    }
+
+    #[test]
+    fn password_notification_eq() {
+        let a = PasswordNotification::NeedAuth {
+            auth_type: AuthType::Auth,
+        };
+        let b = PasswordNotification::NeedAuth {
+            auth_type: AuthType::Auth,
+        };
+        assert_eq!(a, b);
+
+        let c = PasswordNotification::NeedPassword {
+            auth_type: AuthType::PrivateKey,
+        };
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn password_notification_static_challenge_fields() {
+        let sc = PasswordNotification::StaticChallenge {
+            echo: true,
+            response_concat: false,
+            challenge: "Enter PIN".to_string(),
+        };
+        if let PasswordNotification::StaticChallenge {
+            echo,
+            response_concat,
+            challenge,
+        } = sc
+        {
+            assert!(echo);
+            assert!(!response_concat);
+            assert_eq!(challenge, "Enter PIN");
+        } else {
+            panic!("wrong variant");
+        }
+    }
+
+    #[test]
+    fn password_notification_dynamic_challenge_fields() {
+        let dc = PasswordNotification::DynamicChallenge {
+            flags: "R,E".to_string(),
+            state_id: "abc123".to_string(),
+            username_b64: "dXNlcg==".to_string(),
+            challenge: "Enter OTP".to_string(),
+        };
+        if let PasswordNotification::DynamicChallenge {
+            flags,
+            state_id,
+            challenge,
+            ..
+        } = dc
+        {
+            assert_eq!(flags, "R,E");
+            assert_eq!(state_id, "abc123");
+            assert_eq!(challenge, "Enter OTP");
+        } else {
+            panic!("wrong variant");
+        }
+    }
+
+    // ── Notification Debug output for each variant ───────────────
+
+    #[test]
+    fn debug_state_notification() {
+        let notif = Notification::State {
+            timestamp: 1700000000,
+            name: OpenVpnState::Connected,
+            description: "SUCCESS".to_string(),
+            local_ip: "10.0.0.2".to_string(),
+            remote_ip: "1.2.3.4".to_string(),
+            remote_port: "1194".to_string(),
+            local_addr: "192.168.1.5".to_string(),
+            local_port: "51234".to_string(),
+            local_ipv6: String::new(),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("State"));
+        assert!(dbg.contains("Connected"));
+        assert!(dbg.contains("10.0.0.2"));
+    }
+
+    #[test]
+    fn debug_bytecount() {
+        let notif = Notification::ByteCount {
+            bytes_in: 1024,
+            bytes_out: 2048,
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("1024"));
+        assert!(dbg.contains("2048"));
+    }
+
+    #[test]
+    fn debug_bytecount_cli() {
+        let notif = Notification::ByteCountCli {
+            cid: 7,
+            bytes_in: 100,
+            bytes_out: 200,
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("ByteCountCli"));
+        assert!(dbg.contains("7"));
+    }
+
+    #[test]
+    fn debug_log() {
+        let notif = Notification::Log {
+            timestamp: 1700000000,
+            level: LogLevel::Warning,
+            message: "something happened".to_string(),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("Log"));
+        assert!(dbg.contains("something happened"));
+    }
+
+    #[test]
+    fn debug_echo() {
+        let notif = Notification::Echo {
+            timestamp: 123,
+            param: "push-update".to_string(),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("Echo"));
+        assert!(dbg.contains("push-update"));
+    }
+
+    #[test]
+    fn debug_hold() {
+        let notif = Notification::Hold {
+            text: "Waiting for hold release".to_string(),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("Hold"));
+    }
+
+    #[test]
+    fn debug_fatal() {
+        let notif = Notification::Fatal {
+            message: "cannot allocate TUN/TAP".to_string(),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("Fatal"));
+        assert!(dbg.contains("cannot allocate TUN/TAP"));
+    }
+
+    #[test]
+    fn debug_remote() {
+        let notif = Notification::Remote {
+            host: "vpn.example.com".to_string(),
+            port: 1194,
+            protocol: TransportProtocol::Udp,
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("Remote"));
+        assert!(dbg.contains("vpn.example.com"));
+    }
+
+    #[test]
+    fn debug_proxy() {
+        let notif = Notification::Proxy {
+            index: 1,
+            proxy_type: "TCP".to_string(),
+            host: "proxy.local".to_string(),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("Proxy"));
+        assert!(dbg.contains("proxy.local"));
+    }
+
+    #[test]
+    fn debug_simple_fallback() {
+        let notif = Notification::Simple {
+            kind: "FUTURE_TYPE".to_string(),
+            payload: "some data".to_string(),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("FUTURE_TYPE"));
+        assert!(dbg.contains("some data"));
+    }
+
+    #[test]
+    fn debug_client_address() {
+        let notif = Notification::ClientAddress {
+            cid: 42,
+            addr: "10.8.0.6".to_string(),
+            primary: true,
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("ClientAddress"));
+        assert!(dbg.contains("10.8.0.6"));
+        assert!(dbg.contains("true"));
+    }
+
+    // ── OvpnMessage variants ─────────────────────────────────────
+
+    #[test]
+    fn ovpn_message_eq() {
+        assert_eq!(
+            OvpnMessage::Success("pid=42".to_string()),
+            OvpnMessage::Success("pid=42".to_string()),
+        );
+        assert_ne!(
+            OvpnMessage::Success("a".to_string()),
+            OvpnMessage::Error("a".to_string()),
+        );
+    }
+
+    #[test]
+    fn ovpn_message_pkcs11_entry() {
+        let msg = OvpnMessage::Pkcs11IdEntry {
+            index: "0".to_string(),
+            id: "slot_0".to_string(),
+            blob: "AQID".to_string(),
+        };
+        let dbg = format!("{msg:?}");
+        assert!(dbg.contains("Pkcs11IdEntry"));
+        assert!(dbg.contains("slot_0"));
+    }
+
+    #[test]
+    fn ovpn_message_password_prompt() {
+        assert_eq!(OvpnMessage::PasswordPrompt, OvpnMessage::PasswordPrompt);
+    }
+
+    #[test]
+    fn ovpn_message_unrecognized() {
+        let msg = OvpnMessage::Unrecognized {
+            line: "garbage".to_string(),
+            kind: crate::unrecognized::UnrecognizedKind::UnexpectedLine,
+        };
+        let dbg = format!("{msg:?}");
+        assert!(dbg.contains("garbage"));
+    }
+}
+
 /// A fully decoded message from the OpenVPN management interface.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OvpnMessage {

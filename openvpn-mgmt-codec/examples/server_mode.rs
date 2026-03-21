@@ -19,7 +19,7 @@
 
 use futures::{SinkExt, StreamExt};
 use openvpn_mgmt_codec::command::connection_sequence;
-use openvpn_mgmt_codec::stream::{classify, ManagementEvent};
+use openvpn_mgmt_codec::stream::{ManagementEvent, classify};
 use openvpn_mgmt_codec::{OvpnCodec, OvpnCommand};
 use tokio::net::TcpListener;
 use tokio_util::codec::Framed;
@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let framed = Framed::new(stream, OvpnCodec::new());
         let (mut sink, raw_stream) = framed.split();
-        let mut mgmt = ManagementStream::new(raw_stream);
+        let mut mgmt = raw_stream.map(classify);
 
         // Run the standard startup sequence.
         for cmd in connection_sequence(5) {

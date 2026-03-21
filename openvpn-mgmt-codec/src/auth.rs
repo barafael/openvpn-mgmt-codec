@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 
 /// Authentication credential type. OpenVPN identifies credential requests
 /// by a quoted type string — usually `"Auth"` or `"Private Key"`, but
@@ -33,6 +34,23 @@ impl fmt::Display for AuthType {
     }
 }
 
+impl FromStr for AuthType {
+    type Err = std::convert::Infallible;
+
+    /// Parse an auth type string. Recognized values: `Auth`, `PrivateKey` /
+    /// `Private Key`, `HTTPProxy` / `HTTP Proxy`, `SOCKSProxy` / `SOCKS Proxy`.
+    /// Anything else becomes [`AuthType::Custom`].
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "Auth" => Self::Auth,
+            "PrivateKey" | "Private Key" => Self::PrivateKey,
+            "HTTPProxy" | "HTTP Proxy" => Self::HttpProxy,
+            "SOCKSProxy" | "SOCKS Proxy" => Self::SocksProxy,
+            other => Self::Custom(other.to_string()),
+        })
+    }
+}
+
 /// Controls how OpenVPN retries after authentication failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthRetryMode {
@@ -53,5 +71,84 @@ impl fmt::Display for AuthRetryMode {
             Self::Interact => f.write_str("interact"),
             Self::NoInteract => f.write_str("nointeract"),
         }
+    }
+}
+
+impl FromStr for AuthRetryMode {
+    type Err = String;
+
+    /// Parse an auth-retry mode: `none`, `interact`, or `nointeract`.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "none" => Ok(Self::None),
+            "interact" => Ok(Self::Interact),
+            "nointeract" => Ok(Self::NoInteract),
+            _ => Err(format!(
+                "invalid auth-retry mode: {s} (use none/interact/nointeract)"
+            )),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn auth_type_roundtrip() {
+        for at in [
+            AuthType::Auth,
+            AuthType::PrivateKey,
+            AuthType::HttpProxy,
+            AuthType::SocksProxy,
+        ] {
+            let s = at.to_string();
+            assert_eq!(s.parse::<AuthType>().unwrap(), at);
+        }
+    }
+
+    #[test]
+    fn auth_type_aliases() {
+        assert_eq!(
+            "PrivateKey".parse::<AuthType>().unwrap(),
+            AuthType::PrivateKey
+        );
+        assert_eq!(
+            "Private Key".parse::<AuthType>().unwrap(),
+            AuthType::PrivateKey
+        );
+        assert_eq!(
+            "HTTPProxy".parse::<AuthType>().unwrap(),
+            AuthType::HttpProxy
+        );
+        assert_eq!(
+            "SOCKSProxy".parse::<AuthType>().unwrap(),
+            AuthType::SocksProxy
+        );
+    }
+
+    #[test]
+    fn auth_type_custom_fallback() {
+        assert_eq!(
+            "MyPlugin".parse::<AuthType>().unwrap(),
+            AuthType::Custom("MyPlugin".to_string())
+        );
+    }
+
+    #[test]
+    fn auth_retry_roundtrip() {
+        for mode in [
+            AuthRetryMode::None,
+            AuthRetryMode::Interact,
+            AuthRetryMode::NoInteract,
+        ] {
+            let s = mode.to_string();
+            assert_eq!(s.parse::<AuthRetryMode>().unwrap(), mode);
+        }
+    }
+
+    #[test]
+    fn auth_retry_invalid() {
+        assert!("bogus".parse::<AuthRetryMode>().is_err());
     }
 }

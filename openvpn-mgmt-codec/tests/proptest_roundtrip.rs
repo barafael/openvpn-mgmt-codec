@@ -751,7 +751,9 @@ fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand>
             .boxed(),
         s.clone().prop_map(OvpnCommand::Raw).boxed(),
         s.clone()
-            .prop_map(|r| OvpnCommand::CrResponse { response: Redacted::new(r) })
+            .prop_map(|r| OvpnCommand::CrResponse {
+                response: Redacted::new(r),
+            })
             .boxed(),
         (any::<u64>(), any::<u64>(), s.clone(), any::<u32>())
             .prop_map(|(c, k, e, t)| OvpnCommand::ClientPendingAuth {

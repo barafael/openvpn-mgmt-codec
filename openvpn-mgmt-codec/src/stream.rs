@@ -203,8 +203,7 @@ mod tests {
 
     #[test]
     fn classify_maps_ok() {
-        let result: Result<OvpnMessage, io::Error> =
-            Ok(OvpnMessage::Success("test".to_string()));
+        let result: Result<OvpnMessage, io::Error> = Ok(OvpnMessage::Success("test".to_string()));
         let event = classify(result).unwrap();
         assert!(matches!(
             event,

@@ -7,3 +7,7 @@ exclude_re = [
     "replace \\+ with .* in write_line",
     "replace \\+ with .* in write_block",
 ]
+
+# The CLI binary is pure I/O glue and presentation — no unit-testable logic.
+# All parseable logic has been moved to the codec crate's FromStr impls.
+exclude_globs = ["openvpn-mgmt-cli/**"]

@@ -471,7 +471,10 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             OvpnCommand::CrResponse { ref response } => {
                 write_line(
                     dst,
-                    &format!("cr-response {}", wire_safe(response.expose(), "cr-response", mode)?),
+                    &format!(
+                        "cr-response {}",
+                        wire_safe(response.expose(), "cr-response", mode)?
+                    ),
                 );
             }
 
