@@ -1,6 +1,6 @@
 [package]
 name = "openvpn-mgmt-codec"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 description = "OpenVPN management protocol codecs (tokio-util en/decoder implementations)."
 repository = "https://github.com/barafael/openvpn-mgmt-codec"
