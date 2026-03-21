@@ -22,7 +22,7 @@ mod common;
 use std::process::Command;
 use std::time::Duration;
 
-use common::{connect_and_auth, recv_raw, recv_response, send_ok, MSG_TIMEOUT};
+use common::{MSG_TIMEOUT, connect_and_auth, recv_raw, recv_response, send_ok};
 use futures::{SinkExt, StreamExt};
 use openvpn_mgmt_codec::*;
 use tokio::net::TcpStream;
@@ -39,10 +39,7 @@ async fn query_status(
     framed: &mut Framed<TcpStream, OvpnCodec>,
     format: StatusFormat,
 ) -> Vec<String> {
-    framed
-        .send(OvpnCommand::Status(format))
-        .await
-        .unwrap();
+    framed.send(OvpnCommand::Status(format)).await.unwrap();
     let msg = recv_response(framed).await;
     match msg {
         OvpnMessage::MultiLine(lines) => lines,
@@ -81,12 +78,7 @@ async fn wait_for_client_event(
     timeout(MSG_TIMEOUT, async {
         loop {
             let msg = recv_raw(framed).await;
-            if let OvpnMessage::Notification(Notification::Client {
-                event,
-                cid,
-                ..
-            }) = &msg
-            {
+            if let OvpnMessage::Notification(Notification::Client { event, cid, .. }) = &msg {
                 if *event == expected {
                     return *cid;
                 }
@@ -143,15 +135,20 @@ async fn server_mode_lifecycle() {
 
     // ── Wait for CLIENT:CONNECT & verify ENV keys ───────────────────
     let (cid, kid, env) = wait_for_client_connect(&mut framed).await;
-    eprintln!("=== CLIENT:CONNECT cid={cid} kid={kid} env_keys={} ===", env.len());
+    eprintln!(
+        "=== CLIENT:CONNECT cid={cid} kid={kid} env_keys={} ===",
+        env.len()
+    );
 
     let keys: Vec<&str> = env.iter().map(|(k, _)| k.as_str()).collect();
     assert!(
-        keys.iter().any(|k| k.contains("common_name") || k.contains("CN")),
+        keys.iter()
+            .any(|k| k.contains("common_name") || k.contains("CN")),
         "ENV should contain common_name or CN, got keys: {keys:?}",
     );
     assert!(
-        keys.iter().any(|k| k.contains("untrusted_ip") || k.contains("trusted_ip")),
+        keys.iter()
+            .any(|k| k.contains("untrusted_ip") || k.contains("trusted_ip")),
         "ENV should contain an IP-related key, got keys: {keys:?}",
     );
 
@@ -236,7 +233,18 @@ async fn server_mode_lifecycle() {
     // notifications that arrive mid-multi-line-response.
     let _ping = ChildGuard(
         Command::new("docker")
-            .args(["compose", "exec", "-T", "openvpn-client", "ping", "-i", "0.2", "-w", "6", "10.8.0.1"])
+            .args([
+                "compose",
+                "exec",
+                "-T",
+                "openvpn-client",
+                "ping",
+                "-i",
+                "0.2",
+                "-w",
+                "6",
+                "10.8.0.1",
+            ])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .spawn()
@@ -261,7 +269,9 @@ async fn server_mode_lifecycle() {
                 match &msg {
                     OvpnMessage::MultiLine(lines) => {
                         assert!(
-                            lines.iter().any(|l| l.contains("HEADER") || l.contains("CLIENT_LIST")),
+                            lines
+                                .iter()
+                                .any(|l| l.contains("HEADER") || l.contains("CLIENT_LIST")),
                             "status response should be intact, got {lines:?}",
                         );
                         status_count += 1;
@@ -287,7 +297,10 @@ async fn server_mode_lifecycle() {
         "interleave test timed out after collecting {status_count} status, {bytecount_count} bytecount",
     );
 
-    assert_eq!(status_count, 25, "should have received all 25 status responses");
+    assert_eq!(
+        status_count, 25,
+        "should have received all 25 status responses"
+    );
     assert!(
         bytecount_count > 0,
         "should have seen bytecount notifications interleaved with status queries",
@@ -299,10 +312,7 @@ async fn server_mode_lifecycle() {
     // ── Kill client → CLIENT:DISCONNECT ─────────────────────────────
     send_ok(
         &mut framed,
-        OvpnCommand::ClientKill {
-            cid,
-            message: None,
-        },
+        OvpnCommand::ClientKill { cid, message: None },
         "",
     )
     .await;
@@ -404,12 +414,7 @@ async fn server_mode_lifecycle() {
     eprintln!("=== client denied (client exits, no more reconnects) ===");
 
     // ── Signal SIGUSR1 → state transitions ──────────────────────────
-    send_ok(
-        &mut framed,
-        OvpnCommand::Signal(Signal::SigUsr1),
-        "",
-    )
-    .await;
+    send_ok(&mut framed, OvpnCommand::Signal(Signal::SigUsr1), "").await;
 
     let mut states = Vec::new();
     // Drain state notifications for 5 seconds after SIGUSR1.

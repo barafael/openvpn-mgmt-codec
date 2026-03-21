@@ -42,11 +42,7 @@ pub async fn recv_response(framed: &mut Framed<TcpStream, OvpnCodec>) -> OvpnMes
 }
 
 /// Send a command and assert the response is `Success` containing `expected`.
-pub async fn send_ok(
-    framed: &mut Framed<TcpStream, OvpnCodec>,
-    cmd: OvpnCommand,
-    expected: &str,
-) {
+pub async fn send_ok(framed: &mut Framed<TcpStream, OvpnCodec>, cmd: OvpnCommand, expected: &str) {
     framed.send(cmd).await.unwrap();
     let msg = recv_response(framed).await;
     assert!(

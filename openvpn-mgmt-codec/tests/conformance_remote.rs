@@ -18,7 +18,7 @@ mod common;
 
 use std::time::Duration;
 
-use common::{connect_and_auth, recv_raw, send_ok, MSG_TIMEOUT};
+use common::{MSG_TIMEOUT, connect_and_auth, recv_raw, send_ok};
 use futures::SinkExt;
 use openvpn_mgmt_codec::*;
 use tokio::time::timeout;
@@ -44,7 +44,12 @@ async fn remote_accept() {
     let remote = timeout(MSG_TIMEOUT, async {
         loop {
             let msg = recv_raw(&mut framed).await;
-            if let OvpnMessage::Notification(Notification::Remote { host, port, protocol }) = msg {
+            if let OvpnMessage::Notification(Notification::Remote {
+                host,
+                port,
+                protocol,
+            }) = msg
+            {
                 return (host, port, protocol);
             }
         }
@@ -52,7 +57,10 @@ async fn remote_accept() {
     .await
     .expect("timed out waiting for >REMOTE: notification");
 
-    eprintln!("=== >REMOTE: host={} port={} protocol={:?} ===", remote.0, remote.1, remote.2);
+    eprintln!(
+        "=== >REMOTE: host={} port={} protocol={:?} ===",
+        remote.0, remote.1, remote.2
+    );
     assert_eq!(remote.1, 1194, "remote port should be 1194");
     assert!(
         matches!(remote.2, TransportProtocol::Udp),

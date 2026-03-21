@@ -80,11 +80,7 @@ async fn recv_response(framed: &mut Framed<TcpStream, OvpnCodec>) -> OvpnMessage
 }
 
 /// Send a command and assert the response is `Success` containing `expected`.
-async fn send_ok(
-    framed: &mut Framed<TcpStream, OvpnCodec>,
-    cmd: OvpnCommand,
-    expected: &str,
-) {
+async fn send_ok(framed: &mut Framed<TcpStream, OvpnCodec>, cmd: OvpnCommand, expected: &str) {
     framed.send(cmd).await.unwrap();
     let msg = recv_response(framed).await;
     assert!(
@@ -298,7 +294,12 @@ async fn state_stream_on_off_toggle() {
     let (mut framed, _) = connect_and_auth().await;
 
     send_ok(&mut framed, OvpnCommand::StateStream(StreamMode::On), "ON").await;
-    send_ok(&mut framed, OvpnCommand::StateStream(StreamMode::Off), "OFF").await;
+    send_ok(
+        &mut framed,
+        OvpnCommand::StateStream(StreamMode::Off),
+        "OFF",
+    )
+    .await;
 }
 
 #[tokio::test]

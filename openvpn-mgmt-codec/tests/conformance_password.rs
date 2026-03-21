@@ -19,7 +19,7 @@ mod common;
 
 use std::time::Duration;
 
-use common::{connect_and_auth, recv_raw, send_ok, MGMT_PASSWORD, MSG_TIMEOUT};
+use common::{MGMT_PASSWORD, MSG_TIMEOUT, connect_and_auth, recv_raw, send_ok};
 use futures::{SinkExt, StreamExt};
 use openvpn_mgmt_codec::*;
 use tokio::net::TcpStream;
@@ -62,7 +62,10 @@ async fn password_need_auth() {
     let msg = common::recv(&mut server).await;
     assert!(matches!(&msg, OvpnMessage::Info(_)));
     let msg = common::recv(&mut server).await;
-    assert!(matches!(&msg, OvpnMessage::Notification(Notification::Hold { .. })));
+    assert!(matches!(
+        &msg,
+        OvpnMessage::Notification(Notification::Hold { .. })
+    ));
 
     send_ok(&mut server, OvpnCommand::HoldRelease, "hold release").await;
     eprintln!("=== server hold released ===");
@@ -82,10 +85,13 @@ async fn password_need_auth() {
             }) = msg
             {
                 eprintln!("=== server: auto-approving CLIENT:CONNECT cid={cid} kid={kid} ===");
-                server
+                if server
                     .send(OvpnCommand::ClientAuthNt { cid, kid })
                     .await
-                    .ok();
+                    .is_err()
+                {
+                    return;
+                }
             }
         }
     });
