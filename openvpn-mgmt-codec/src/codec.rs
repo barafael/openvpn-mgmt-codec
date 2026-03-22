@@ -4,6 +4,8 @@ use std::io;
 use tokio_util::codec::{Decoder, Encoder};
 use tracing::{debug, warn};
 
+use std::collections::VecDeque;
+
 use crate::command::{OvpnCommand, ResponseKind};
 use crate::kill_target::KillTarget;
 use crate::message::{Notification, OvpnMessage};
@@ -134,28 +136,42 @@ pub enum AccumulationLimit {
 /// multi-line responses, and accumulates multi-line `>CLIENT:` notifications
 /// into a single `OvpnMessage` before emitting them.
 ///
-/// # Sequential usage
+/// # Sequential usage and pipelining
 ///
-/// The OpenVPN management protocol is strictly sequential: each command
-/// produces exactly one response, and the server processes commands one
-/// at a time. This codec tracks which response type to expect from the
-/// last encoded command. **You must fully drain `decode()` (until it
-/// returns `Ok(None)` or the expected response is received) before
-/// calling `encode()` again.** Encoding a new command while a
-/// multi-line response or CLIENT notification is still being accumulated
-/// will overwrite the tracking state and corrupt decoding.
+/// The OpenVPN management protocol is strictly sequential: the server
+/// processes one command at a time and sends its response before reading
+/// the next command. The codec maintains a **queue** of expected response
+/// kinds — one per encoded command. This allows callers to pipeline
+/// multiple commands (encode A, then B, then C) without waiting for each
+/// response, as long as responses arrive in the same order.
 ///
-/// In debug builds, `encode()` asserts that no accumulation is in
-/// progress.
+/// Encoding while a multi-line response or `>CLIENT:` notification is
+/// being accumulated is still discouraged (and logged as a warning),
+/// because it means the caller is not draining the stream.
+///
+/// # Notification interleaving
+///
+/// Real-time notifications (`>STATE:`, `>LOG:`, `>BYTECOUNT:`, etc.) can
+/// arrive at **any** time, including in the middle of a multi-line command
+/// response. The decoder emits these immediately as
+/// [`OvpnMessage::Notification`] without disrupting the ongoing
+/// accumulation. The completed multi-line response is emitted afterward
+/// with the interleaved notification lines excluded.
+///
+/// Consumers should always be prepared to handle `Notification` variants
+/// between sending a command and receiving its response.
 #[derive(better_default::Default)]
 pub struct OvpnCodec {
-    /// What kind of response we expect from the last command we encoded.
-    /// This resolves the protocol's ambiguity: when we see a line that is
-    /// not `SUCCESS:`, `ERROR:`, or a `>` notification, this field tells
-    /// us whether to treat it as the start of a multi-line block or as a
-    /// standalone value.
-    #[default(ResponseKind::SuccessOrError)]
-    expected: ResponseKind,
+    /// FIFO queue of expected response kinds — one per encoded command that
+    /// has not yet been fully decoded.  The encoder pushes to the back; the
+    /// decoder peeks / pops from the front.  This resolves the protocol's
+    /// ambiguity: when the decoder sees a line that is not `SUCCESS:`,
+    /// `ERROR:`, or a `>` notification, the front of this queue tells it
+    /// whether to start multi-line accumulation or emit an error.
+    ///
+    /// When the queue is empty (no pending command), the decoder falls back
+    /// to [`ResponseKind::SuccessOrError`].
+    expected_queue: VecDeque<ResponseKind>,
 
     /// Accumulator for multi-line (END-terminated) command responses.
     multi_line_buf: Option<Vec<String>>,
@@ -165,7 +181,12 @@ pub struct OvpnCodec {
     client_notif: Option<ClientNotifAccum>,
 
     /// Maximum lines to accumulate in a multi-line response.
-    #[default(AccumulationLimit::Unlimited)]
+    ///
+    /// Defaults to `Max(10_000)` — a safety net against unbounded growth
+    /// when a history dump floods the response (e.g. `log on all` at high
+    /// verbosity). Use [`with_max_multi_line_lines`](Self::with_max_multi_line_lines)
+    /// to override.
+    #[default(AccumulationLimit::Max(10_000))]
     max_multi_line_lines: AccumulationLimit,
 
     /// Maximum ENV entries to accumulate for a `>CLIENT:` notification.
@@ -174,6 +195,11 @@ pub struct OvpnCodec {
 
     /// How the encoder handles unsafe characters in user-supplied strings.
     encoder_mode: EncoderMode,
+
+    /// Whether the initial `>INFO:` banner has been seen. The first `>INFO:`
+    /// is surfaced as [`OvpnMessage::Info`]; subsequent ones become
+    /// [`Notification::Info`].
+    seen_info: bool,
 }
 
 impl OvpnCodec {
@@ -207,6 +233,22 @@ impl OvpnCodec {
         self.encoder_mode = mode;
         self
     }
+
+    /// Peek at the expected response kind for the next unmatched command.
+    /// Falls back to `SuccessOrError` when no command is pending (defensive;
+    /// self-describing SUCCESS/ERROR lines will still decode correctly).
+    fn expected_front(&self) -> ResponseKind {
+        self.expected_queue
+            .front()
+            .copied()
+            .unwrap_or(ResponseKind::SuccessOrError)
+    }
+
+    /// Pop the front response kind after a complete response has been
+    /// decoded (Success, Error, MultiLine, or NoResponse).
+    fn consume_expected(&mut self) {
+        self.expected_queue.pop_front();
+    }
 }
 
 fn check_accumulation_limit(
@@ -230,18 +272,20 @@ impl Encoder<OvpnCommand> for OvpnCodec {
     type Error = io::Error;
 
     fn encode(&mut self, item: OvpnCommand, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug_assert!(
-            self.multi_line_buf.is_none() && self.client_notif.is_none(),
-            "encode() called while the decoder is mid-accumulation \
-             (multi_line_buf or client_notif is active). \
-             Drain decode() before sending a new command."
-        );
+        if self.multi_line_buf.is_some() || self.client_notif.is_some() {
+            warn!(
+                "encode() called while the decoder is mid-accumulation \
+                 (multi_line_buf or client_notif is active). \
+                 Drain decode() before sending a new command."
+            );
+        }
 
-        // Record the expected response kind BEFORE writing, so the decoder
-        // is ready when data starts arriving.
-        self.expected = item.expected_response();
+        // Push the expected response kind onto the queue so the decoder
+        // knows how to frame the corresponding response when it arrives.
+        let response_kind = item.expected_response();
+        self.expected_queue.push_back(response_kind);
         let label: &'static str = (&item).into();
-        debug!(cmd = %label, expected = ?self.expected, "encoding command");
+        debug!(cmd = %label, expected = ?response_kind, queue_depth = self.expected_queue.len(), "encoding command");
 
         let mode = self.encoder_mode;
 
@@ -641,7 +685,7 @@ impl Decoder for OvpnCodec {
                     // remain stuck in a half-finished multi-line block.
                     self.multi_line_buf = None;
                     self.client_notif = None;
-                    self.expected = ResponseKind::SuccessOrError;
+                    self.expected_queue.clear();
                     return Err(io::Error::new(io::ErrorKind::InvalidData, e));
                 }
             }
@@ -657,7 +701,7 @@ impl Decoder for OvpnCodec {
             if line.is_empty()
                 && self.multi_line_buf.is_none()
                 && self.client_notif.is_none()
-                && !matches!(self.expected, ResponseKind::MultiLine)
+                && !matches!(self.expected_front(), ResponseKind::MultiLine)
             {
                 continue;
             }
@@ -704,6 +748,7 @@ impl Decoder for OvpnCodec {
             if let Some(ref mut buf) = self.multi_line_buf {
                 if line == "END" {
                     let lines = self.multi_line_buf.take().expect("guarded by if-let");
+                    self.consume_expected();
                     debug!(line_count = lines.len(), "decoded multi-line response");
                     return Ok(Some(OvpnMessage::MultiLine(lines)));
                 }
@@ -734,11 +779,13 @@ impl Decoder for OvpnCodec {
             // without requiring a trailing space — the doc shows
             // "SUCCESS: [text]" but text could be empty.
             if let Some(rest) = line.strip_prefix("SUCCESS:") {
+                self.consume_expected();
                 return Ok(Some(OvpnMessage::Success(
                     rest.strip_prefix(' ').unwrap_or(rest).to_string(),
                 )));
             }
             if let Some(rest) = line.strip_prefix("ERROR:") {
+                self.consume_expected();
                 return Ok(Some(OvpnMessage::Error(
                     rest.strip_prefix(' ').unwrap_or(rest).to_string(),
                 )));
@@ -763,16 +810,18 @@ impl Decoder for OvpnCodec {
             // The line is not self-describing (no SUCCESS/ERROR/> prefix).
             // Use the expected-response state from the last encoded command
             // to decide how to frame it.
-            match self.expected {
+            match self.expected_front() {
                 ResponseKind::MultiLine => {
                     if line == "END" {
                         // Edge case: empty multi-line block (header-less).
+                        self.consume_expected();
                         return Ok(Some(OvpnMessage::MultiLine(Vec::new())));
                     }
                     self.multi_line_buf = Some(vec![line]);
                     continue; // Accumulate until END.
                 }
                 ResponseKind::SuccessOrError | ResponseKind::NoResponse => {
+                    self.consume_expected();
                     warn!(line = %line, "unrecognized line from server");
                     return Ok(Some(OvpnMessage::Unrecognized {
                         line,
@@ -800,10 +849,17 @@ impl OvpnCodec {
             });
         };
 
-        // >INFO: gets its own message variant for convenience (it's always
-        // the first thing you see on connect).
+        // >INFO: on the very first line is the connection banner — surface
+        // it as OvpnMessage::Info. All subsequent >INFO: lines (e.g.
+        // >INFO:WEB_AUTH::url) are routed to Notification::Info.
         if kind == "INFO" {
-            return Some(OvpnMessage::Info(payload.to_string()));
+            if !self.seen_info {
+                self.seen_info = true;
+                return Some(OvpnMessage::Info(payload.to_string()));
+            }
+            return Some(OvpnMessage::Notification(Notification::Info {
+                message: payload.to_string(),
+            }));
         }
 
         // >CLIENT: may be multi-line. Inspect the sub-type to decide.
@@ -878,6 +934,7 @@ impl OvpnCodec {
             "RSA_SIGN" => Some(Notification::RsaSign {
                 data: payload.to_string(),
             }),
+            "PK_SIGN" => parse_pk_sign(payload),
             "REMOTE" => parse_remote(payload),
             "PROXY" => parse_proxy(payload),
             "PASSWORD" => parse_password(payload),
@@ -1048,6 +1105,24 @@ fn parse_need_str(payload: &str) -> Option<Notification> {
         name: name.to_string(),
         message: msg.to_string(),
     })
+}
+
+/// Parse `>PK_SIGN:base64_data[,algorithm]`.
+///
+/// The algorithm field is only present when the management client announced
+/// version > 2 via the `version` command.
+///
+/// Source: [`management-notes.txt`](https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt),
+/// [`ssl_openssl.c` `get_sig_from_man()`](https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/ssl_openssl.c).
+fn parse_pk_sign(payload: &str) -> Option<Notification> {
+    if payload.is_empty() {
+        return None;
+    }
+    let (data, algorithm) = match payload.split_once(',') {
+        Some((d, a)) => (d.to_string(), Some(a.to_string())),
+        None => (payload.to_string(), None),
+    };
+    Some(Notification::PkSign { data, algorithm })
 }
 
 fn parse_remote(payload: &str) -> Option<Notification> {
@@ -1731,11 +1806,10 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // --- Sequential encode/decode assertion tests ---
+    // --- Sequential encode/decode tests ---
 
     #[test]
-    #[should_panic(expected = "mid-accumulation")]
-    fn encode_during_multiline_accumulation_panics() {
+    fn encode_during_multiline_accumulation_warns_but_succeeds() {
         let mut codec = OvpnCodec::new();
         let mut buf = BytesMut::new();
         // Encode a command that expects multi-line response.
@@ -1745,32 +1819,70 @@ mod tests {
         // Feed partial multi-line response (no END yet).
         let mut dec = BytesMut::from("header line\n");
         let _ = codec.decode(&mut dec); // starts multi_line_buf accumulation
-        // Encoding again while accumulating should panic in debug.
+        // Encoding again while accumulating logs a warning but succeeds.
         codec.encode(OvpnCommand::Pid, &mut buf).unwrap();
+        assert_eq!(
+            codec.expected_queue.len(),
+            2,
+            "both pending: first mid-accumulation, second queued"
+        );
     }
 
     #[test]
-    #[should_panic(expected = "mid-accumulation")]
-    fn encode_during_client_notif_accumulation_panics() {
+    fn encode_during_client_notif_accumulation_warns_but_succeeds() {
         let mut codec = OvpnCodec::new();
         let mut buf = BytesMut::new();
         // Feed a CLIENT header — starts client_notif accumulation.
         let mut dec = BytesMut::from(">CLIENT:CONNECT,0,1\n");
         let _ = codec.decode(&mut dec);
-        // Encoding while client_notif is active should panic.
+        // Encoding while client_notif is active logs a warning but succeeds.
         codec.encode(OvpnCommand::Pid, &mut buf).unwrap();
+        assert_eq!(codec.expected_queue.len(), 1);
+    }
+
+    /// Sending two commands before any response arrives — the response
+    /// kind queue ensures each response is decoded with the correct kind.
+    #[test]
+    fn pipelined_commands_decode_correctly() {
+        let mut codec = OvpnCodec::new();
+        let mut enc = BytesMut::new();
+        // Encode two commands: Status (multi-line) then Pid (success/error).
+        codec
+            .encode(OvpnCommand::Status(StatusFormat::V1), &mut enc)
+            .unwrap();
+        codec.encode(OvpnCommand::Pid, &mut enc).unwrap();
+        assert_eq!(codec.expected_queue.len(), 2);
+
+        // Feed the Status multi-line response followed by the Pid response.
+        let mut dec = BytesMut::from("TITLE\nheader\ndata\nEND\nSUCCESS: pid=42\n");
+        let mut msgs = Vec::new();
+        while let Some(msg) = codec.decode(&mut dec).unwrap() {
+            msgs.push(msg);
+        }
+        assert_eq!(msgs.len(), 2);
+        assert!(
+            matches!(&msgs[0], OvpnMessage::MultiLine(lines) if lines == &["TITLE", "header", "data"]),
+            "first response should be MultiLine, got {:?}",
+            msgs[0]
+        );
+        assert!(
+            matches!(&msgs[1], OvpnMessage::Success(s) if s == "pid=42"),
+            "second response should be Success, got {:?}",
+            msgs[1]
+        );
+        assert!(codec.expected_queue.is_empty());
     }
 
     // --- Accumulation limit tests ---
 
     #[test]
-    fn unlimited_accumulation_default() {
+    fn default_accumulation_limit_allows_reasonable_responses() {
         let mut codec = OvpnCodec::new();
         let mut enc = BytesMut::new();
         codec
             .encode(OvpnCommand::Status(StatusFormat::V1), &mut enc)
             .unwrap();
-        // Feed 500 lines + END — should succeed with Unlimited default.
+        // Feed 500 lines + END — well within the default Max(10_000).
         let mut data = String::new();
         for i in 0..500 {
             data.push_str(&format!("line {i}\n"));

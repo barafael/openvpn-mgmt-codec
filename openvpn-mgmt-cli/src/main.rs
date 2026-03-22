@@ -238,6 +238,13 @@ fn print_notification(notif: &Notification) {
         Notification::RsaSign { data } => {
             println!("[RSA_SIGN] {data}");
         }
+        Notification::PkSign { data, algorithm } => match algorithm {
+            Some(algo) => println!("[PK_SIGN] algo={algo} {data}"),
+            None => println!("[PK_SIGN] {data}"),
+        },
+        Notification::Info { message } => {
+            println!("[INFO] {message}");
+        }
         Notification::Pkcs11IdCount { count } => {
             println!("[PKCS11ID-COUNT] {count}");
         }

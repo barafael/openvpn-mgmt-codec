@@ -2490,8 +2490,6 @@ fn unrecognized_notification_falls_back_to_simple() {
         ">NOTIFY:info,remote-exit,EXIT\n",
         ">UPDOWN:UP,tun0,1500,1500,10.8.0.2,10.8.0.1,init\n",
         ">INFOMSG:WEB_AUTH::https://auth.example.com/login?session=abc123\n",
-        ">PK_SIGN:dGhlIGRhdGEgdG8gc2lnbg==\n",
-        ">PK_SIGN:dGhlIGRhdGEgdG8gc2lnbg==,RSA_PKCS1_PSS_PADDING\n",
         ">NEED-CERTIFICATE:macosx-keychain:subject:o=OpenVPN-TEST\n",
     ];
     for input in &unknown_types {
@@ -2514,13 +2512,26 @@ fn unrecognized_notification_falls_back_to_simple() {
 fn pk_sign_notification_with_algorithm() {
     let msgs = decode_all(">PK_SIGN:dGhlIGRhdGEgdG8gc2lnbg==,ECDSA\n");
     assert_eq!(msgs.len(), 1);
-    match &msgs[0] {
-        OvpnMessage::Notification(Notification::Simple { kind, payload }) => {
-            assert_eq!(kind, "PK_SIGN");
-            assert!(payload.contains("ECDSA"));
-        }
-        other => panic!("unexpected: {other:?}"),
-    }
+    assert!(matches!(
+        &msgs[0],
+        OvpnMessage::Notification(Notification::PkSign {
+            data,
+            algorithm: Some(algo),
+        }) if data == "dGhlIGRhdGEgdG8gc2lnbg==" && algo == "ECDSA"
+    ));
+}
+
+#[test]
+fn pk_sign_notification_without_algorithm() {
+    let msgs = decode_all(">PK_SIGN:dGhlIGRhdGEgdG8gc2lnbg==\n");
+    assert_eq!(msgs.len(), 1);
+    assert!(matches!(
+        &msgs[0],
+        OvpnMessage::Notification(Notification::PkSign {
+            data,
+            algorithm: None,
+        }) if data == "dGhlIGRhdGEgdG8gc2lnbg=="
+    ));
 }
 
 #[test]

@@ -242,6 +242,11 @@ fn notification_to_wire(notif: &Notification) -> String {
             let flag = if *primary { "1" } else { "0" };
             format!(">CLIENT:ADDRESS,{cid},{addr},{flag}\n")
         }
+        Notification::PkSign { data, algorithm } => match algorithm {
+            Some(algo) => format!(">PK_SIGN:{data},{algo}\n"),
+            None => format!(">PK_SIGN:{data}\n"),
+        },
+        Notification::Info { message } => format!(">INFO:{message}\n"),
         Notification::Simple { kind, payload } => format!(">{kind}:{payload}\n"),
     }
 }

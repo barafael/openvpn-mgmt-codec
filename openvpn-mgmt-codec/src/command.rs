@@ -115,6 +115,14 @@ pub enum OvpnCommand {
     // --- Real-time notification control ---
     /// Control real-time log streaming and/or dump log history.
     /// Wire: `log on` / `log off` / `log all` / `log on all` / `log 20`
+    ///
+    /// # Pitfall
+    ///
+    /// At `verb 4` or above, [`StreamMode::All`] and [`StreamMode::OnAll`]
+    /// can produce an extremely large — or effectively unbounded — history
+    /// dump, because OpenVPN logs its own management I/O at that verbosity.
+    /// Prefer [`StreamMode::On`] (no history) or [`StreamMode::Recent`] to
+    /// cap the dump size.
     Log(StreamMode),
 
     /// Control real-time echo parameter notifications.
@@ -874,6 +882,32 @@ impl FromStr for OvpnCommand {
 ///
 /// * `bytecount_interval` — seconds between `>BYTECOUNT:` notifications
 ///   (pass `0` to skip enabling byte counts).
+///
+/// # Initial state
+///
+/// The sequence uses [`StreamMode::OnAll`] for log and state, which
+/// enables real-time streaming **and** dumps the history buffer as a
+/// multi-line response. The state history response contains the current
+/// state as its last entry — use
+/// [`parse_current_state`](crate::parsed_response::parse_current_state)
+/// to extract it. Do **not** rely solely on `>STATE:` notifications for
+/// the initial state, because notifications only fire on *transitions*.
+///
+/// # Pitfall: `log on all` at high verbosity
+///
+/// At `verb 4` or above, the log history dump from `log on all` can be
+/// extremely large (OpenVPN logs its own management I/O at that level).
+/// The dump may grow faster than it drains, effectively hanging the
+/// multi-line accumulation. Prefer [`StreamMode::On`] (no history) at
+/// high verbosity, or use [`StreamMode::Recent`] to cap the dump size.
+///
+/// # Notification interleaving
+///
+/// The commands produce a mix of multi-line and single-line responses.
+/// Asynchronous notifications (`>STATE:`, `>LOG:`, `>HOLD:`, etc.) can
+/// arrive between any command and its response. The codec handles this
+/// transparently, but consumers reading from the stream must handle
+/// [`OvpnMessage::Notification`](crate::OvpnMessage::Notification) variants at any point.
 ///
 /// # Examples
 ///

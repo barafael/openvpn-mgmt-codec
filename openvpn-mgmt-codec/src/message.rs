@@ -211,6 +211,38 @@ pub enum Notification {
         data: String,
     },
 
+    /// `>PK_SIGN:base64_data[,algorithm]`
+    ///
+    /// Sent by OpenVPN 2.5+ when `--management-external-key` is active and
+    /// a signature is needed. The management client responds with
+    /// [`PkSig`](crate::OvpnCommand::PkSig).
+    ///
+    /// The `algorithm` field is present only when the management client
+    /// announced version > 2 via the `version` command.
+    ///
+    /// Source: [`management-notes.txt`](https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt),
+    /// [`ssl_openssl.c` `get_sig_from_man()`](https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/ssl_openssl.c).
+    PkSign {
+        /// Base64-encoded data to be signed.
+        data: String,
+        /// Signing algorithm (e.g. `RSA_PKCS1_PADDING`, `EC`).
+        /// Only present when management client version > 2.
+        algorithm: Option<String>,
+    },
+
+    /// `>INFO:message`
+    ///
+    /// Informational notification sent at any time (not just the initial banner).
+    /// Notable sub-types include `>INFO:WEB_AUTH::url` for web-based authentication.
+    ///
+    /// The initial `>INFO:` banner on connect is still surfaced as
+    /// [`OvpnMessage::Info`] (before the codec enters notification mode).
+    /// This variant captures all subsequent `>INFO:` messages.
+    Info {
+        /// The info message content.
+        message: String,
+    },
+
     /// `>REMOTE:host,port,protocol`
     Remote {
         /// Remote server hostname or IP.
@@ -490,6 +522,39 @@ mod tests {
         let dbg = format!("{notif:?}");
         assert!(dbg.contains("Proxy"));
         assert!(dbg.contains("proxy.local"));
+    }
+
+    #[test]
+    fn debug_pk_sign_with_algorithm() {
+        let notif = Notification::PkSign {
+            data: "dGVzdA==".to_string(),
+            algorithm: Some("RSA_PKCS1_PADDING".to_string()),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("PkSign"));
+        assert!(dbg.contains("RSA_PKCS1_PADDING"));
+        assert!(dbg.contains("dGVzdA=="));
+    }
+
+    #[test]
+    fn debug_pk_sign_without_algorithm() {
+        let notif = Notification::PkSign {
+            data: "dGVzdA==".to_string(),
+            algorithm: None,
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("PkSign"));
+        assert!(dbg.contains("None"));
+    }
+
+    #[test]
+    fn debug_info_notification() {
+        let notif = Notification::Info {
+            message: "WEB_AUTH::https://example.com/auth".to_string(),
+        };
+        let dbg = format!("{notif:?}");
+        assert!(dbg.contains("Info"));
+        assert!(dbg.contains("WEB_AUTH"));
     }
 
     #[test]

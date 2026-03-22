@@ -7,6 +7,13 @@
 //! function suitable for use with stream combinators like
 //! `StreamExt::map`).
 //!
+//! # Notification interleaving
+//!
+//! [`ManagementEvent::Notification`] can appear **between** sending a
+//! command and receiving its [`ManagementEvent::Response`]. Consumers
+//! should always handle both variants in their stream loop — do not
+//! assume the next item after sending a command will be its response.
+//!
 //! # Example
 //!
 //! ```no_run

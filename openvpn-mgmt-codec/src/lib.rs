@@ -30,6 +30,8 @@ pub mod redacted;
 pub mod remote_action;
 /// Daemon signals (HUP, TERM, USR1, USR2).
 pub mod signal;
+/// Typed parsers for `status` command responses (client table, routing, stats).
+pub mod status;
 /// Status output format versions (V1/V2/V3).
 pub mod status_format;
 /// Stream adapter categorizing messages as responses or notifications.
@@ -64,5 +66,9 @@ pub use version_info::VersionInfo;
 
 // Re-export key items from sub-modules for convenience.
 pub use command::connection_sequence;
-pub use parsed_response::{LoadStats, ParseResponseError};
+pub use parsed_response::{LoadStats, ParseResponseError, StateEntry};
+pub use status::{
+    ClientStatistics, ConnectedClient, ParseStatusError, RoutingEntry, StatusResponse,
+    parse_client_statistics, parse_status,
+};
 pub use stream::{ManagementEvent, classify};

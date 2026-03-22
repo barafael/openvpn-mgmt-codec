@@ -314,7 +314,7 @@ fn static_challenge_no_double_escape_of_base64() {
 // ---  ---
 // Unknown / future notification types degrade to Simple
 // Source: protocol evolution — new notification types added regularly
-//         e.g. >INFOMSG:, >PK_SIGN:, >NOTIFY:, >UPDOWN:
+//         e.g. >INFOMSG:, >NOTIFY:, >UPDOWN:
 // ---  ---
 
 #[test]
@@ -332,6 +332,7 @@ fn unknown_notification_type_degrades_to_simple() {
 
 #[test]
 fn infomsg_web_auth_degrades_to_simple() {
+    // >INFOMSG: (not >INFO:) is a distinct, unmodeled notification type.
     let msgs = decode_all(">INFOMSG:WEB_AUTH::https://auth.example.com/verify?session=abc123\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
@@ -344,16 +345,60 @@ fn infomsg_web_auth_degrades_to_simple() {
 }
 
 #[test]
-fn pk_sign_with_algorithm_degrades_to_simple() {
-    // >PK_SIGN is newer than >RSA_SIGN, not yet modeled.
-    let msgs = decode_all(">PK_SIGN:AABBCCDD==,RSA_PKCS1_PSS_PADDING,SHA256\n");
+fn pk_sign_with_algorithm_parsed() {
+    // >PK_SIGN:base64_data,algorithm — now properly parsed.
+    let msgs = decode_all(">PK_SIGN:AABBCCDD==,RSA_PKCS1_PSS_PADDING\n");
     assert_eq!(msgs.len(), 1);
-    match &msgs[0] {
-        OvpnMessage::Notification(Notification::Simple { kind, .. }) => {
-            assert_eq!(kind, "PK_SIGN");
-        }
-        other => panic!("expected Simple fallback, got: {other:?}"),
-    }
+    assert!(matches!(
+        &msgs[0],
+        OvpnMessage::Notification(Notification::PkSign {
+            data,
+            algorithm: Some(algo),
+        }) if data == "AABBCCDD==" && algo == "RSA_PKCS1_PSS_PADDING"
+    ));
+}
+
+#[test]
+fn pk_sign_without_algorithm_parsed() {
+    // >PK_SIGN:base64_data — no algorithm (management client version ≤ 2).
+    let msgs = decode_all(">PK_SIGN:AABBCCDD==\n");
+    assert_eq!(msgs.len(), 1);
+    assert!(matches!(
+        &msgs[0],
+        OvpnMessage::Notification(Notification::PkSign {
+            data,
+            algorithm: None,
+        }) if data == "AABBCCDD=="
+    ));
+}
+
+#[test]
+fn pk_sign_empty_payload_degrades_to_simple() {
+    let msgs = decode_all(">PK_SIGN:\n");
+    assert_eq!(msgs.len(), 1);
+    assert!(matches!(
+        &msgs[0],
+        OvpnMessage::Notification(Notification::Simple { kind, .. }) if kind == "PK_SIGN"
+    ));
+}
+
+// ---  ---
+// >INFO: routing: first is OvpnMessage::Info, subsequent are Notification::Info
+// ---  ---
+
+#[test]
+fn first_info_is_banner_subsequent_are_notifications() {
+    let msgs = decode_all(
+        ">INFO:OpenVPN Management Interface Version 5\n\
+         >INFO:WEB_AUTH::https://auth.example.com\n",
+    );
+    assert_eq!(msgs.len(), 2);
+    assert!(matches!(&msgs[0], OvpnMessage::Info(s) if s.contains("Management")));
+    assert!(matches!(
+        &msgs[1],
+        OvpnMessage::Notification(Notification::Info { message })
+        if message.contains("WEB_AUTH")
+    ));
 }
 
 // ---  ---

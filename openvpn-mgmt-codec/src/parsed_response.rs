@@ -16,6 +16,7 @@
 //! assert_eq!(stats.nclients, 3);
 //! ```
 
+use crate::openvpn_state::OpenVpnState;
 use crate::version_info::VersionInfo;
 
 /// Aggregated server statistics from `load-stats`.
@@ -62,6 +63,22 @@ pub enum ParseResponseError {
     /// An unrecognized key appeared in the `load-stats` payload.
     #[error("unexpected field {0:?} in load-stats payload")]
     UnexpectedField(String),
+
+    /// A state history line had too few fields.
+    #[error("state entry has too few fields (need >= 2, got {0})")]
+    StateTooFewFields(usize),
+
+    /// The timestamp in a state entry was not a valid integer.
+    #[error("invalid timestamp in state entry: {0:?}")]
+    InvalidTimestamp(String),
+
+    /// The state name could not be parsed.
+    #[error("invalid state name: {0}")]
+    InvalidStateName(#[from] crate::openvpn_state::ParseOpenVpnStateError),
+
+    /// The state history was empty when a current state was requested.
+    #[error("state history is empty")]
+    EmptyStateHistory,
 }
 
 /// Parse the `SUCCESS:` payload from a `pid` command.
@@ -163,6 +180,137 @@ pub fn parse_version(lines: &[String]) -> VersionInfo {
     VersionInfo::parse(lines)
 }
 
+/// A single state history entry from the `state` command's multi-line response.
+///
+/// Wire format: `timestamp,state_name,description,local_ip,remote_ip,remote_port,local_addr,local_port,local_ipv6`
+///
+/// Fields mirror [`Notification::State`](crate::Notification::State) exactly.
+///
+/// ```
+/// use openvpn_mgmt_codec::parsed_response::parse_state_entry;
+///
+/// let entry = parse_state_entry("1711234567,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,,").unwrap();
+/// assert_eq!(entry.timestamp, 1711234567);
+/// assert_eq!(entry.name.to_string(), "CONNECTED");
+/// assert_eq!(entry.remote_ip, "198.51.100.1");
+/// assert_eq!(entry.remote_port, Some(1194));
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StateEntry {
+    /// Unix timestamp of the state change.
+    pub timestamp: u64,
+    /// State name (e.g. `Connected`, `Reconnecting`).
+    pub name: OpenVpnState,
+    /// Verbose description (mostly for RECONNECTING/EXITING).
+    pub description: String,
+    /// TUN/TAP local IPv4 address (may be empty).
+    pub local_ip: String,
+    /// Remote server address (may be empty).
+    pub remote_ip: String,
+    /// Remote server port (empty in many states).
+    pub remote_port: Option<u16>,
+    /// Local address (may be empty).
+    pub local_addr: String,
+    /// Local port (empty in many states).
+    pub local_port: Option<u16>,
+    /// TUN/TAP local IPv6 address (may be empty).
+    pub local_ipv6: String,
+}
+
+/// Parse a single state history line.
+///
+/// The wire format is a comma-separated list of 2–9 fields. Fields beyond
+/// the state name are optional and default to empty / `None`.
+///
+/// ```
+/// use openvpn_mgmt_codec::parsed_response::parse_state_entry;
+///
+/// // Minimal (just timestamp + state):
+/// let e = parse_state_entry("1711234567,CONNECTED").unwrap();
+/// assert_eq!(e.name.to_string(), "CONNECTED");
+/// assert!(e.description.is_empty());
+///
+/// // Invalid state name:
+/// assert!(parse_state_entry("1711234567,BOGUS").is_err());
+/// ```
+pub fn parse_state_entry(line: &str) -> Result<StateEntry, ParseResponseError> {
+    let fields: Vec<&str> = line.splitn(9, ',').collect();
+    if fields.len() < 2 {
+        return Err(ParseResponseError::StateTooFewFields(fields.len()));
+    }
+
+    let timestamp = fields[0]
+        .parse::<u64>()
+        .map_err(|_| ParseResponseError::InvalidTimestamp(fields[0].to_string()))?;
+    let name = fields[1].parse::<OpenVpnState>()?;
+
+    let get = |i: usize| fields.get(i).copied().unwrap_or("").to_string();
+    let get_port = |i: usize| {
+        fields.get(i).and_then(|s| {
+            if s.is_empty() {
+                None
+            } else {
+                s.parse::<u16>().ok()
+            }
+        })
+    };
+
+    Ok(StateEntry {
+        timestamp,
+        name,
+        description: get(2),
+        local_ip: get(3),
+        remote_ip: get(4),
+        remote_port: get_port(5),
+        local_addr: get(6),
+        local_port: get_port(7),
+        local_ipv6: get(8),
+    })
+}
+
+/// Parse the full multi-line response from a `state` command.
+///
+/// Each line is parsed as a [`StateEntry`]. Lines that fail to parse are
+/// returned as errors immediately.
+///
+/// ```
+/// use openvpn_mgmt_codec::parsed_response::parse_state_history;
+///
+/// let lines = vec![
+///     "1711234560,CONNECTING,,,,,,,".to_string(),
+///     "1711234567,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,,".to_string(),
+/// ];
+/// let entries = parse_state_history(&lines).unwrap();
+/// assert_eq!(entries.len(), 2);
+/// assert_eq!(entries[1].name.to_string(), "CONNECTED");
+/// ```
+pub fn parse_state_history(lines: &[String]) -> Result<Vec<StateEntry>, ParseResponseError> {
+    lines.iter().map(|l| parse_state_entry(l)).collect()
+}
+
+/// Extract the current (most recent) state from a `state` or `state on all`
+/// multi-line response.
+///
+/// This is a convenience wrapper that parses all entries and returns the
+/// last one.
+///
+/// ```
+/// use openvpn_mgmt_codec::parsed_response::parse_current_state;
+///
+/// let lines = vec![
+///     "1711234560,CONNECTING,,,,,,,".to_string(),
+///     "1711234567,CONNECTED,SUCCESS,10.8.0.6,,,".to_string(),
+/// ];
+/// let current = parse_current_state(&lines).unwrap();
+/// assert_eq!(current.name.to_string(), "CONNECTED");
+/// ```
+pub fn parse_current_state(lines: &[String]) -> Result<StateEntry, ParseResponseError> {
+    parse_state_history(lines)?
+        .into_iter()
+        .last()
+        .ok_or(ParseResponseError::EmptyStateHistory)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,6 +399,94 @@ mod tests {
     #[test]
     fn hold_invalid_value() {
         assert!(parse_hold("hold=maybe").is_err());
+    }
+
+    // --- parse_state_entry ---
+
+    #[test]
+    fn state_entry_full() {
+        let e =
+            parse_state_entry("1711234567,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,0.0.0.0,0")
+                .unwrap();
+        assert_eq!(e.timestamp, 1711234567);
+        assert_eq!(e.name.to_string(), "CONNECTED");
+        assert_eq!(e.description, "SUCCESS");
+        assert_eq!(e.local_ip, "10.8.0.6");
+        assert_eq!(e.remote_ip, "198.51.100.1");
+        assert_eq!(e.remote_port, Some(1194));
+        assert_eq!(e.local_addr, "0.0.0.0");
+        assert_eq!(e.local_port, Some(0));
+    }
+
+    #[test]
+    fn state_entry_minimal() {
+        let e = parse_state_entry("0,CONNECTING").unwrap();
+        assert_eq!(e.timestamp, 0);
+        assert!(e.description.is_empty());
+        assert!(e.remote_port.is_none());
+    }
+
+    #[test]
+    fn state_entry_optional_ports_empty() {
+        let e = parse_state_entry("100,WAIT,desc,10.0.0.1,1.2.3.4,,eth0,").unwrap();
+        assert_eq!(e.remote_ip, "1.2.3.4");
+        assert_eq!(e.remote_port, None);
+        assert_eq!(e.local_addr, "eth0");
+        assert_eq!(e.local_port, None);
+    }
+
+    #[test]
+    fn state_entry_too_few_fields() {
+        assert!(matches!(
+            parse_state_entry("just_one"),
+            Err(ParseResponseError::StateTooFewFields(1))
+        ));
+    }
+
+    #[test]
+    fn state_entry_bad_timestamp() {
+        assert!(matches!(
+            parse_state_entry("notanumber,CONNECTED"),
+            Err(ParseResponseError::InvalidTimestamp(_))
+        ));
+    }
+
+    #[test]
+    fn state_entry_bad_state_name() {
+        assert!(parse_state_entry("0,BOGUS_STATE").is_err());
+    }
+
+    // --- parse_state_history / parse_current_state ---
+
+    #[test]
+    fn state_history_roundtrip() {
+        let lines = vec![
+            "100,CONNECTING,,,,,,,".to_string(),
+            "200,CONNECTED,SUCCESS,10.8.0.6,,,".to_string(),
+        ];
+        let entries = parse_state_history(&lines).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].name.to_string(), "CONNECTING");
+        assert_eq!(entries[1].name.to_string(), "CONNECTED");
+    }
+
+    #[test]
+    fn current_state_returns_last() {
+        let lines = vec![
+            "100,CONNECTING,,,,,,,".to_string(),
+            "200,CONNECTED,SUCCESS,,,,,".to_string(),
+        ];
+        let current = parse_current_state(&lines).unwrap();
+        assert_eq!(current.timestamp, 200);
+    }
+
+    #[test]
+    fn current_state_empty_history() {
+        let empty: Vec<String> = vec![];
+        assert!(matches!(
+            parse_current_state(&empty),
+            Err(ParseResponseError::EmptyStateHistory)
+        ));
     }
 
     // --- parse_version ---
