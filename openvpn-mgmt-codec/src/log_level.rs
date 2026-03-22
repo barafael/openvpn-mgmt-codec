@@ -33,6 +33,20 @@ pub enum LogLevel {
     Unknown(String),
 }
 
+impl LogLevel {
+    /// Human-readable label (e.g. `"INFO"`, `"WARN"`).
+    pub fn label(&self) -> &str {
+        match self {
+            Self::Info => "INFO",
+            Self::Debug => "DEBUG",
+            Self::Warning => "WARN",
+            Self::NonFatal => "NFATAL",
+            Self::Fatal => "FATAL",
+            Self::Unknown(s) => s,
+        }
+    }
+}
+
 impl FromStr for LogLevel {
     type Err = ParseLogLevelError;
 

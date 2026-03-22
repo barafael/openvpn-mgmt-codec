@@ -1,0 +1,20 @@
+[package]
+name = "openvpn-mgmt-ui"
+version = "0.7.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+futures = "0.3"
+iced = { version = "0.14", features = ["tokio"] }
+iced_anim = { version = "0.3", features = ["widgets"] }
+iced_aw = "0.13"
+lucide-icons = { version = "0.572", features = ["iced"] }
+nucleo-matcher = "0.3.1"
+openvpn-mgmt-codec = { path = "../openvpn-mgmt-codec" }
+plotters = { version = "0.3.7", default-features = false, features = ["line_series"] }
+plotters-iced2 = "0.14.0"
+tokio = { version = "1", features = ["net", "sync", "macros", "time"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
