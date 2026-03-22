@@ -16,6 +16,7 @@ The current management version is **5**
 Replacement for `rsa-sig`. Supports ECDSA, RSA-PSS, and other key types.
 
 **Wire format:**
+
 ```
 pk-sig
 {base64_line_1}
@@ -28,6 +29,7 @@ is pending — [`EKS_SOLICIT` state](https://github.com/OpenVPN/openvpn/blob/mas
 
 **Help text:**
 [`man_help()`](https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/manage.c):
+
 ```
 pk-sig                 : Enter a signature in response to >PK_SIGN challenge
                          Enter signature base64 on subsequent lines followed by END
@@ -39,6 +41,7 @@ structurally identical to `man_rsa_sig()`. Both set `IEC_PK_SIGN` and
 accumulate base64 input.
 
 **Implementation:**
+
 - Add `OvpnCommand::PkSig { base64_lines: Vec<String> }` — same shape as
   `RsaSig`.
 - Encoder: `write_block(dst, "pk-sig", &base64_lines, mode)`
@@ -57,12 +60,14 @@ Sets which env vars are included in `>CLIENT:ENV` blocks.
 **Response:** `SUCCESS: env_filter_level=N`
 
 **Help text:**
+
 ```
 env-filter [level]     : Set env-var filter level
 ```
 
 **Handler:**
 [`man_env_filter()`](https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/manage.c):
+
 ```c
 static void man_env_filter(struct management *man, const int level)
 {
@@ -72,6 +77,7 @@ static void man_env_filter(struct management *man, const int level)
 ```
 
 **Implementation:**
+
 - Add `OvpnCommand::EnvFilter(u32)` — single integer argument, default 0.
 - Encoder: `env-filter {level}`
 - `expected_response` → `SuccessOrError`
@@ -88,12 +94,14 @@ Returns the number of `--remote` entries configured on the server.
 **Response:** Multi-line — a single number, then `END`.
 
 **Help text:**
+
 ```
 remote-entry-count     : Get number of available remote entries.
 ```
 
 **Handler:**
 [`man_remote_entry_count()`](https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/manage.c):
+
 ```c
 count = (*man->persist.callback.remote_entry_count)(...);
 msg(M_CLIENT, "%u", count);
@@ -104,6 +112,7 @@ msg(M_CLIENT, "END");
 ([`specs.md:44`](specs.md#L44)).
 
 **Implementation:**
+
 - Add `OvpnCommand::RemoteEntryCount`
 - Encoder: `remote-entry-count`
 - `expected_response` → `MultiLine`
@@ -122,12 +131,14 @@ Fetches `--remote` entries by index or all at once.
 **Response:** Multi-line — `index,remote_string` per line, then `END`.
 
 **Help text:**
+
 ```
 remote-entry-get  i|all [j]: Get remote entry at index = i to to j-1 or all.
 ```
 
 **Handler:**
 [`man_remote_entry_get()`](https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/manage.c):
+
 ```c
 for (unsigned int i = from; i < min_uint(to, count); i++) {
     msg(M_CLIENT, "%u,%s", i, remote);
@@ -138,6 +149,7 @@ msg(M_CLIENT, "END");
 **Version gate:** Same as `remote-entry-count` — management version >= 3.
 
 **Implementation:**
+
 - Add `OvpnCommand::RemoteEntryGet(RemoteEntryRange)` with:
   ```rust
   pub enum RemoteEntryRange {
@@ -163,6 +175,7 @@ Server-mode only. Pushes option updates to all connected clients.
 `ERROR: push-update command failed`
 
 **Help text:**
+
 ```
 push-update-broad options : Broadcast a message to update the specified options.
                             Ex. push-update-broad "route something, -dns"
@@ -173,6 +186,7 @@ push-update-broad options : Broadcast a message to update the specified options.
 with `UPT_BROADCAST`.
 
 **Implementation:**
+
 - Add `OvpnCommand::PushUpdateBroad { options: String }`
 - Encoder: `push-update-broad {quoted_options}` (use `quote_and_escape`)
 - `expected_response` → `SuccessOrError`
@@ -190,6 +204,7 @@ Server-mode only. Pushes option update to a specific client.
 `ERROR: push-update-cid fail during cid parsing` on bad CID.
 
 **Help text:**
+
 ```
 push-update-cid CID options : Send an update message to the client identified by CID.
 ```
@@ -199,6 +214,7 @@ push-update-cid CID options : Send an update message to the client identified by
 with `UPT_BY_CID`. Parses CID with `parse_cid()`.
 
 **Implementation:**
+
 - Add `OvpnCommand::PushUpdateCid { cid: u64, options: String }`
 - Encoder: `push-update-cid {cid} {quoted_options}`
 - `expected_response` → `SuccessOrError`

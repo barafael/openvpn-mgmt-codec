@@ -118,11 +118,11 @@ These deviations were found by running the conformance test suite against
 OpenVPN 2.6.16 on Alpine Linux. They are **not documented** in
 `management-notes.txt` or any other spec source.
 
-| Deviation | Spec / prior versions | OpenVPN 2.6.16 | Codec fix |
-| --- | --- | --- | --- |
-| Password prompt line ending | Implicitly `\r\n` (line-oriented protocol) | `ENTER PASSWORD:` sent **without any line terminator** (interactive prompt, expects password on same line) | Detect prompt in buffer even without `\n`; skip bare empty lines outside accumulation contexts to absorb trailing `\n` from older versions |
-| Management version header | `Management Interface Version: N` | `Management Version: N` (word "Interface" dropped) | Fuzzy match: any line starting with "management" containing "version", extract trailing number |
-| `management-client-auth` requires `auth-user-pass` | Not documented — certificate auth alone should suffice | TLS handshake fails with `Auth Username/Password was not provided by peer` unless the client sends `auth-user-pass` credentials | Client config must include `auth-user-pass` with credentials; management interface receives them in the `>CLIENT:CONNECT` ENV block |
+| Deviation                                          | Spec / prior versions                                  | OpenVPN 2.6.16                                                                                                                  | Codec fix                                                                                                                                  |
+| -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Password prompt line ending                        | Implicitly `\r\n` (line-oriented protocol)             | `ENTER PASSWORD:` sent **without any line terminator** (interactive prompt, expects password on same line)                      | Detect prompt in buffer even without `\n`; skip bare empty lines outside accumulation contexts to absorb trailing `\n` from older versions |
+| Management version header                          | `Management Interface Version: N`                      | `Management Version: N` (word "Interface" dropped)                                                                              | Fuzzy match: any line starting with "management" containing "version", extract trailing number                                             |
+| `management-client-auth` requires `auth-user-pass` | Not documented — certificate auth alone should suffice | TLS handshake fails with `Auth Username/Password was not provided by peer` unless the client sends `auth-user-pass` credentials | Client config must include `auth-user-pass` with credentials; management interface receives them in the `>CLIENT:CONNECT` ENV block        |
 
 ### Missing from codec (spec-defined commands not implemented)
 
@@ -164,13 +164,13 @@ OpenVPN 2.6.16 on Alpine Linux. They are **not documented** in
 
 ## Testing Methodology
 
-| Layer                 | Technique                                                                                 | What it found                                                                                            |
-| --------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Layer                 | Technique                                                                                  | What it found                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | Spec conformance      | ~190 protocol tests from fixtures captured from real OpenVPN sessions and client libraries | Correct parsing of all notification types, response formats, state names                                 |
-| Defensive/injection   | ~100 tests in `tests/defensive/`                                                          | Newline injection, `END` injection, quote breakout, NUL bytes, multi-line truncation, Unicode edge cases |
-| Property-based        | 30+ proptest cases in `tests/proptest_roundtrip.rs`                                       | Framing invariants (single `\n`), no bare `END`, codec state independence                                |
-| Mutation              | cargo-mutants with `.cargo/mutants.toml` exclusions                                       | Dead code paths, undertested branches                                                                    |
-| Real-world edge cases | `tests/defensive/real_world.rs` sourced from CVEs, forums, Android bug reports            | Truncated STATE lines, double-encoded Windows paths, overlong CN/IP fields, stale PID responses          |
+| Defensive/injection   | ~100 tests in `tests/defensive/`                                                           | Newline injection, `END` injection, quote breakout, NUL bytes, multi-line truncation, Unicode edge cases |
+| Property-based        | 30+ proptest cases in `tests/proptest_roundtrip.rs`                                        | Framing invariants (single `\n`), no bare `END`, codec state independence                                |
+| Mutation              | cargo-mutants with `.cargo/mutants.toml` exclusions                                        | Dead code paths, undertested branches                                                                    |
+| Real-world edge cases | `tests/defensive/real_world.rs` sourced from CVEs, forums, Android bug reports             | Truncated STATE lines, double-encoded Windows paths, overlong CN/IP fields, stale PID responses          |
 
 ## Key Learnings
 

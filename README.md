@@ -70,10 +70,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 `OvpnCodec` implements `Encoder<OvpnCommand>` and `Decoder` (Item =
 `OvpnMessage`).
 
-| Direction | Type          | Description                                                                                               |
-|-----------|---------------|-----------------------------------------------------------------------------------------------------------|
-| Encode    | `OvpnCommand` | One of 44 command variants -- serialised to the wire format with proper escaping and multi-line framing.  |
-| Decode    | `OvpnMessage` | `Success`, `Error`, `SingleValue`, `MultiLine`, `Notification`, `Info`, or `Unrecognized`.                |
+| Direction | Type          | Description                                                                                              |
+| --------- | ------------- | -------------------------------------------------------------------------------------------------------- |
+| Encode    | `OvpnCommand` | One of 44 command variants -- serialised to the wire format with proper escaping and multi-line framing. |
+| Decode    | `OvpnMessage` | `Success`, `Error`, `SingleValue`, `MultiLine`, `Notification`, `Info`, or `Unrecognized`.               |
 
 Real-time notifications (`>STATE:`, `>BYTECOUNT:`, `>CLIENT:`, etc.) are
 emitted as `OvpnMessage::Notification` and can arrive at any time,

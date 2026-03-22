@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 `OvpnMessage`).
 
 | Direction | Type          | Description                                                                                                    |
-|-----------|---------------|----------------------------------------------------------------------------------------------------------------|
+| --------- | ------------- | -------------------------------------------------------------------------------------------------------------- |
 | Encode    | `OvpnCommand` | One of 50 command variants -- serialised to the wire format with proper escaping and multi-line framing.       |
 | Decode    | `OvpnMessage` | `Success`, `Error`, `MultiLine`, `Pkcs11IdEntry`, `Notification`, `Info`, `PasswordPrompt`, or `Unrecognized`. |
 

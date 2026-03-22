@@ -43,7 +43,7 @@ are absent from `management-notes.txt` and all other documentation:
 - **`management-client-auth` requires `auth-user-pass`**: the VPN client
   must send username/password credentials even when using certificate auth.
   Without them, the TLS handshake fails with `Auth Username/Password was
-  not provided by peer` and `>CLIENT:CONNECT` is never sent to the
+not provided by peer` and `>CLIENT:CONNECT` is never sent to the
   management interface.
 
 - **`nc -z` healthchecks steal the management slot**: OpenVPN's management
@@ -126,26 +126,26 @@ port 7505. Each test opens its own management connection. Tests run with
 `--test-threads=1` because the management interface accepts one client at
 a time.
 
-| Test | What it validates |
-|------|-------------------|
-| `connect_and_authenticate` | Password prompt, management auth, INFO banner, HOLD notification |
-| `version_returns_multiline_with_management_version` | `version` → MultiLine, management version parsing |
-| `help_returns_multiline` | `help` → MultiLine with >10 command descriptions |
-| `pid_returns_valid_process_id` | `pid` → Success, `parse_pid()` returns positive PID |
-| `state_returns_multiline_in_hold` | `state` → MultiLine with at least one state entry |
-| `hold_query_parses_correctly` | `hold` → Success, `parse_hold()` matches observed hold state |
-| `status_v1_returns_multiline` | `status 1` → non-empty MultiLine |
-| `status_v2_returns_multiline` | `status 2` → non-empty MultiLine |
-| `status_v3_returns_multiline` | `status 3` → non-empty MultiLine |
-| `log_on_off_toggle` | `log on` → Success(ON), `log off` → Success(OFF) |
-| `echo_on_off_toggle` | `echo on` → Success(ON), `echo off` → Success(OFF) |
-| `state_stream_on_off_toggle` | `state on` → Success(ON), `state off` → Success(OFF) |
-| `bytecount_toggle` | `bytecount 5` → Success, `bytecount 0` → Success |
-| `hold_release_triggers_state_notification` | `hold release` → Success + `>STATE:` notification |
-| `log_all_returns_multiline_history` | `log all` → non-empty MultiLine (buffered log history) |
-| `unknown_raw_command_returns_error` | Unknown command → `ERROR` response |
-| `sequential_commands_maintain_codec_state` | pid→Success, version→MultiLine, help→MultiLine, pid→Success |
-| `exit_closes_connection` | `exit` → stream ends (None) |
+| Test                                                | What it validates                                                |
+| --------------------------------------------------- | ---------------------------------------------------------------- |
+| `connect_and_authenticate`                          | Password prompt, management auth, INFO banner, HOLD notification |
+| `version_returns_multiline_with_management_version` | `version` → MultiLine, management version parsing                |
+| `help_returns_multiline`                            | `help` → MultiLine with >10 command descriptions                 |
+| `pid_returns_valid_process_id`                      | `pid` → Success, `parse_pid()` returns positive PID              |
+| `state_returns_multiline_in_hold`                   | `state` → MultiLine with at least one state entry                |
+| `hold_query_parses_correctly`                       | `hold` → Success, `parse_hold()` matches observed hold state     |
+| `status_v1_returns_multiline`                       | `status 1` → non-empty MultiLine                                 |
+| `status_v2_returns_multiline`                       | `status 2` → non-empty MultiLine                                 |
+| `status_v3_returns_multiline`                       | `status 3` → non-empty MultiLine                                 |
+| `log_on_off_toggle`                                 | `log on` → Success(ON), `log off` → Success(OFF)                 |
+| `echo_on_off_toggle`                                | `echo on` → Success(ON), `echo off` → Success(OFF)               |
+| `state_stream_on_off_toggle`                        | `state on` → Success(ON), `state off` → Success(OFF)             |
+| `bytecount_toggle`                                  | `bytecount 5` → Success, `bytecount 0` → Success                 |
+| `hold_release_triggers_state_notification`          | `hold release` → Success + `>STATE:` notification                |
+| `log_all_returns_multiline_history`                 | `log all` → non-empty MultiLine (buffered log history)           |
+| `unknown_raw_command_returns_error`                 | Unknown command → `ERROR` response                               |
+| `sequential_commands_maintain_codec_state`          | pid→Success, version→MultiLine, help→MultiLine, pid→Success      |
+| `exit_closes_connection`                            | `exit` → stream ends (None)                                      |
 
 ### Server-mode lifecycle (`conformance_server.rs`) — 1 test, 16 steps
 
@@ -154,37 +154,37 @@ Connects to a full server-mode OpenVPN instance (port 7506) with
 client container. Uses a single management connection for the entire
 lifecycle.
 
-| Step | What it validates |
-|------|-------------------|
-| 1. Connect & authenticate | Password prompt, auth, INFO banner, HOLD notification |
-| 2. Enable notifications, release hold | `state on`, `bytecount 2`, `hold release` |
-| 3. CLIENT:CONNECT with ENV | `>CLIENT:CONNECT` with 44+ ENV keys (CN, IP, TLS serial, etc.) |
-| 4. client-auth with config push | `client-auth {cid} {kid}` with route + DNS push lines |
-| 5. CLIENT:ESTABLISHED | `>CLIENT:ESTABLISHED` with matching CID |
-| 6. Status V1/V2/V3 | Real client data: VPN address in V1, CLIENT_LIST in V2/V3 |
-| 7. load-stats | `nclients >= 1`, real byte counts |
-| 8. Bytecount notification | `>BYTECOUNT:` or `>BYTECOUNT_CLI:` within 10s |
-| 9. Interleaved notifications | 25 rapid `status 2` queries with ping traffic; all MultiLine responses intact despite interleaved `>BYTECOUNT:` notifications |
-| 10. Kill client | `client-kill {cid}` → `>CLIENT:DISCONNECT` |
-| 11. Pending auth | Reconnect → `client-pending-auth {cid} {kid} "..." 30` → Success |
-| 12. Status during pending | `status 2` shows client visible while auth is pending |
-| 13. Approve with auth-nt | `client-auth-nt {cid} {kid}` → `>CLIENT:ESTABLISHED` |
-| 14. Kill + reconnect | `client-kill` → `>CLIENT:DISCONNECT` → reconnect |
-| 15. Deny client | `client-deny` → `>CLIENT:DISCONNECT`, client exits |
-| 16. SIGUSR1 + exit | `signal SIGUSR1` → state transitions, `exit` → stream ends |
+| Step                                  | What it validates                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1. Connect & authenticate             | Password prompt, auth, INFO banner, HOLD notification                                                                         |
+| 2. Enable notifications, release hold | `state on`, `bytecount 2`, `hold release`                                                                                     |
+| 3. CLIENT:CONNECT with ENV            | `>CLIENT:CONNECT` with 44+ ENV keys (CN, IP, TLS serial, etc.)                                                                |
+| 4. client-auth with config push       | `client-auth {cid} {kid}` with route + DNS push lines                                                                         |
+| 5. CLIENT:ESTABLISHED                 | `>CLIENT:ESTABLISHED` with matching CID                                                                                       |
+| 6. Status V1/V2/V3                    | Real client data: VPN address in V1, CLIENT_LIST in V2/V3                                                                     |
+| 7. load-stats                         | `nclients >= 1`, real byte counts                                                                                             |
+| 8. Bytecount notification             | `>BYTECOUNT:` or `>BYTECOUNT_CLI:` within 10s                                                                                 |
+| 9. Interleaved notifications          | 25 rapid `status 2` queries with ping traffic; all MultiLine responses intact despite interleaved `>BYTECOUNT:` notifications |
+| 10. Kill client                       | `client-kill {cid}` → `>CLIENT:DISCONNECT`                                                                                    |
+| 11. Pending auth                      | Reconnect → `client-pending-auth {cid} {kid} "..." 30` → Success                                                              |
+| 12. Status during pending             | `status 2` shows client visible while auth is pending                                                                         |
+| 13. Approve with auth-nt              | `client-auth-nt {cid} {kid}` → `>CLIENT:ESTABLISHED`                                                                          |
+| 14. Kill + reconnect                  | `client-kill` → `>CLIENT:DISCONNECT` → reconnect                                                                              |
+| 15. Deny client                       | `client-deny` → `>CLIENT:DISCONNECT`, client exits                                                                            |
+| 16. SIGUSR1 + exit                    | `signal SIGUSR1` → state transitions, `exit` → stream ends                                                                    |
 
 ### Remote notification test (`conformance_remote.rs`) — 1 test
 
 Connects to the client-remote container's management interface (port 7507)
 which has `--management-query-remote` enabled.
 
-| Step | What it validates |
-|------|-------------------|
-| 1. Connect & authenticate | Password prompt, auth, INFO banner, HOLD on client management |
-| 2. Release hold | State notifications enabled, hold released |
-| 3. >REMOTE: notification | `>REMOTE:openvpn-server,1194,udp` — comma-separated parsing, port=1194, protocol=Udp |
-| 4. Remote(Accept) | `remote ACCEPT` wire encoding → Success |
-| 5. State transitions | RESOLVE → WAIT confirm the client acted on the remote response |
+| Step                      | What it validates                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| 1. Connect & authenticate | Password prompt, auth, INFO banner, HOLD on client management                        |
+| 2. Release hold           | State notifications enabled, hold released                                           |
+| 3. >REMOTE: notification  | `>REMOTE:openvpn-server,1194,udp` — comma-separated parsing, port=1194, protocol=Udp |
+| 4. Remote(Accept)         | `remote ACCEPT` wire encoding → Success                                              |
+| 5. State transitions      | RESOLVE → WAIT confirm the client acted on the remote response                       |
 
 ### Password notification test (`conformance_password.rs`) — 1 test
 
@@ -197,13 +197,13 @@ This is the most complex conformance test — it orchestrates three concurrent
 management flows: server hold release, server-side client approval (spawned
 task), and client-side password query (main task).
 
-| Step | What it validates |
-|------|-------------------|
-| 1. Server setup | Connect to port 7506, release hold, spawn auto-approve task for CLIENT:CONNECT |
-| 2. Client setup | Connect to port 7508, enable state notifications, release hold |
-| 3. >PASSWORD: notification | `>PASSWORD:Need 'Auth' username/password` — NeedAuth parsing, AuthType::Auth |
-| 4. Supply credentials | `username "Auth" testuser` + `password "Auth" testpass` wire encoding |
-| 5. State transitions | Client proceeds to connect after credentials supplied |
+| Step                       | What it validates                                                              |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| 1. Server setup            | Connect to port 7506, release hold, spawn auto-approve task for CLIENT:CONNECT |
+| 2. Client setup            | Connect to port 7508, enable state notifications, release hold                 |
+| 3. >PASSWORD: notification | `>PASSWORD:Need 'Auth' username/password` — NeedAuth parsing, AuthType::Auth   |
+| 4. Supply credentials      | `username "Auth" testuser` + `password "Auth" testpass` wire encoding          |
+| 5. State transitions       | Client proceeds to connect after credentials supplied                          |
 
 ## What we learned
 
