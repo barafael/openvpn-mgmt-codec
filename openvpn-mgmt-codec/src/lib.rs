@@ -46,7 +46,7 @@ pub mod version_info;
 pub use auth::{AuthRetryMode, AuthType, ParseAuthRetryModeError, ParseAuthTypeError};
 pub use client_event::{ClientEvent, ParseClientEventError};
 pub use codec::{AccumulationLimit, EncodeError, EncoderMode, OvpnCodec};
-pub use command::{CommandParseError, OvpnCommand};
+pub use command::{CommandParseError, OvpnCommand, RemoteEntryRange};
 pub use kill_target::KillTarget;
 pub use log_level::{LogLevel, ParseLogLevelError};
 pub use message::{Notification, OvpnMessage, PasswordNotification};

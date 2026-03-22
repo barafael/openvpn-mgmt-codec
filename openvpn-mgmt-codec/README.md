@@ -15,7 +15,7 @@ or a Unix socket without hand-rolling string parsing.
   notifications (even when they arrive interleaved).
 - **Automatic escaping** -- backslashes and double-quotes are escaped
   following the OpenVPN config-file lexer rules.
-- **Full protocol coverage** -- 44 commands including auth, signals,
+- **Full protocol coverage** -- 50 commands including auth, signals,
   client management, PKCS#11, external keys, proxy/remote overrides,
   and a `Raw` escape hatch for anything new.
 
@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 | Direction | Type          | Description                                                                                                    |
 |-----------|---------------|----------------------------------------------------------------------------------------------------------------|
-| Encode    | `OvpnCommand` | One of 44 command variants -- serialised to the wire format with proper escaping and multi-line framing.       |
+| Encode    | `OvpnCommand` | One of 50 command variants -- serialised to the wire format with proper escaping and multi-line framing.       |
 | Decode    | `OvpnMessage` | `Success`, `Error`, `MultiLine`, `Pkcs11IdEntry`, `Notification`, `Info`, `PasswordPrompt`, or `Unrecognized`. |
 
 Real-time notifications (`>STATE:`, `>BYTECOUNT:`, `>CLIENT:`, etc.) are

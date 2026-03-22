@@ -385,6 +385,31 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 write_block(dst, "rsa-sig", base64_lines, mode)?;
             }
 
+            // ── External key signature (pk-sig) ─────────────────
+            OvpnCommand::PkSig { ref base64_lines } => {
+                write_block(dst, "pk-sig", base64_lines, mode)?;
+            }
+
+            // ── ENV filter ──────────────────────────────────────
+            OvpnCommand::EnvFilter(level) => write_line(dst, &format!("env-filter {level}")),
+
+            // ── Remote entry queries ────────────────────────────
+            OvpnCommand::RemoteEntryCount => write_line(dst, "remote-entry-count"),
+            OvpnCommand::RemoteEntryGet(ref range) => {
+                write_line(dst, &format!("remote-entry-get {range}"));
+            }
+
+            // ── Push updates ────────────────────────────────────
+            OvpnCommand::PushUpdateBroad { ref options } => {
+                let opts =
+                    quote_and_escape(&wire_safe(options, "push-update-broad options", mode)?);
+                write_line(dst, &format!("push-update-broad {opts}"));
+            }
+            OvpnCommand::PushUpdateCid { cid, ref options } => {
+                let opts = quote_and_escape(&wire_safe(options, "push-update-cid options", mode)?);
+                write_line(dst, &format!("push-update-cid {cid} {opts}"));
+            }
+
             // ── Client management ────────────────────────────────
             //
             // client-auth is a multi-line command:
@@ -791,7 +816,10 @@ impl OvpnCodec {
             // ADDRESS notifications are always single-line (no ENV block).
             if event == "ADDRESS" {
                 let mut parts = args.splitn(3, ',');
-                let cid = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+                let cid = parts
+                    .next()
+                    .and_then(|s| parse_field(s, "client address cid"))
+                    .unwrap_or(0);
                 let addr = parts.next().unwrap_or("").to_string();
                 let primary = parts.next() == Some("1");
                 return Some(OvpnMessage::Notification(Notification::ClientAddress {
@@ -805,8 +833,11 @@ impl OvpnCodec {
             // have ENV blocks. Parse CID, optional KID, and (for CR_RESPONSE)
             // the trailing base64 response from the args.
             let mut id_parts = args.splitn(3, ',');
-            let cid = id_parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-            let kid = id_parts.next().and_then(|s| s.parse().ok());
+            let cid = id_parts
+                .next()
+                .and_then(|s| parse_field(s, "client cid"))
+                .unwrap_or(0);
+            let kid = id_parts.next().and_then(|s| parse_field(s, "client kid"));
 
             let parsed_event = if event == "CR_RESPONSE" {
                 let response = id_parts.next().unwrap_or("").to_string();
@@ -890,12 +921,25 @@ fn parse_optional_port(s: &str) -> Option<u16> {
         .ok()
 }
 
+/// Parse a string into `T`, logging a warning on failure and returning `None`.
+///
+/// Used by the notification parsers that degrade to `Notification::Simple`
+/// rather than failing hard.
+fn parse_field<T: std::str::FromStr>(s: &str, field: &str) -> Option<T>
+where
+    T::Err: std::fmt::Display,
+{
+    s.parse()
+        .inspect_err(|error| warn!(%error, value = s, field, "failed to parse notification field"))
+        .ok()
+}
+
 fn parse_state(payload: &str) -> Option<Notification> {
     // Wire format per management-notes.txt:
     //   (a) timestamp, (b) state, (c) desc, (d) local_ip, (e) remote_ip,
     //   (f) remote_port, (g) local_addr, (h) local_port, (i) local_ipv6
     let mut parts = payload.splitn(9, ',');
-    let timestamp = parts.next()?.parse().ok()?;
+    let timestamp = parse_field(parts.next()?, "state timestamp")?;
     let state_str = parts.next()?;
     let name = state_str
         .parse()
@@ -924,16 +968,16 @@ fn parse_state(payload: &str) -> Option<Notification> {
 fn parse_bytecount(payload: &str) -> Option<Notification> {
     let (a, b) = payload.split_once(',')?;
     Some(Notification::ByteCount {
-        bytes_in: a.parse().ok()?,
-        bytes_out: b.parse().ok()?,
+        bytes_in: parse_field(a, "bytecount bytes_in")?,
+        bytes_out: parse_field(b, "bytecount bytes_out")?,
     })
 }
 
 fn parse_bytecount_cli(payload: &str) -> Option<Notification> {
     let mut parts = payload.splitn(3, ',');
-    let cid = parts.next()?.parse().ok()?;
-    let bytes_in = parts.next()?.parse().ok()?;
-    let bytes_out = parts.next()?.parse().ok()?;
+    let cid = parse_field(parts.next()?, "bytecount_cli cid")?;
+    let bytes_in = parse_field(parts.next()?, "bytecount_cli bytes_in")?;
+    let bytes_out = parse_field(parts.next()?, "bytecount_cli bytes_out")?;
     Some(Notification::ByteCountCli {
         cid,
         bytes_in,
@@ -943,7 +987,7 @@ fn parse_bytecount_cli(payload: &str) -> Option<Notification> {
 
 fn parse_log(payload: &str) -> Option<Notification> {
     let (ts_str, rest) = payload.split_once(',')?;
-    let timestamp = ts_str.parse().ok()?;
+    let timestamp = parse_field(ts_str, "log timestamp")?;
     let (level_str, message) = rest.split_once(',')?;
     Some(Notification::Log {
         timestamp,
@@ -957,7 +1001,7 @@ fn parse_log(payload: &str) -> Option<Notification> {
 
 fn parse_echo(payload: &str) -> Option<Notification> {
     let (ts_str, param) = payload.split_once(',')?;
-    let timestamp = ts_str.parse().ok()?;
+    let timestamp = parse_field(ts_str, "echo timestamp")?;
     Some(Notification::Echo {
         timestamp,
         param: param.to_string(),
@@ -965,7 +1009,7 @@ fn parse_echo(payload: &str) -> Option<Notification> {
 }
 
 fn parse_pkcs11id_count(payload: &str) -> Option<Notification> {
-    let count = payload.trim().parse().ok()?;
+    let count = parse_field(payload.trim(), "pkcs11id_count")?;
     Some(Notification::Pkcs11IdCount { count })
 }
 
@@ -1009,7 +1053,7 @@ fn parse_need_str(payload: &str) -> Option<Notification> {
 fn parse_remote(payload: &str) -> Option<Notification> {
     let mut parts = payload.splitn(3, ',');
     let host = parts.next()?.to_string();
-    let port = parts.next()?.parse().ok()?;
+    let port = parse_field(parts.next()?, "remote port")?;
     let proto_str = parts.next()?;
     let protocol = proto_str
         .parse()
@@ -1025,7 +1069,7 @@ fn parse_remote(payload: &str) -> Option<Notification> {
 fn parse_proxy(payload: &str) -> Option<Notification> {
     // Wire: >PROXY:{index},{type},{host}  (3 fields per init.c)
     let mut parts = payload.splitn(3, ',');
-    let index = parts.next()?.parse().ok()?;
+    let index = parse_field(parts.next()?, "proxy index")?;
     let pt_str = parts.next()?;
     let proxy_type = pt_str
         .parse()
@@ -1064,7 +1108,7 @@ fn parse_password(payload: &str) -> Option<Notification> {
     if let Some(rest) = payload.strip_prefix("Verification Failed: '") {
         // Check for CRV1 dynamic challenge data
         if let Some((auth_part, crv1_part)) = rest.split_once("' ['CRV1:") {
-            let _ = auth_part; // auth type is always "Auth" for CRV1
+            debug_assert_eq!(auth_part, "Auth", "CRV1 auth type should always be 'Auth'");
             let crv1_data = crv1_part.strip_suffix("']")?;
             let mut parts = crv1_data.splitn(4, ':');
             let flags = parts.next()?.to_string();
@@ -1102,7 +1146,7 @@ fn parse_password(payload: &str) -> Option<Notification> {
         // flag is a multi-bit integer: bit 0 = ECHO, bit 1 = FORMAT/CONCAT
         if let Some(sc) = after_up.strip_prefix("SC:") {
             let (flag_str, challenge) = sc.split_once(',')?;
-            let flags: u32 = flag_str.parse().ok()?;
+            let flags: u32 = parse_field(flag_str, "static challenge flags")?;
             return Some(Notification::Password(
                 PasswordNotification::StaticChallenge {
                     echo: flags & 1 != 0,
@@ -1292,6 +1336,67 @@ mod tests {
             port: 1234,
         }));
         assert_eq!(wire, "remote MOD vpn.example.com 1234\n");
+    }
+
+    #[test]
+    fn encode_pk_sig() {
+        let wire = encode_to_string(OvpnCommand::PkSig {
+            base64_lines: vec!["AAAA".to_string(), "BBBB".to_string()],
+        });
+        assert_eq!(wire, "pk-sig\nAAAA\nBBBB\nEND\n");
+    }
+
+    #[test]
+    fn encode_env_filter() {
+        assert_eq!(
+            encode_to_string(OvpnCommand::EnvFilter(2)),
+            "env-filter 2\n"
+        );
+    }
+
+    #[test]
+    fn encode_remote_entry_count() {
+        assert_eq!(
+            encode_to_string(OvpnCommand::RemoteEntryCount),
+            "remote-entry-count\n"
+        );
+    }
+
+    #[test]
+    fn encode_remote_entry_get() {
+        use crate::command::RemoteEntryRange;
+        assert_eq!(
+            encode_to_string(OvpnCommand::RemoteEntryGet(RemoteEntryRange::Single(0))),
+            "remote-entry-get 0\n"
+        );
+        assert_eq!(
+            encode_to_string(OvpnCommand::RemoteEntryGet(RemoteEntryRange::Range {
+                from: 0,
+                to: 3
+            })),
+            "remote-entry-get 0 3\n"
+        );
+        assert_eq!(
+            encode_to_string(OvpnCommand::RemoteEntryGet(RemoteEntryRange::All)),
+            "remote-entry-get all\n"
+        );
+    }
+
+    #[test]
+    fn encode_push_update_broad() {
+        let wire = encode_to_string(OvpnCommand::PushUpdateBroad {
+            options: "route 10.0.0.0".to_string(),
+        });
+        assert_eq!(wire, "push-update-broad \"route 10.0.0.0\"\n");
+    }
+
+    #[test]
+    fn encode_push_update_cid() {
+        let wire = encode_to_string(OvpnCommand::PushUpdateCid {
+            cid: 42,
+            options: "route 10.0.0.0".to_string(),
+        });
+        assert_eq!(wire, "push-update-cid 42 \"route 10.0.0.0\"\n");
     }
 
     #[test]

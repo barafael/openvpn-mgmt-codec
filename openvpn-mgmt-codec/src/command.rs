@@ -1,3 +1,4 @@
+use std::fmt;
 use std::str::FromStr;
 
 use crate::{
@@ -33,6 +34,32 @@ pub enum CommandParseError {
     /// values where numbers are expected, etc.).
     #[error("{0}")]
     Syntax(String),
+}
+
+/// Range selector for `remote-entry-get`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RemoteEntryRange {
+    /// A single entry by index.
+    Single(u32),
+    /// A range of entries `[from, to)`.
+    Range {
+        /// Start index (inclusive).
+        from: u32,
+        /// End index (exclusive).
+        to: u32,
+    },
+    /// All entries.
+    All,
+}
+
+impl fmt::Display for RemoteEntryRange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Single(i) => write!(f, "{i}"),
+            Self::Range { from, to } => write!(f, "{from} {to}"),
+            Self::All => f.write_str("all"),
+        }
+    }
 }
 
 /// Every command the management interface accepts, modeled as a typed enum.
@@ -296,6 +323,50 @@ pub enum OvpnCommand {
         response: Redacted,
     },
 
+    // ── External key signature (OpenVPN 2.5+, management v2+) ─────
+    /// Provide a signature in response to `>PK_SIGN:`. Replacement for
+    /// `rsa-sig` that supports ECDSA, RSA-PSS, and other key types.
+    /// Multi-line command: `pk-sig`, base64 lines, `END`.
+    PkSig {
+        /// Base64-encoded signature lines.
+        base64_lines: Vec<String>,
+    },
+
+    // ── ENV filter (OpenVPN 2.6+) ──────────────────────────────────
+    /// Set the env-var filter level for `>CLIENT:ENV` blocks.
+    /// Level 0 = all vars, higher levels filter more.
+    /// Wire: `env-filter [level]`
+    /// Response: `SUCCESS: env_filter_level=N`
+    EnvFilter(u32),
+
+    // ── Remote entry queries (management v3+) ──────────────────────
+    /// Query the number of `--remote` entries configured.
+    /// Wire: `remote-entry-count`
+    /// Response: multi-line (count, then `END`).
+    RemoteEntryCount,
+
+    /// Retrieve `--remote` entries by index or all at once.
+    /// Wire: `remote-entry-get i|all [j]`
+    /// Response: multi-line (`index,remote_string` per line, then `END`).
+    RemoteEntryGet(RemoteEntryRange),
+
+    // ── Push updates (OpenVPN 2.7+, server mode) ───────────────────
+    /// Broadcast a push option update to all connected clients.
+    /// Wire: `push-update-broad "options"`
+    PushUpdateBroad {
+        /// Quoted options string (e.g. `"route 10.0.0.0, -dns"`).
+        options: String,
+    },
+
+    /// Push an option update to a specific client by CID.
+    /// Wire: `push-update-cid CID "options"`
+    PushUpdateCid {
+        /// Client ID.
+        cid: u64,
+        /// Quoted options string.
+        options: String,
+    },
+
     // ── External certificate (OpenVPN 2.4+) ──────────────────────
     /// Supply an external certificate in response to `>NEED-CERTIFICATE`.
     /// Multi-line command: header, PEM lines, `END`.
@@ -356,7 +427,12 @@ impl OvpnCommand {
     pub(crate) fn expected_response(&self) -> ResponseKind {
         match self {
             // These always produce multi-line (END-terminated) responses.
-            Self::Status(_) | Self::Version | Self::Help | Self::Net => ResponseKind::MultiLine,
+            Self::Status(_)
+            | Self::Version
+            | Self::Help
+            | Self::Net
+            | Self::RemoteEntryCount
+            | Self::RemoteEntryGet(_) => ResponseKind::MultiLine,
 
             // state/log/echo: depends on the specific sub-mode.
             Self::StateStream(mode) | Self::Log(mode) | Self::Echo(mode) => match mode {
@@ -700,6 +776,74 @@ impl FromStr for OvpnCommand {
                 })),
                 _ => cmd_err("usage: proxy none|http <host> <port> [nct]|socks <host> <port>"),
             },
+
+            // ── ENV filter ──────────────────────────────────────────
+            "env-filter" => {
+                let level = if args.is_empty() {
+                    0
+                } else {
+                    args.parse::<u32>().map_err(|_| {
+                        CommandParseError::Syntax(format!("invalid env-filter level: {args}"))
+                    })?
+                };
+                Ok(Self::EnvFilter(level))
+            }
+
+            // ── Remote entry queries ────────────────────────────────
+            "remote-entry-count" => Ok(Self::RemoteEntryCount),
+
+            "remote-entry-get" => {
+                if args.is_empty() {
+                    return cmd_err("usage: remote-entry-get i|all [j]");
+                }
+                let range = if args == "all" {
+                    RemoteEntryRange::All
+                } else {
+                    let mut parts = args.splitn(2, char::is_whitespace);
+                    let from = parts.next().unwrap().parse::<u32>().map_err(|_| {
+                        CommandParseError::Syntax(format!(
+                            "remote-entry-get index must be a number or 'all', got: {args}"
+                        ))
+                    })?;
+                    match parts.next() {
+                        Some(to_str) => {
+                            let to = to_str.trim().parse::<u32>().map_err(|_| {
+                                CommandParseError::Syntax(format!(
+                                    "remote-entry-get end index must be a number, got: {to_str}"
+                                ))
+                            })?;
+                            RemoteEntryRange::Range { from, to }
+                        }
+                        None => RemoteEntryRange::Single(from),
+                    }
+                };
+                Ok(Self::RemoteEntryGet(range))
+            }
+
+            // ── Push updates ────────────────────────────────────────
+            "push-update-broad" => {
+                if args.is_empty() {
+                    return cmd_err("usage: push-update-broad <options>");
+                }
+                Ok(Self::PushUpdateBroad {
+                    options: args.to_string(),
+                })
+            }
+
+            "push-update-cid" => {
+                let (cid_str, options) =
+                    args.split_once(char::is_whitespace)
+                        .ok_or(CommandParseError::Syntax(
+                            "usage: push-update-cid <cid> <options>".into(),
+                        ))?;
+                let cid = cid_str.parse::<u64>().map_err(|_| {
+                    CommandParseError::Syntax("push-update-cid: cid must be a number".into())
+                })?;
+                Ok(Self::PushUpdateCid {
+                    cid,
+                    options: options.trim().to_string(),
+                })
+            }
 
             // ── Raw multi-line ──────────────────────────────────────
             "raw-ml" => {
@@ -1352,5 +1496,71 @@ mod tests {
     #[test]
     fn parse_needstr_missing_value() {
         assert!("needstr".parse::<OvpnCommand>().is_err());
+    }
+
+    // ── FromStr: new commands ───────────────────────────────────
+
+    #[test]
+    fn parse_env_filter() {
+        assert_eq!("env-filter 2".parse(), Ok(OvpnCommand::EnvFilter(2)));
+        assert_eq!("env-filter 0".parse(), Ok(OvpnCommand::EnvFilter(0)));
+        assert_eq!("env-filter".parse(), Ok(OvpnCommand::EnvFilter(0)));
+        assert!("env-filter abc".parse::<OvpnCommand>().is_err());
+    }
+
+    #[test]
+    fn parse_remote_entry_count() {
+        assert_eq!(
+            "remote-entry-count".parse(),
+            Ok(OvpnCommand::RemoteEntryCount)
+        );
+    }
+
+    #[test]
+    fn parse_remote_entry_get() {
+        assert_eq!(
+            "remote-entry-get 0".parse(),
+            Ok(OvpnCommand::RemoteEntryGet(RemoteEntryRange::Single(0)))
+        );
+        assert_eq!(
+            "remote-entry-get 0 3".parse(),
+            Ok(OvpnCommand::RemoteEntryGet(RemoteEntryRange::Range {
+                from: 0,
+                to: 3
+            }))
+        );
+        assert_eq!(
+            "remote-entry-get all".parse(),
+            Ok(OvpnCommand::RemoteEntryGet(RemoteEntryRange::All))
+        );
+        assert!("remote-entry-get".parse::<OvpnCommand>().is_err());
+        assert!("remote-entry-get abc".parse::<OvpnCommand>().is_err());
+        assert!("remote-entry-get 0 abc".parse::<OvpnCommand>().is_err());
+    }
+
+    #[test]
+    fn parse_push_update_broad() {
+        let cmd: OvpnCommand = "push-update-broad route 10.0.0.0".parse().unwrap();
+        assert_eq!(
+            cmd,
+            OvpnCommand::PushUpdateBroad {
+                options: "route 10.0.0.0".to_string()
+            }
+        );
+        assert!("push-update-broad".parse::<OvpnCommand>().is_err());
+    }
+
+    #[test]
+    fn parse_push_update_cid() {
+        let cmd: OvpnCommand = "push-update-cid 42 route 10.0.0.0".parse().unwrap();
+        assert_eq!(
+            cmd,
+            OvpnCommand::PushUpdateCid {
+                cid: 42,
+                options: "route 10.0.0.0".to_string()
+            }
+        );
+        assert!("push-update-cid".parse::<OvpnCommand>().is_err());
+        assert!("push-update-cid abc opts".parse::<OvpnCommand>().is_err());
     }
 }
