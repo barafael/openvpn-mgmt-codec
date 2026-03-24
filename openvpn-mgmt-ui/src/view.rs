@@ -989,7 +989,7 @@ fn stream_mode_row(
         radio("On", StartupStreamMode::On, Some(current), on_select)
             .size(14)
             .text_size(11),
-        radio("On+All", StartupStreamMode::OnAll, Some(current), on_select,)
+        radio("On+All", StartupStreamMode::OnAll, Some(current), on_select)
             .size(14)
             .text_size(11),
     ]
@@ -1032,5 +1032,35 @@ fn format_bytes(n: u64) -> String {
         format!("{:.1} KiB", n as f64 / KIB as f64)
     } else {
         format!("{n} B")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_bytes_plain() {
+        assert_eq!(format_bytes(0), "0 B");
+        assert_eq!(format_bytes(512), "512 B");
+        assert_eq!(format_bytes(1023), "1023 B");
+    }
+
+    #[test]
+    fn format_bytes_kib() {
+        assert_eq!(format_bytes(1024), "1.0 KiB");
+        assert_eq!(format_bytes(1536), "1.5 KiB");
+    }
+
+    #[test]
+    fn format_bytes_mib() {
+        assert_eq!(format_bytes(1024 * 1024), "1.0 MiB");
+        assert_eq!(format_bytes(5 * 1024 * 1024), "5.0 MiB");
+    }
+
+    #[test]
+    fn format_bytes_gib() {
+        assert_eq!(format_bytes(1024 * 1024 * 1024), "1.0 GiB");
+        assert_eq!(format_bytes(3 * 1024 * 1024 * 1024), "3.0 GiB");
     }
 }

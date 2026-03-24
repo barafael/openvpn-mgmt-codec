@@ -1,4 +1,6 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+#![cfg_attr(coverage_nightly, coverage(off))]
 
 //! OpenVPN Management UI — an Iced desktop client for the OpenVPN management
 //! interface.
@@ -841,10 +843,7 @@ impl App {
             OpsMsg::VerbGet => self.send_and_record("verb", OvpnCommand::Verb(None))?,
             OpsMsg::VerbSet => {
                 if let Ok(level) = self.ops.verb_input.parse::<u8>() {
-                    self.send_and_record(
-                        &format!("verb {level}"),
-                        OvpnCommand::Verb(Some(level)),
-                    )?;
+                    self.send_and_record(&format!("verb {level}"), OvpnCommand::Verb(Some(level)))?;
                 }
             }
             OpsMsg::VerbReset => unreachable!("handled in update()"),
@@ -1191,4 +1190,71 @@ fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if m <= 2 { y + 1 } else { y };
     (y, m, d)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- format_timestamp ---
+
+    #[test]
+    fn format_timestamp_zero_returns_empty() {
+        assert_eq!(format_timestamp(0), "");
+    }
+
+    #[test]
+    fn format_timestamp_unix_epoch() {
+        // 1970-01-01 00:00:01
+        assert_eq!(format_timestamp(1), "1970-01-01 00:00:01");
+    }
+
+    #[test]
+    fn format_timestamp_known_date() {
+        // 2024-03-21 14:30:00 UTC = 1711031400
+        assert_eq!(format_timestamp(1_711_031_400), "2024-03-21 14:30:00");
+    }
+
+    #[test]
+    fn format_timestamp_y2k() {
+        // 2000-01-01 00:00:00 UTC = 946684800
+        assert_eq!(format_timestamp(946_684_800), "2000-01-01 00:00:00");
+    }
+
+    #[test]
+    fn format_timestamp_leap_day() {
+        // 2024-02-29 12:00:00 UTC = 1709208000
+        assert_eq!(format_timestamp(1_709_208_000), "2024-02-29 12:00:00");
+    }
+
+    // --- days_to_ymd ---
+
+    #[test]
+    fn days_to_ymd_epoch() {
+        assert_eq!(days_to_ymd(0), (1970, 1, 1));
+    }
+
+    #[test]
+    fn days_to_ymd_known_date() {
+        // 2024-03-21 is day 19803 since epoch
+        assert_eq!(days_to_ymd(19803), (2024, 3, 21));
+    }
+
+    #[test]
+    fn days_to_ymd_leap_day() {
+        // 2024-02-29 is day 19782 since epoch
+        assert_eq!(days_to_ymd(19782), (2024, 2, 29));
+    }
+
+    #[test]
+    fn days_to_ymd_dec_31() {
+        // 2023-12-31 is day 19722 since epoch
+        assert_eq!(days_to_ymd(19722), (2023, 12, 31));
+    }
+
+    #[test]
+    fn days_to_ymd_jan_1_2000() {
+        // 2000-01-01 is day 10957 since epoch
+        assert_eq!(days_to_ymd(10957), (2000, 1, 1));
+    }
 }

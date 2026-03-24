@@ -194,6 +194,74 @@ fn format_rate(bps: f64) -> String {
 // View helper
 // -------------------------------------------------------------------
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- format_rate ---
+
+    #[test]
+    fn format_rate_bytes() {
+        assert_eq!(format_rate(0.0), "0B");
+        assert_eq!(format_rate(500.0), "500B");
+        assert_eq!(format_rate(1023.0), "1023B");
+    }
+
+    #[test]
+    fn format_rate_kib() {
+        assert_eq!(format_rate(1024.0), "1K");
+        assert_eq!(format_rate(512.0 * 1024.0), "512K");
+    }
+
+    #[test]
+    fn format_rate_mib() {
+        assert_eq!(format_rate(1024.0 * 1024.0), "1M");
+        assert_eq!(format_rate(5.0 * 1024.0 * 1024.0), "5M");
+    }
+
+    // --- ThroughputHistory ---
+
+    #[test]
+    fn push_first_sample_seeds_but_produces_no_data() {
+        let mut h = ThroughputHistory::default();
+        h.push(1000, 2000, 5);
+        assert!(h.samples().is_empty());
+    }
+
+    #[test]
+    fn push_second_sample_produces_one_point() {
+        let mut h = ThroughputHistory::default();
+        h.push(0, 0, 5);
+        h.push(5000, 10000, 5);
+        assert_eq!(h.samples().len(), 1);
+        let s = &h.samples()[0];
+        assert!((s.in_bps - 1000.0).abs() < f64::EPSILON);
+        assert!((s.out_bps - 2000.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn push_caps_at_max_samples() {
+        let mut h = ThroughputHistory::default();
+        h.push(0, 0, 1); // seed
+        for i in 1..=70 {
+            h.push(i * 100, i * 200, 1);
+        }
+        assert_eq!(h.samples().len(), MAX_SAMPLES);
+    }
+
+    #[test]
+    fn reset_clears_all_state() {
+        let mut h = ThroughputHistory::default();
+        h.push(0, 0, 1);
+        h.push(100, 200, 1);
+        h.reset();
+        assert!(h.samples().is_empty());
+        // After reset, next push should seed again (no data point).
+        h.push(50, 50, 1);
+        assert!(h.samples().is_empty());
+    }
+}
+
 /// Create a chart widget element for the throughput history with a custom height.
 pub(crate) fn throughput_chart_sized(
     history: &ThroughputHistory,

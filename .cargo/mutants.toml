@@ -6,8 +6,38 @@
 exclude_re = [
     "replace \\+ with .* in write_line",
     "replace \\+ with .* in write_block",
+
+    # --- Equivalent mutants (behavior identical under mutation) ---
+
+    # parse_optional_u64: the early-return for "" and "UNDEF" is an optimisation;
+    # both values fail .parse::<u64>() and .ok() returns None regardless.
+    "replace \\|\\| with && in parse_optional_u64",
+
+    # "HEADER" arm is a no-op (`{}`). Deleting it makes the line fall through
+    # to the `_ => {}` catch-all — same observable behaviour.
+    "delete match arm .HEADER. in parse_status_v2v3",
+
+    # parse_client_statistics: "OpenVPN STATISTICS" has no comma, so split_once
+    # returns None → continue. "Updated,..." splits into an unrecognised key →
+    # falls through harmlessly. The early-return is cosmetic.
+    "replace \\|\\| with && in parse_client_statistics",
+
+    # --- Untestable UI application methods (require a running iced runtime) ---
+    "in App::",
+    "in main$",
+    "in run_connection",
+    "in <impl (Chart|SendEvent)",
 ]
 
 # The CLI binary is pure I/O glue and presentation — no unit-testable logic.
 # All parseable logic has been moved to the codec crate's FromStr impls.
-exclude_globs = ["openvpn-mgmt-cli/**"]
+#
+# The UI crate's view, style, and actor modules are GUI rendering / async I/O
+# glue that cannot be meaningfully unit-tested. Pure-function tests cover
+# format_bytes, format_rate, format_timestamp, days_to_ymd, and ThroughputHistory.
+exclude_globs = [
+    "openvpn-mgmt-cli/**",
+    "openvpn-mgmt-ui/src/view.rs",
+    "openvpn-mgmt-ui/src/style.rs",
+    "openvpn-mgmt-ui/src/actor.rs",
+]

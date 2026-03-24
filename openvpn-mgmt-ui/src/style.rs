@@ -104,9 +104,7 @@ pub(crate) fn log_row_selected() -> <Theme as container::Catalog>::Class<'static
     Box::new(|theme: &Theme| {
         let pal = theme.extended_palette();
         container::Style {
-            background: Some(
-                mix(pal.background.base.color, pal.primary.base.color, 0.15).into(),
-            ),
+            background: Some(mix(pal.background.base.color, pal.primary.base.color, 0.15).into()),
             border: Border {
                 radius: 2.0.into(),
                 ..Default::default()

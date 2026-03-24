@@ -708,7 +708,7 @@ fn client_cr_response_with_full_env() {
             assert_eq!(*kid, Some(0));
             assert_eq!(env.len(), 7);
             assert_eq!(env[0], ("untrusted_ip".into(), "203.0.113.50".into()));
-            assert_eq!(env[3], ("username".into(), "jdoe".into()),);
+            assert_eq!(env[3], ("username".into(), "jdoe".into()));
             assert!(
                 env.iter()
                     .any(|(k, v)| k == "IV_SSO" && v == "webauth,openurl,crtext"),

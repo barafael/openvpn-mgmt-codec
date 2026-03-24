@@ -369,9 +369,8 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
                 let has_ipv6_column = f.len() >= 12;
 
                 if has_ipv6_column {
-                    if f.len() < 8 {
-                        return Err(ParseStatusError::ClientListTooFewFields(f.len()));
-                    }
+                    // has_ipv6_column requires f.len() >= 12, so all
+                    // indexed accesses (up to f[7]) are in-bounds.
                     status.clients.push(ConnectedClient {
                         common_name: f[0].to_string(),
                         real_address: f[1].to_string(),
@@ -737,6 +736,94 @@ mod tests {
         ));
     }
 
+    // --- detect_separator ---
+
+    #[test]
+    fn detect_separator_each_tab_prefix() {
+        for prefix in [
+            "TITLE\t",
+            "TIME\t",
+            "HEADER\t",
+            "CLIENT_LIST\t",
+            "ROUTING_TABLE\t",
+            "GLOBAL_STATS\t",
+        ] {
+            let lines = vec![format!("{prefix}data")];
+            assert_eq!(
+                detect_separator(&lines),
+                '\t',
+                "should detect tab for line starting with {prefix:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn detect_separator_falls_back_to_comma() {
+        let lines = vec!["no tabs here".to_string()];
+        assert_eq!(detect_separator(&lines), ',');
+    }
+
+    // --- parse_optional_u64 ---
+
+    #[test]
+    fn parse_optional_u64_empty() {
+        assert_eq!(parse_optional_u64(""), None);
+    }
+
+    #[test]
+    fn parse_optional_u64_undef() {
+        assert_eq!(parse_optional_u64("UNDEF"), None);
+    }
+
+    #[test]
+    fn parse_optional_u64_valid() {
+        assert_eq!(parse_optional_u64("42"), Some(42));
+    }
+
+    // --- V1 routing table guards ---
+
+    #[test]
+    fn v1_routing_table_too_few_fields() {
+        let lines = vec![
+            "OpenVPN CLIENT LIST".to_string(),
+            "Updated,2024-03-21 14:30:00".to_string(),
+            "Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since".to_string(),
+            "client1,10.0.0.1,1000,2000,2024-03-21 10:00:00".to_string(),
+            "ROUTING TABLE".to_string(),
+            "Virtual Address,Common Name,Real Address,Last Ref".to_string(),
+            // Only 2 fields — fewer than the required 4.
+            "10.8.0.6,client1".to_string(),
+        ];
+        let err = parse_status(&lines).unwrap_err();
+        assert!(
+            matches!(err, ParseStatusError::RoutingTableTooFewFields(2)),
+            "expected RoutingTableTooFewFields(2), got {err:?}",
+        );
+    }
+
+    // --- V2/V3 GLOBAL_STATS guard ---
+
+    #[test]
+    fn v2v3_global_stats_with_only_key_is_ignored() {
+        // GLOBAL_STATS with only 2 fields (tag + key, no value) — should be silently skipped.
+        let lines = vec!["GLOBAL_STATS\torphan_key".to_string()];
+        let status = parse_status(&lines).unwrap();
+        assert!(
+            status.global_stats.is_empty(),
+            "GLOBAL_STATS with <3 fields should be ignored",
+        );
+    }
+
+    #[test]
+    fn v2v3_global_stats_exactly_three_fields() {
+        // Exactly 3 fields (tag + key + value) — the minimum accepted by the guard.
+        let lines = vec!["GLOBAL_STATS\tMax bcast/mcast queue length\t3".to_string()];
+        let status = parse_status(&lines).unwrap();
+        assert_eq!(status.global_stats.len(), 1);
+        assert_eq!(status.global_stats[0].0, "Max bcast/mcast queue length");
+        assert_eq!(status.global_stats[0].1, "3");
+    }
+
     // --- Edge cases ---
 
     #[test]
@@ -744,6 +831,101 @@ mod tests {
         let status = parse_status(&[]).unwrap();
         assert!(status.clients.is_empty());
         assert!(status.routes.is_empty());
+    }
+
+    #[test]
+    fn v1_client_list_too_few_fields() {
+        let lines = vec![
+            "OpenVPN CLIENT LIST".to_string(),
+            "Updated,2024-03-21 14:30:00".to_string(),
+            "Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since".to_string(),
+            // Only 3 fields — fewer than the required 5.
+            "client1,203.0.113.10:52841,1548576".to_string(),
+        ];
+        let err = parse_status(&lines).unwrap_err();
+        assert!(
+            matches!(err, ParseStatusError::ClientListTooFewFields(3)),
+            "expected ClientListTooFewFields(3), got {err:?}",
+        );
+    }
+
+    #[test]
+    fn v1_client_list_exactly_five_fields() {
+        // Exactly 5 fields — the minimum accepted by the `fields.len() < 5` guard.
+        let lines = vec![
+            "OpenVPN CLIENT LIST".to_string(),
+            "Updated,2024-03-21 14:30:00".to_string(),
+            "Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since".to_string(),
+            "client1,203.0.113.10:52841,1548576,984320,2024-03-21 10:00:00".to_string(),
+        ];
+        let status = parse_status(&lines).unwrap();
+        assert_eq!(status.clients.len(), 1);
+        assert_eq!(status.clients[0].common_name, "client1");
+        assert_eq!(status.clients[0].bytes_in, 1548576);
+        assert_eq!(status.clients[0].bytes_out, 984320);
+    }
+
+    #[test]
+    fn v1_routing_table_exactly_four_fields() {
+        // Exactly 4 fields — the minimum accepted by the `fields.len() < 4` guard.
+        let lines = vec![
+            "OpenVPN CLIENT LIST".to_string(),
+            "Updated,2024-03-21 14:30:00".to_string(),
+            "Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since".to_string(),
+            "ROUTING TABLE".to_string(),
+            "Virtual Address,Common Name,Real Address,Last Ref".to_string(),
+            "10.8.0.6,client1,203.0.113.10:52841,2024-03-21 14:30:00".to_string(),
+        ];
+        let status = parse_status(&lines).unwrap();
+        assert_eq!(status.routes.len(), 1);
+        assert_eq!(status.routes[0].virtual_address, "10.8.0.6");
+        assert_eq!(status.routes[0].common_name, "client1");
+    }
+
+    #[test]
+    fn v2v3_routing_table_too_few_fields() {
+        // ROUTING_TABLE with only 2 data fields (need at least 4).
+        let lines = vec!["ROUTING_TABLE\t10.8.0.6\tclient1".to_string()];
+        let err = parse_status(&lines).unwrap_err();
+        assert!(
+            matches!(err, ParseStatusError::RoutingTableTooFewFields(2)),
+            "expected RoutingTableTooFewFields(2), got {err:?}",
+        );
+    }
+
+    #[test]
+    fn v2v3_routing_table_exactly_four_fields() {
+        // Exactly 4 data fields — the minimum accepted by the guard.
+        let lines = vec![
+            "ROUTING_TABLE\t10.8.0.6\tclient1\t203.0.113.10:52841\t2024-03-21 14:30:00".to_string(),
+        ];
+        let status = parse_status(&lines).unwrap();
+        assert_eq!(status.routes.len(), 1);
+        assert_eq!(status.routes[0].virtual_address, "10.8.0.6");
+        assert_eq!(status.routes[0].common_name, "client1");
+    }
+
+    #[test]
+    fn v2v3_client_list_old_layout_too_few_fields() {
+        // Old layout CLIENT_LIST with only 3 data fields (need at least 5).
+        let lines = vec!["CLIENT_LIST\tclient1\t203.0.113.10:52841\t10.8.0.6".to_string()];
+        let err = parse_status(&lines).unwrap_err();
+        assert!(
+            matches!(err, ParseStatusError::ClientListTooFewFields(3)),
+            "expected ClientListTooFewFields(3), got {err:?}",
+        );
+    }
+
+    #[test]
+    fn v2v3_client_list_old_layout_exactly_five_fields() {
+        // Exactly 5 data fields — the minimum accepted by the old-layout guard.
+        let lines =
+            vec!["CLIENT_LIST\tclient1\t203.0.113.10:52841\t10.8.0.6\t1548576\t984320".to_string()];
+        let status = parse_status(&lines).unwrap();
+        assert_eq!(status.clients.len(), 1);
+        assert_eq!(status.clients[0].common_name, "client1");
+        assert_eq!(status.clients[0].bytes_in, 1548576);
+        assert_eq!(status.clients[0].bytes_out, 984320);
     }
 
     #[test]

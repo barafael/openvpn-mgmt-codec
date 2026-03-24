@@ -62,3 +62,50 @@ impl FromStr for LogLevel {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_roundtrip() {
+        for (flag, expected) in [
+            ("I", LogLevel::Info),
+            ("D", LogLevel::Debug),
+            ("W", LogLevel::Warning),
+            ("N", LogLevel::NonFatal),
+            ("F", LogLevel::Fatal),
+        ] {
+            let parsed: LogLevel = flag.parse().unwrap();
+            assert_eq!(parsed, expected);
+            assert_eq!(parsed.to_string(), flag);
+        }
+    }
+
+    #[test]
+    fn parse_invalid() {
+        let err = "X".parse::<LogLevel>().unwrap_err();
+        assert_eq!(err.to_string(), r#"unrecognized log level: "X""#);
+    }
+
+    #[test]
+    fn label_known_variants() {
+        assert_eq!(LogLevel::Info.label(), "INFO");
+        assert_eq!(LogLevel::Debug.label(), "DEBUG");
+        assert_eq!(LogLevel::Warning.label(), "WARN");
+        assert_eq!(LogLevel::NonFatal.label(), "NFATAL");
+        assert_eq!(LogLevel::Fatal.label(), "FATAL");
+    }
+
+    #[test]
+    fn label_unknown_returns_inner() {
+        let level = LogLevel::Unknown("Z".to_string());
+        assert_eq!(level.label(), "Z");
+    }
+
+    #[test]
+    fn display_unknown_uses_strum_default() {
+        let level = LogLevel::Unknown("Q".to_string());
+        assert_eq!(level.to_string(), "Q");
+    }
+}

@@ -41,6 +41,7 @@ pub enum CommandParseError {
 pub enum RemoteEntryRange {
     /// A single entry by index.
     Single(u32),
+
     /// A range of entries `[from, to)`.
     Range {
         /// Start index (inclusive).
@@ -48,6 +49,7 @@ pub enum RemoteEntryRange {
         /// End index (exclusive).
         to: u32,
     },
+
     /// All entries.
     All,
 }
@@ -1582,6 +1584,20 @@ mod tests {
             }
         );
         assert!("push-update-broad".parse::<OvpnCommand>().is_err());
+    }
+
+    // --- expected_response ---
+
+    #[test]
+    fn exit_quit_expect_no_response() {
+        assert_eq!(
+            OvpnCommand::Exit.expected_response(),
+            ResponseKind::NoResponse,
+        );
+        assert_eq!(
+            OvpnCommand::Quit.expected_response(),
+            ResponseKind::NoResponse,
+        );
     }
 
     #[test]

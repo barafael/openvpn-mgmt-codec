@@ -141,7 +141,8 @@ async fn run_connection(
         Ok(s) => s,
         Err(e) => {
             tracing::warn!(addr, error = %e, "connection failed");
-            tx.send_event(ActorEvent::Disconnected(Some(e.to_string()))).await?;
+            tx.send_event(ActorEvent::Disconnected(Some(e.to_string())))
+                .await?;
             return Ok(());
         }
     };
@@ -161,7 +162,8 @@ async fn run_connection(
     tracing::debug!(count = startup_commands.len(), "running startup sequence");
     for cmd in startup_commands {
         if let Err(e) = sink.send(cmd).await {
-            tx.send_event(ActorEvent::Disconnected(Some(e.to_string()))).await?;
+            tx.send_event(ActorEvent::Disconnected(Some(e.to_string())))
+                .await?;
             return Ok(());
         }
         let deadline = tokio::time::Instant::now() + STARTUP_RESPONSE_TIMEOUT;
@@ -182,7 +184,8 @@ async fn run_connection(
                     }
                 }
                 Ok(Some(Err(e))) => {
-                    tx.send_event(ActorEvent::Disconnected(Some(e.to_string()))).await?;
+                    tx.send_event(ActorEvent::Disconnected(Some(e.to_string())))
+                        .await?;
                     return Ok(());
                 }
                 Ok(None) => {
