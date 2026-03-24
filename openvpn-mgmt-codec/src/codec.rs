@@ -148,7 +148,8 @@ pub enum AccumulationLimit {
 ///
 /// Encoding while a multi-line response or `>CLIENT:` notification is
 /// being accumulated is still discouraged (and logged as a warning),
-/// because it means the caller is not draining the stream.
+/// because it means the caller is not draining the stream (emptying the
+/// read half of the codec).
 ///
 /// # Notification interleaving
 ///
@@ -252,17 +253,23 @@ impl OvpnCodec {
     }
 }
 
+/// The decoder accumulated more items than its configured limit allows.
+#[derive(Debug, thiserror::Error)]
+#[error("{what} accumulation limit exceeded ({max})")]
+struct AccumulationLimitExceeded {
+    what: &'static str,
+    max: usize,
+}
+
 fn check_accumulation_limit(
     current_len: usize,
     limit: AccumulationLimit,
-    what: &str,
+    what: &'static str,
 ) -> Result<(), io::Error> {
     if let AccumulationLimit::Max(max) = limit
         && current_len >= max
     {
-        return Err(io::Error::other(format!(
-            "{what} accumulation limit exceeded ({max})"
-        )));
+        return Err(io::Error::other(AccumulationLimitExceeded { what, max }));
     }
     Ok(())
 }
