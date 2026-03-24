@@ -114,6 +114,9 @@ pub(crate) struct App {
     // Clients (server mode)
     clients: Vec<ClientInfo>,
 
+    // Help
+    help_lines: Option<Vec<String>>,
+
     // Operations tab
     pub(crate) ops: OperationsForm,
 
@@ -127,6 +130,8 @@ pub(crate) struct App {
     /// When `true` the next response (Success / Error / MultiLine) is
     /// appended to the most recent history entry instead of being discarded.
     awaiting_command_response: bool,
+    /// Flat line index currently flash-highlighted after a copy.
+    console_flash_index: Option<usize>,
 
     // UI
     active_tab: Tab,
@@ -207,18 +212,18 @@ impl App {
             selected_log_index: None,
             clients: Vec::new(),
 
-            ops: OperationsForm {
-                bytecount_input: "2".to_string(),
-                ..OperationsForm::default()
-            },
+            help_lines: None,
+
+            ops: OperationsForm::default(),
 
             command_input: String::new(),
             command_valid: false,
             raw_mode: false,
             command_history: Vec::new(),
             awaiting_command_response: false,
+            console_flash_index: None,
 
-            active_tab: Tab::Status,
+            active_tab: Tab::Dashboard,
             ctrl_held: false,
             theme: Theme::GruvboxDark,
         };
@@ -376,16 +381,11 @@ impl App {
             }
 
             // -- Startup options --------------------------------------------------
-            Message::Startup(startup_msg) => match startup_msg {
-                StartupMsg::LogMode(mode) => self.startup.log = mode,
-                StartupMsg::StateMode(mode) => self.startup.state = mode,
-                StartupMsg::EchoMode(mode) => self.startup.echo = mode,
-                StartupMsg::ByteCountIntervalChanged(value) => {
-                    self.startup.bytecount_interval = value;
+            Message::Startup(startup_msg) => {
+                if self.handle_startup(startup_msg).is_err() {
+                    self.on_actor_gone();
                 }
-                StartupMsg::HoldReleaseToggled(value) => self.startup.hold_release = value,
-                StartupMsg::QueryVersionToggled(value) => self.startup.query_version = value,
-            },
+            }
 
             // -- Operations tab ---------------------------------------------------
             Message::Ops(OpsMsg::VerbReset) => {
@@ -455,6 +455,25 @@ impl App {
                 }
             }
 
+            // -- Console output --------------------------------------------------
+            Message::CopyConsoleLine(flat_index) => {
+                if let Some(line) = self.console_flat_line(flat_index) {
+                    self.console_flash_index = Some(flat_index);
+                    return Task::batch([
+                        iced::clipboard::write(line),
+                        Task::perform(
+                            async {
+                                tokio::time::sleep(std::time::Duration::from_millis(350)).await;
+                            },
+                            |()| Message::ClearConsoleFlash,
+                        ),
+                    ]);
+                }
+            }
+            Message::ClearConsoleFlash => {
+                self.console_flash_index = None;
+            }
+
             // -- Status refresh --------------------------------------------------
             Message::RefreshStatus => {
                 let cmds = [
@@ -462,6 +481,8 @@ impl App {
                     OvpnCommand::Pid,
                     OvpnCommand::State,
                     OvpnCommand::LoadStats,
+                    OvpnCommand::Verb(None),
+                    OvpnCommand::Mute(None),
                 ];
                 for cmd in cmds {
                     if self.send_actor(ActorCommand::Send(cmd)).is_err() {
@@ -759,6 +780,54 @@ impl App {
         }
     }
 
+    /// Handle startup-option changes. When connected, stream-mode and
+    /// bytecount changes are sent immediately so the tab controls
+    /// double as live toggles.
+    fn handle_startup(&mut self, msg: StartupMsg) -> Result<(), ActorGone> {
+        match msg {
+            StartupMsg::LogMode(mode) => {
+                self.startup.log = mode;
+                self.apply_stream_mode("log", mode, OvpnCommand::Log)?;
+            }
+            StartupMsg::StateMode(mode) => {
+                self.startup.state = mode;
+                self.apply_stream_mode("state", mode, OvpnCommand::StateStream)?;
+            }
+            StartupMsg::EchoMode(mode) => {
+                self.startup.echo = mode;
+                self.apply_stream_mode("echo", mode, OvpnCommand::Echo)?;
+            }
+            StartupMsg::ByteCountIntervalChanged(value) => {
+                self.startup.bytecount_interval = value;
+            }
+            StartupMsg::ByteCountApply => {
+                if let Ok(seconds) = self.startup.bytecount_interval.parse::<u32>() {
+                    self.send_if_connected(
+                        &format!("bytecount {seconds}"),
+                        OvpnCommand::ByteCount(seconds),
+                    )?;
+                }
+            }
+            StartupMsg::ByteCountOff => {
+                self.send_if_connected("bytecount 0", OvpnCommand::ByteCount(0))?;
+            }
+            StartupMsg::HoldReleaseToggled(value) => self.startup.hold_release = value,
+            StartupMsg::QueryVersionToggled(value) => self.startup.query_version = value,
+        }
+        Ok(())
+    }
+
+    /// Send a stream-mode change for a given channel when connected.
+    fn apply_stream_mode(
+        &mut self,
+        label: &str,
+        mode: StartupStreamMode,
+        make_cmd: fn(StreamMode) -> OvpnCommand,
+    ) -> Result<(), ActorGone> {
+        let stream = mode.to_stream_mode();
+        self.send_if_connected(label, make_cmd(stream))
+    }
+
     fn handle_ops(&mut self, msg: OpsMsg) -> Result<(), ActorGone> {
         match msg {
             // -- Query -----------------------------------------------------------
@@ -776,45 +845,6 @@ impl App {
             OpsMsg::Help => self.send_and_record("help", OvpnCommand::Help)?,
             OpsMsg::LoadStats => self.send_and_record("load-stats", OvpnCommand::LoadStats)?,
             OpsMsg::Net => self.send_and_record("net", OvpnCommand::Net)?,
-
-            // -- Streaming -------------------------------------------------------
-            OpsMsg::LogOn => self.send_and_record("log on", OvpnCommand::Log(StreamMode::On))?,
-            OpsMsg::LogOff => {
-                self.send_and_record("log off", OvpnCommand::Log(StreamMode::Off))?;
-            }
-            OpsMsg::LogAll => {
-                self.send_and_record("log all", OvpnCommand::Log(StreamMode::All))?;
-            }
-            OpsMsg::StateOn => {
-                self.send_and_record("state on", OvpnCommand::StateStream(StreamMode::On))?;
-            }
-            OpsMsg::StateOff => {
-                self.send_and_record("state off", OvpnCommand::StateStream(StreamMode::Off))?;
-            }
-            OpsMsg::StateAll => {
-                self.send_and_record("state all", OvpnCommand::StateStream(StreamMode::All))?;
-            }
-            OpsMsg::EchoOn => {
-                self.send_and_record("echo on", OvpnCommand::Echo(StreamMode::On))?;
-            }
-            OpsMsg::EchoOff => {
-                self.send_and_record("echo off", OvpnCommand::Echo(StreamMode::Off))?;
-            }
-            OpsMsg::EchoAll => {
-                self.send_and_record("echo all", OvpnCommand::Echo(StreamMode::All))?;
-            }
-            OpsMsg::ByteCountIntervalChanged(value) => self.ops.bytecount_input = value,
-            OpsMsg::ByteCountApply => {
-                if let Ok(seconds) = self.ops.bytecount_input.parse::<u32>() {
-                    self.send_and_record(
-                        &format!("bytecount {seconds}"),
-                        OvpnCommand::ByteCount(seconds),
-                    )?;
-                }
-            }
-            OpsMsg::ByteCountOff => {
-                self.send_and_record("bytecount 0", OvpnCommand::ByteCount(0))?;
-            }
 
             // -- Signals ---------------------------------------------------------
             OpsMsg::SignalHup => {
@@ -975,6 +1005,14 @@ impl App {
             self.version_lines = Some(lines.to_vec());
         }
 
+        // Help output: lines like "auth-retry t           : ...", "bytecount n : ..."
+        if lines
+            .iter()
+            .any(|line| line.starts_with("help") && line.contains(':'))
+        {
+            self.help_lines = Some(lines.to_vec());
+        }
+
         // State history: lines like "1711234567,CONNECTED,SUCCESS,10.8.0.2,1.2.3.4,..."
         // Take the last (most recent) line that parses as a state.
         for line in lines.iter().rev() {
@@ -998,6 +1036,27 @@ impl App {
                 break;
             }
         }
+    }
+
+    /// Return the text of a flat console output line by index.
+    ///
+    /// The flat indexing mirrors `view_output_pane`: entries in reverse order,
+    /// with the command line (`❯ cmd`) followed by its response lines.
+    fn console_flat_line(&self, flat_index: usize) -> Option<String> {
+        let mut idx = 0usize;
+        for entry in self.command_history.iter().rev() {
+            if idx == flat_index {
+                return Some(format!("❯ {}", entry.command));
+            }
+            idx += 1;
+            for line in &entry.response_lines {
+                if idx == flat_index {
+                    return Some(line.clone());
+                }
+                idx += 1;
+            }
+        }
+        None
     }
 
     /// Append text to the most recent command-history entry (if awaiting).
@@ -1038,6 +1097,15 @@ impl App {
         sender.try_send(command).map_err(|_| ActorGone)
     }
 
+    /// Send a command (with console recording) only if currently connected.
+    /// Returns `Ok(())` silently when disconnected.
+    fn send_if_connected(&mut self, label: &str, command: OvpnCommand) -> Result<(), ActorGone> {
+        if self.connection_state == ConnectionState::Connected {
+            self.send_and_record(label, command)?;
+        }
+        Ok(())
+    }
+
     /// Send a command and record it in the output history so the response
     /// is visible in the console output pane.
     fn send_and_record(&mut self, label: &str, command: OvpnCommand) -> Result<(), ActorGone> {
@@ -1072,20 +1140,14 @@ impl App {
             )));
         }
 
-        let to_stream_mode = |startup_mode: StartupStreamMode| match startup_mode {
-            StartupStreamMode::Off => None,
-            StartupStreamMode::On => Some(StreamMode::On),
-            StartupStreamMode::OnAll => Some(StreamMode::OnAll),
-        };
-
-        if let Some(mode) = to_stream_mode(self.startup.log) {
-            commands.push(OvpnCommand::Log(mode));
+        if self.startup.log != StartupStreamMode::Off {
+            commands.push(OvpnCommand::Log(self.startup.log.to_stream_mode()));
         }
-        if let Some(mode) = to_stream_mode(self.startup.state) {
-            commands.push(OvpnCommand::StateStream(mode));
+        if self.startup.state != StartupStreamMode::Off {
+            commands.push(OvpnCommand::StateStream(self.startup.state.to_stream_mode()));
         }
-        if let Some(mode) = to_stream_mode(self.startup.echo) {
-            commands.push(OvpnCommand::Echo(mode));
+        if self.startup.echo != StartupStreamMode::Off {
+            commands.push(OvpnCommand::Echo(self.startup.echo.to_stream_mode()));
         }
 
         commands.push(OvpnCommand::Pid);
@@ -1096,6 +1158,8 @@ impl App {
         if self.startup.query_version {
             commands.push(OvpnCommand::Version);
         }
+
+        commands.push(OvpnCommand::Help);
 
         if let Ok(seconds) = self.startup.bytecount_interval.parse::<u32>()
             && seconds > 0
@@ -1137,12 +1201,11 @@ impl App {
         self.log_entries.clear();
         self.selected_log_index = None;
         self.clients.clear();
-        self.ops = OperationsForm {
-            bytecount_input: "2".to_string(),
-            ..OperationsForm::default()
-        };
+        self.help_lines = None;
+        self.ops = OperationsForm::default();
         self.command_history.clear();
         self.awaiting_command_response = false;
+        self.console_flash_index = None;
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {

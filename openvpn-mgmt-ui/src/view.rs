@@ -50,14 +50,9 @@ impl App {
             container(
                 Tabs::new(Message::TabSelected)
                     .push(
-                        Tab::Status,
-                        TabLabel::IconText(LucideIcon::Activity.unicode(), "Status".into()),
-                        self.view_tab_status(),
-                    )
-                    .push(
-                        Tab::Console,
-                        TabLabel::IconText(LucideIcon::Terminal.unicode(), "Console".into()),
-                        self.view_tab_console(),
+                        Tab::Dashboard,
+                        TabLabel::IconText(LucideIcon::Activity.unicode(), "Dashboard".into()),
+                        self.view_tab_dashboard(),
                     )
                     .push(
                         Tab::Log,
@@ -65,14 +60,28 @@ impl App {
                         self.view_tab_log(),
                     )
                     .push(
+                        Tab::Console,
+                        TabLabel::IconText(LucideIcon::Terminal.unicode(), "Console".into()),
+                        self.view_tab_console(),
+                    )
+                    .push(
                         Tab::Clients,
                         TabLabel::IconText(LucideIcon::Users.unicode(), "Clients".into()),
                         self.view_tab_clients(),
+                    )
+                    .push(
+                        Tab::Help,
+                        TabLabel::IconText(
+                            LucideIcon::CircleQuestionMark.unicode(),
+                            "Command Help".into(),
+                        ),
+                        self.view_tab_help(),
                     )
                     .set_active_tab(&self.active_tab)
                     .tab_bar_position(iced_aw::TabBarPosition::Top)
                     .tab_bar_style(tab_style)
                     .icon_font(Font::with_name("lucide"))
+                    .text_font(crate::SPACE_MONO)
                     .icon_size(12.0)
                     .text_size(13.0)
                     .tab_label_spacing(6.0)
@@ -167,34 +176,10 @@ impl App {
             Space::new().height(0).into()
         };
 
-        // Quick dashboard (only when connected)
-        let dashboard: Element<'_, Message> = if is_connected {
-            let state_text = self
-                .vpn_state
-                .as_ref()
-                .map_or("—".to_string(), |state| state.to_string());
-            let pid_text = self.pid.map_or("—".to_string(), |pid| pid.to_string());
-            let bytes_text = format!(
-                "↓ {}  ↑ {}",
-                format_bytes(self.bytes_in),
-                format_bytes(self.bytes_out),
-            );
-
+        // Refresh button (only when connected)
+        let refresh_btn: Element<'_, Message> = if is_connected {
             column![
-                Space::new().height(12),
-                section_heading("Dashboard"),
-                container(
-                    column![
-                        key_value_row("State", state_text),
-                        key_value_row("PID", pid_text),
-                        key_value_row("Traffic", bytes_text),
-                    ]
-                    .spacing(4),
-                )
-                .padding(12)
-                .width(Length::Fill)
-                .class(card()),
-                Space::new().height(8),
+                Space::new().height(4),
                 with_tooltip(
                     button(
                         row![lucide::icon_refresh_cw().size(12), text("Refresh").size(12),]
@@ -212,35 +197,11 @@ impl App {
             Space::new().height(0).into()
         };
 
-        // Startup options (editable before connecting)
+        // Startup-only options (hold release, query version).
         let startup = &self.startup;
         let startup_section = column![
             Space::new().height(4),
-            section_heading("Startup Options"),
-            column![
-                stream_mode_row("Log", startup.log, |mode| {
-                    Message::Startup(StartupMsg::LogMode(mode))
-                }),
-                stream_mode_row("State", startup.state, |mode| {
-                    Message::Startup(StartupMsg::StateMode(mode))
-                }),
-                stream_mode_row("Echo", startup.echo, |mode| {
-                    Message::Startup(StartupMsg::EchoMode(mode))
-                }),
-            ]
-            .spacing(10),
-            row![
-                text("ByteCount").size(11).style(text_label).width(65),
-                text_input("sec", &startup.bytecount_interval)
-                    .on_input(|value| {
-                        Message::Startup(StartupMsg::ByteCountIntervalChanged(value))
-                    })
-                    .width(50)
-                    .size(11),
-                text("s").size(11).style(text_muted),
-            ]
-            .spacing(6)
-            .align_y(iced::Alignment::Center),
+            section_heading("Startup"),
             checkbox(startup.hold_release)
                 .label("Release hold")
                 .on_toggle(|toggled| Message::Startup(StartupMsg::HoldReleaseToggled(toggled)))
@@ -310,7 +271,7 @@ impl App {
             connect_hint,
             error_row,
             startup_section,
-            dashboard,
+            refresh_btn,
             theme_picker,
         ]
         .spacing(8)
@@ -320,13 +281,59 @@ impl App {
 }
 
 // -------------------------------------------------------------------
-// Tab: Status
+// Tab: Dashboard
 // -------------------------------------------------------------------
 
 impl App {
-    fn view_tab_status(&self) -> Element<'_, Message> {
-        if self.connection_state != ConnectionState::Connected {
-            return centered_placeholder("Connect to an OpenVPN management port to see status.");
+    fn view_tab_dashboard(&self) -> Element<'_, Message> {
+        let connected = self.connection_state == ConnectionState::Connected;
+        let startup = &self.startup;
+
+        // -- Streaming controls (always visible) -------------------------
+        let mut bytecount_row = row![
+            text("ByteCount").size(12).style(text_label).width(65),
+            text_input("sec", &startup.bytecount_interval)
+                .on_input(|value| { Message::Startup(StartupMsg::ByteCountIntervalChanged(value)) })
+                .width(50)
+                .size(12),
+            text("s").size(12).style(text_muted),
+        ]
+        .spacing(6)
+        .align_y(iced::Alignment::Center);
+
+        if connected {
+            bytecount_row = bytecount_row
+                .push(
+                    button(text("Apply").size(11))
+                        .on_press(Message::Startup(StartupMsg::ByteCountApply))
+                        .style(button::secondary),
+                )
+                .push(
+                    button(text("Off").size(11))
+                        .on_press(Message::Startup(StartupMsg::ByteCountOff))
+                        .style(button::secondary),
+                );
+        }
+
+        let controls = column![
+            section_heading("Streaming"),
+            stream_mode_row("State", startup.state, |mode| {
+                Message::Startup(StartupMsg::StateMode(mode))
+            }),
+            bytecount_row,
+        ]
+        .spacing(6);
+
+        // -- Data sections (connected only) ------------------------------
+        if !connected {
+            return tab_scrollable(
+                column![
+                    controls,
+                    Space::new().height(16),
+                    text("Connect to see dashboard data.").style(text_muted),
+                ]
+                .spacing(3),
+            );
         }
 
         let state_text = self
@@ -336,6 +343,8 @@ impl App {
         let state_desc = self.vpn_state_description.as_deref().unwrap_or("—");
 
         let mut rows: Vec<Element<'_, Message>> = vec![
+            controls.into(),
+            Space::new().height(8).into(),
             section_heading("Connection State"),
             key_value_row("State", state_text),
             key_value_row("Description", state_desc.to_string()),
@@ -496,6 +505,8 @@ impl App {
     /// The operations button grid (used inside the console tab).
     fn view_operations_pane(&self, connected: bool) -> Element<'_, Message> {
         let form = &self.ops;
+        let startup = &self.startup;
+
         // -- Query -------------------------------------------------------
         let query_section = column![
             section_heading("Query"),
@@ -513,47 +524,6 @@ impl App {
                 ops_btn("Status V3", OpsMsg::Status3, connected),
             ]
             .spacing(6),
-        ]
-        .spacing(6);
-
-        // -- Streaming ---------------------------------------------------
-        let streaming_section = column![
-            section_heading("Streaming"),
-            row![
-                text("Log").size(12).style(text_label).width(50),
-                ops_btn("On", OpsMsg::LogOn, connected),
-                ops_btn("Off", OpsMsg::LogOff, connected),
-                ops_btn("All", OpsMsg::LogAll, connected),
-            ]
-            .spacing(6)
-            .align_y(iced::Alignment::Center),
-            row![
-                text("State").size(12).style(text_label).width(50),
-                ops_btn("On", OpsMsg::StateOn, connected),
-                ops_btn("Off", OpsMsg::StateOff, connected),
-                ops_btn("All", OpsMsg::StateAll, connected),
-            ]
-            .spacing(6)
-            .align_y(iced::Alignment::Center),
-            row![
-                text("Echo").size(12).style(text_label).width(50),
-                ops_btn("On", OpsMsg::EchoOn, connected),
-                ops_btn("Off", OpsMsg::EchoOff, connected),
-                ops_btn("All", OpsMsg::EchoAll, connected),
-            ]
-            .spacing(6)
-            .align_y(iced::Alignment::Center),
-            row![
-                text("ByteCount").size(12).style(text_label).width(80),
-                text_input("seconds", &form.bytecount_input)
-                    .on_input(|value| Message::Ops(OpsMsg::ByteCountIntervalChanged(value)))
-                    .width(70)
-                    .size(12),
-                ops_btn("Apply", OpsMsg::ByteCountApply, connected),
-                ops_btn("Off", OpsMsg::ByteCountOff, connected),
-            ]
-            .spacing(6)
-            .align_y(iced::Alignment::Center),
         ]
         .spacing(6);
 
@@ -586,32 +556,6 @@ impl App {
         ]
         .spacing(16);
 
-        // -- Verbosity ---------------------------------------------------
-        let verbosity_section = column![
-            section_heading("Verbosity"),
-            row![
-                text("Verb").size(12).style(text_label).width(50),
-                text_input("0–15", &form.verb_input)
-                    .on_input(|value| Message::Ops(OpsMsg::VerbInputChanged(value)))
-                    .width(60)
-                    .size(12),
-                ops_btn("Get", OpsMsg::VerbGet, connected),
-                ops_btn("Set", OpsMsg::VerbSet, connected),
-                ops_btn_danger("Reset", OpsMsg::VerbReset, connected),
-                Space::new().width(16),
-                text("Mute").size(12).style(text_label),
-                text_input("threshold", &form.mute_input)
-                    .on_input(|value| Message::Ops(OpsMsg::MuteInputChanged(value)))
-                    .width(60)
-                    .size(12),
-                ops_btn("Get", OpsMsg::MuteGet, connected),
-                ops_btn("Set", OpsMsg::MuteSet, connected),
-            ]
-            .spacing(6)
-            .align_y(iced::Alignment::Center),
-        ]
-        .spacing(6);
-
         // -- Auth --------------------------------------------------------
         let auth_section = column![
             section_heading("Authentication"),
@@ -621,69 +565,46 @@ impl App {
                 ops_btn("interact", OpsMsg::AuthRetryInteract, connected),
                 ops_btn("nointeract", OpsMsg::AuthRetryNoInteract, connected),
                 Space::new().width(12),
-                ops_btn("Forget Passwords", OpsMsg::ForgetPasswords, connected),
+                ops_btn_danger("Forget Passwords", OpsMsg::ForgetPasswords, connected),
             ]
             .spacing(6)
             .align_y(iced::Alignment::Center),
         ]
         .spacing(6);
 
-        // -- Kill + Client Management (side by side) ---------------------
-        let kill_client = row![
-            column![
-                section_heading("Kill Client"),
-                row![
-                    text_input("Common Name", &form.kill_input)
-                        .on_input(|value| Message::Ops(OpsMsg::KillInputChanged(value)))
-                        .size(12),
-                    ops_btn("Kill", OpsMsg::KillSend, connected),
-                ]
-                .spacing(6)
-                .align_y(iced::Alignment::Center),
-            ]
-            .spacing(6)
-            .width(Length::FillPortion(1)),
-            column![
-                section_heading("Client Mgmt (Server)"),
-                row![
-                    text_input("CID", &form.client_cid)
-                        .on_input(|value| Message::Ops(OpsMsg::ClientCidChanged(value)))
-                        .width(60)
-                        .size(12),
-                    text_input("KID", &form.client_kid)
-                        .on_input(|value| Message::Ops(OpsMsg::ClientKidChanged(value)))
-                        .width(60)
-                        .size(12),
-                    text_input("deny reason", &form.client_deny_reason)
-                        .on_input(|value| Message::Ops(OpsMsg::ClientDenyReasonChanged(value)))
-                        .size(12),
-                ]
-                .spacing(4)
-                .align_y(iced::Alignment::Center),
-                row![
-                    ops_btn("Authorize", OpsMsg::ClientAuthNt, connected),
-                    ops_btn_danger("Deny", OpsMsg::ClientDeny, connected),
-                    ops_btn_danger("Kill", OpsMsg::ClientKill, connected),
-                ]
-                .spacing(6),
-            ]
-            .spacing(6)
-            .width(Length::FillPortion(2)),
+        // -- Echo --------------------------------------------------------
+        let echo_section = column![
+            section_heading("Echo"),
+            stream_mode_row("Echo", startup.echo, |mode| {
+                Message::Startup(StartupMsg::EchoMode(mode))
+            }),
         ]
-        .spacing(16);
+        .spacing(6);
+
+        // -- Kill --------------------------------------------------------
+        let kill_section = column![
+            section_heading("Kill Client"),
+            row![
+                text_input("Common Name", &form.kill_input)
+                    .on_input(|value| Message::Ops(OpsMsg::KillInputChanged(value)))
+                    .size(12),
+                ops_btn("Kill", OpsMsg::KillSend, connected),
+            ]
+            .spacing(6)
+            .align_y(iced::Alignment::Center),
+        ]
+        .spacing(6);
 
         column![
             query_section,
             Space::new().height(6),
-            streaming_section,
-            Space::new().height(6),
             signals_hold,
-            Space::new().height(6),
-            verbosity_section,
             Space::new().height(6),
             auth_section,
             Space::new().height(6),
-            kill_client,
+            echo_section,
+            Space::new().height(6),
+            kill_section,
         ]
         .spacing(4)
         .width(Length::Fill)
@@ -699,20 +620,28 @@ impl App {
                 .into();
         }
 
+        let mut flat_index = 0usize;
         let lines: Vec<Element<'_, Message>> = self
             .command_history
             .iter()
             .rev()
             .flat_map(|entry| {
                 let mut rows: Vec<Element<'_, Message>> = Vec::new();
-                rows.push(
-                    text(format!("❯ {}", entry.command))
-                        .size(11)
-                        .style(text::primary)
-                        .into(),
-                );
+
+                let cmd_idx = flat_index;
+                flat_index += 1;
+                let cmd_text: Element<'_, Message> = text(format!("❯ {}", entry.command))
+                    .size(11)
+                    .style(text::primary)
+                    .into();
+                rows.push(console_line(cmd_text, cmd_idx, self.console_flash_index));
+
                 for line in &entry.response_lines {
-                    rows.push(text(format!("  {line}")).size(11).into());
+                    let line_idx = flat_index;
+                    flat_index += 1;
+                    let line_text: Element<'_, Message> =
+                        text(format!("  {line}")).size(11).into();
+                    rows.push(console_line(line_text, line_idx, self.console_flash_index));
                 }
                 rows
             })
@@ -830,51 +759,106 @@ fn ops_btn_danger(label: &str, msg: OpsMsg, enabled: bool) -> Element<'_, Messag
 
 impl App {
     fn view_tab_log(&self) -> Element<'_, Message> {
-        if self.log_entries.is_empty() {
-            return centered_placeholder("No log entries yet. Connect and enable log streaming.");
-        }
+        let connected = self.connection_state == ConnectionState::Connected;
+        let startup = &self.startup;
+        let form = &self.ops;
 
-        let log_lines: Vec<Element<'_, Message>> = self
-            .log_entries
-            .iter()
-            .enumerate()
-            .rev()
-            .take(LOG_DISPLAY_LIMIT)
-            .map(|(idx, entry)| {
-                let level_label = entry.level.label();
-                let level_style: fn(&Theme) -> text::Style = match &entry.level {
-                    LogLevel::Fatal | LogLevel::NonFatal => text::danger,
-                    LogLevel::Warning => text_warning,
-                    LogLevel::Debug => text_muted,
-                    _ => text_label,
-                };
-                let is_selected = self.selected_log_index == Some(idx);
-                let log_row = row![
-                    container(text(format!("[{level_label}]")).size(11).style(level_style))
-                        .width(56),
-                    container(text(&entry.timestamp).size(11).style(text_muted)).width(80),
-                    text(&entry.message).size(11),
+        // -- Controls bar (always visible) -------------------------------
+        let controls = container(
+            column![
+                section_heading("Streaming"),
+                stream_mode_row("Log", startup.log, |mode| {
+                    Message::Startup(StartupMsg::LogMode(mode))
+                }),
+                row![
+                    text("Verb").size(12).style(text_label).width(50),
+                    text_input("0–15", &form.verb_input)
+                        .on_input(|value| Message::Ops(OpsMsg::VerbInputChanged(value)))
+                        .width(60)
+                        .size(12),
+                    ops_btn("Get", OpsMsg::VerbGet, connected),
+                    ops_btn("Set", OpsMsg::VerbSet, connected),
+                    ops_btn_danger("Reset", OpsMsg::VerbReset, connected),
+                    Space::new().width(16),
+                    text("Mute").size(12).style(text_label),
+                    text_input("threshold", &form.mute_input)
+                        .on_input(|value| Message::Ops(OpsMsg::MuteInputChanged(value)))
+                        .width(60)
+                        .size(12),
+                    ops_btn("Get", OpsMsg::MuteGet, connected),
+                    ops_btn("Set", OpsMsg::MuteSet, connected),
                 ]
-                .spacing(4);
-                let styled_row: Element<'_, Message> = if is_selected {
-                    container(log_row)
-                        .padding(Padding::from([1, 4]))
-                        .style(log_row_selected())
-                        .width(Length::Fill)
-                        .into()
-                } else {
-                    container(log_row)
-                        .padding(Padding::from([1, 4]))
-                        .width(Length::Fill)
-                        .into()
-                };
-                mouse_area(styled_row)
-                    .on_press(Message::SelectLogEntry(idx))
-                    .into()
-            })
-            .collect();
+                .spacing(6)
+                .align_y(iced::Alignment::Center),
+            ]
+            .spacing(6),
+        )
+        .padding(Padding {
+            top: 12.0,
+            left: 16.0,
+            right: 16.0,
+            bottom: 8.0,
+        });
 
-        tab_scrollable(column(log_lines).spacing(2).width(Length::Fill))
+        // -- Log entries (scrollable) ------------------------------------
+        let log_content: Element<'_, Message> = if self.log_entries.is_empty() {
+            centered_placeholder("No log entries yet. Connect and enable log streaming.")
+        } else {
+            let log_lines: Vec<Element<'_, Message>> = self
+                .log_entries
+                .iter()
+                .enumerate()
+                .rev()
+                .take(LOG_DISPLAY_LIMIT)
+                .map(|(idx, entry)| {
+                    let level_label = entry.level.label();
+                    let level_style: fn(&Theme) -> text::Style = match &entry.level {
+                        LogLevel::Fatal | LogLevel::NonFatal => text::danger,
+                        LogLevel::Warning => text_warning,
+                        LogLevel::Debug => text_muted,
+                        _ => text_label,
+                    };
+                    let is_selected = self.selected_log_index == Some(idx);
+                    let log_row = row![
+                        container(text(format!("[{level_label}]")).size(11).style(level_style))
+                            .width(56),
+                        container(text(&entry.timestamp).size(11).style(text_muted)).width(80),
+                        text(&entry.message).size(11),
+                    ]
+                    .spacing(4);
+                    let styled_row: Element<'_, Message> = if is_selected {
+                        container(log_row)
+                            .padding(Padding::from([1, 4]))
+                            .style(log_row_selected())
+                            .width(Length::Fill)
+                            .into()
+                    } else {
+                        container(log_row)
+                            .padding(Padding::from([1, 4]))
+                            .width(Length::Fill)
+                            .into()
+                    };
+                    mouse_area(styled_row)
+                        .on_press(Message::SelectLogEntry(idx))
+                        .into()
+                })
+                .collect();
+
+            scrollable(
+                container(column(log_lines).spacing(2).width(Length::Fill)).padding(Padding {
+                    top: 8.0,
+                    left: 16.0,
+                    right: 16.0,
+                    bottom: 8.0,
+                }),
+            )
+            .height(Length::Fill)
+            .into()
+        };
+
+        column![controls, rule::horizontal(1), log_content,]
+            .height(Length::Fill)
+            .into()
     }
 }
 
@@ -884,39 +868,96 @@ impl App {
 
 impl App {
     fn view_tab_clients(&self) -> Element<'_, Message> {
-        if self.connection_state != ConnectionState::Connected {
-            return centered_placeholder("Connect to view clients.");
-        }
+        let connected = self.connection_state == ConnectionState::Connected;
+        let form = &self.ops;
 
-        if self.clients.is_empty() {
-            return centered_placeholder(
+        // -- Client management controls ----------------------------------
+        let mgmt_section = column![
+            section_heading("Client Management"),
+            row![
+                text_input("CID", &form.client_cid)
+                    .on_input(|value| Message::Ops(OpsMsg::ClientCidChanged(value)))
+                    .width(60)
+                    .size(12),
+                text_input("KID", &form.client_kid)
+                    .on_input(|value| Message::Ops(OpsMsg::ClientKidChanged(value)))
+                    .width(60)
+                    .size(12),
+                text_input("deny reason", &form.client_deny_reason)
+                    .on_input(|value| Message::Ops(OpsMsg::ClientDenyReasonChanged(value)))
+                    .size(12),
+            ]
+            .spacing(4)
+            .align_y(iced::Alignment::Center),
+            row![
+                ops_btn("Authorize", OpsMsg::ClientAuthNt, connected),
+                ops_btn_danger("Deny", OpsMsg::ClientDeny, connected),
+                ops_btn_danger("Kill", OpsMsg::ClientKill, connected),
+            ]
+            .spacing(6),
+        ]
+        .spacing(6);
+
+        // -- Client table ------------------------------------------------
+        let table_content: Element<'_, Message> = if !connected {
+            centered_placeholder("Connect to view clients.")
+        } else if self.clients.is_empty() {
+            centered_placeholder(
                 "No clients connected. Client events appear in server mode \
                  (--management-client-auth).",
+            )
+        } else {
+            let header = row![
+                container(text("CID").size(11).style(text_label)).width(60),
+                container(text("CN / Event").size(11).style(text_label)).width(Length::Fill),
+                container(text("Address").size(11).style(text_label)).width(160),
+            ]
+            .spacing(8);
+
+            let mut rows: Vec<Element<'_, Message>> =
+                vec![header.into(), rule::horizontal(1).into()];
+
+            for client in &self.clients {
+                rows.push(
+                    row![
+                        container(text(client.cid.to_string()).size(12)).width(60),
+                        container(text(&client.common_name).size(12)).width(Length::Fill),
+                        container(text(&client.address).size(12)).width(160),
+                    ]
+                    .spacing(8)
+                    .into(),
+                );
+            }
+
+            column(rows).spacing(4).width(Length::Fill).into()
+        };
+
+        tab_scrollable(
+            column![mgmt_section, Space::new().height(8), table_content,]
+                .spacing(3)
+                .width(Length::Fill),
+        )
+    }
+}
+
+// -------------------------------------------------------------------
+// Tab: Command Help
+// -------------------------------------------------------------------
+
+impl App {
+    fn view_tab_help(&self) -> Element<'_, Message> {
+        let Some(ref lines) = self.help_lines else {
+            return centered_placeholder(
+                "Connect to an OpenVPN management port to see available commands.",
             );
-        }
+        };
 
-        let header = row![
-            container(text("CID").size(11).style(text_label)).width(60),
-            container(text("CN / Event").size(11).style(text_label)).width(Length::Fill),
-            container(text("Address").size(11).style(text_label)).width(160),
-        ]
-        .spacing(8);
+        let rows: Vec<Element<'_, Message>> = lines
+            .iter()
+            .map(|line| text(line.clone()).size(12).into())
+            .collect();
 
-        let mut rows: Vec<Element<'_, Message>> = vec![header.into(), rule::horizontal(1).into()];
-
-        for client in &self.clients {
-            rows.push(
-                row![
-                    container(text(client.cid.to_string()).size(12)).width(60),
-                    container(text(&client.common_name).size(12)).width(Length::Fill),
-                    container(text(&client.address).size(12)).width(160),
-                ]
-                .spacing(8)
-                .into(),
-            );
-        }
-
-        tab_scrollable(column(rows).spacing(4).width(Length::Fill))
+        tab_scrollable(column(rows).spacing(2).width(Length::Fill))
     }
 }
 
@@ -1041,6 +1082,31 @@ fn tab_scrollable<'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, M
     }))
     .height(Length::Fill)
     .into()
+}
+
+/// Wrap a console output line in a clickable mouse_area that copies on click
+/// and flash-highlights briefly.
+fn console_line<'a>(
+    content: Element<'a, Message>,
+    index: usize,
+    flash_index: Option<usize>,
+) -> Element<'a, Message> {
+    let is_flashing = flash_index == Some(index);
+    let styled: Element<'a, Message> = if is_flashing {
+        container(content)
+            .padding(Padding::from([1, 4]))
+            .style(log_row_selected())
+            .width(Length::Fill)
+            .into()
+    } else {
+        container(content)
+            .padding(Padding::from([1, 4]))
+            .width(Length::Fill)
+            .into()
+    };
+    mouse_area(styled)
+        .on_press(Message::CopyConsoleLine(index))
+        .into()
 }
 
 /// Format a byte count in a human-friendly way.

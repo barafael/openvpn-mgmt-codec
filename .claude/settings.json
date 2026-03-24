@@ -19,7 +19,10 @@
       "Bash(gh search:*)",
       "Bash(cargo mutants:*)",
       "Bash(cargo clippy:*)",
-      "Bash(cargo fmt:*)"
+      "Bash(cargo fmt:*)",
+      "Bash(cargo doc:*)",
+      "Bash(for file:*)",
+      "Bash(do test:*)"
     ]
   }
 }

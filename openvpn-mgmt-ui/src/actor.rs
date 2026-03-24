@@ -160,7 +160,9 @@ async fn run_connection(
     // immediately.  A timeout prevents hangs when a response never
     // arrives (e.g. log history flood at high verbosity).
     tracing::debug!(count = startup_commands.len(), "running startup sequence");
+    let mut saw_password_prompt = false;
     for cmd in startup_commands {
+        tracing::debug!(?cmd, "sending startup command");
         if let Err(error) = sink.send(cmd).await {
             tx.send_event(ActorEvent::Disconnected(Some(error.to_string())))
                 .await?;
@@ -170,8 +172,12 @@ async fn run_connection(
         loop {
             match tokio::time::timeout_at(deadline, stream.next()).await {
                 Ok(Some(Ok(msg))) => {
+                    tracing::trace!(?msg, "startup: received message");
                     // Notifications / Info / PasswordPrompt are async —
                     // anything else is a command response.
+                    if matches!(msg, OvpnMessage::PasswordPrompt) {
+                        saw_password_prompt = true;
+                    }
                     let is_async = matches!(
                         msg,
                         OvpnMessage::Notification(_)
@@ -189,7 +195,12 @@ async fn run_connection(
                     return Ok(());
                 }
                 Ok(None) => {
-                    tx.send_event(ActorEvent::Disconnected(None)).await?;
+                    let reason = if saw_password_prompt {
+                        Some("Management password required but not provided".to_string())
+                    } else {
+                        None
+                    };
+                    tx.send_event(ActorEvent::Disconnected(reason)).await?;
                     return Ok(());
                 }
                 Err(_timeout) => {

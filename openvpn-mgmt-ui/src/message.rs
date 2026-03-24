@@ -1,7 +1,7 @@
 //! Top-level message types for the Iced update loop.
 
 use crate::actor::ActorEvent;
-use openvpn_mgmt_codec::OvpnCommand;
+use openvpn_mgmt_codec::{OvpnCommand, StreamMode};
 
 // -------------------------------------------------------------------
 // Right-panel tabs
@@ -10,14 +10,16 @@ use openvpn_mgmt_codec::OvpnCommand;
 /// Selectable tabs in the right panel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Tab {
-    /// Connection state, version, PID, byte counts, load stats.
-    Status,
+    /// Connection state, traffic, throughput, version, PID.
+    Dashboard,
     /// Command input, operation buttons, and shell-like output.
     Console,
     /// Real-time OpenVPN log stream.
     Log,
     /// Connected clients (server mode).
     Clients,
+    /// Management interface command help.
+    Help,
 }
 
 // -------------------------------------------------------------------
@@ -44,6 +46,17 @@ pub(crate) enum StartupStreamMode {
     On,
     #[default]
     OnAll,
+}
+
+impl StartupStreamMode {
+    /// Map to the protocol's [`StreamMode`].
+    pub fn to_stream_mode(self) -> StreamMode {
+        match self {
+            Self::Off => StreamMode::Off,
+            Self::On => StreamMode::On,
+            Self::OnAll => StreamMode::OnAll,
+        }
+    }
 }
 
 /// Configurable options applied by the actor immediately after connecting.
@@ -77,6 +90,8 @@ pub(crate) enum StartupMsg {
     StateMode(StartupStreamMode),
     EchoMode(StartupStreamMode),
     ByteCountIntervalChanged(String),
+    ByteCountApply,
+    ByteCountOff,
     HoldReleaseToggled(bool),
     QueryVersionToggled(bool),
 }
@@ -91,9 +106,6 @@ pub(crate) struct OperationsForm {
     // Verbosity
     pub verb_input: String,
     pub mute_input: String,
-
-    // Streaming
-    pub bytecount_input: String,
 
     // Kill
     pub kill_input: String,
@@ -120,20 +132,6 @@ pub(crate) enum OpsMsg {
     Help,
     LoadStats,
     Net,
-
-    // -- Streaming --
-    LogOn,
-    LogOff,
-    LogAll,
-    StateOn,
-    StateOff,
-    StateAll,
-    EchoOn,
-    EchoOff,
-    EchoAll,
-    ByteCountIntervalChanged(String),
-    ByteCountApply,
-    ByteCountOff,
 
     // -- Signals --
     SignalHup,
@@ -233,6 +231,12 @@ pub(crate) enum Message {
     SelectLogEntry(usize),
     /// Copy the selected log entry to the clipboard (Ctrl+C).
     CopyLogEntry,
+
+    // -- Console output --
+    /// Click a console output line: copy to clipboard and flash-highlight it.
+    CopyConsoleLine(usize),
+    /// Timer callback: clear the console flash highlight.
+    ClearConsoleFlash,
 
     // -- Verb reset (disconnect → reconnect with verb 4) --
     /// Disconnect and reconnect with verb 4 to escape a log flood.
