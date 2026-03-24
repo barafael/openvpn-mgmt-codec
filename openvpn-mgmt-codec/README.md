@@ -39,7 +39,7 @@ use futures::{SinkExt, StreamExt};
 use openvpn_mgmt_codec::{OvpnCodec, OvpnCommand, OvpnMessage, StatusFormat};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     let stream = TcpStream::connect("127.0.0.1:7505").await?;
     let mut framed = Framed::new(stream, OvpnCodec::new());
 

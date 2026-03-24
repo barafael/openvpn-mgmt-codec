@@ -922,7 +922,7 @@ impl FromStr for OvpnCommand {
 /// To send these over a framed connection:
 ///
 /// ```no_run
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn example() -> anyhow::Result<()> {
 /// use tokio::net::TcpStream;
 /// use tokio_util::codec::Framed;
 /// use futures::SinkExt;

@@ -19,6 +19,7 @@ tracing = "0.1"
 conformance-tests = []
 
 [dev-dependencies]
+anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 futures = "0.3"
 proptest = "1"

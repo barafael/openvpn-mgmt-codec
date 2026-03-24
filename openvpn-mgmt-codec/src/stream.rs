@@ -23,7 +23,7 @@
 //! use openvpn_mgmt_codec::{OvpnCodec, OvpnCommand, StatusFormat};
 //! use openvpn_mgmt_codec::stream::{ManagementEvent, classify};
 //!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # async fn example() -> anyhow::Result<()> {
 //! let stream = TcpStream::connect("127.0.0.1:7505").await?;
 //! let framed = Framed::new(stream, OvpnCodec::new());
 //! let (mut sink, raw_stream) = framed.split();
@@ -85,7 +85,7 @@ impl From<OvpnMessage> for ManagementEvent {
 /// # Extracting notifications with timeout
 ///
 /// ```no_run
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn example() -> anyhow::Result<()> {
 /// use tokio::net::TcpStream;
 /// use tokio_util::codec::Framed;
 /// use futures::{SinkExt, StreamExt};
@@ -110,7 +110,7 @@ impl From<OvpnMessage> for ManagementEvent {
 /// # Reconnection with backoff
 ///
 /// ```no_run
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn example() -> anyhow::Result<()> {
 /// use tokio::net::TcpStream;
 /// use tokio_util::codec::Framed;
 /// use futures::StreamExt;
@@ -143,7 +143,7 @@ impl From<OvpnMessage> for ManagementEvent {
 /// # Detecting connection loss via `>FATAL:`
 ///
 /// ```no_run
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// # async fn example() -> anyhow::Result<()> {
 /// use tokio::net::TcpStream;
 /// use tokio_util::codec::Framed;
 /// use futures::StreamExt;

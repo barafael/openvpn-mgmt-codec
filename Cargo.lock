@@ -2541,6 +2541,7 @@ dependencies = [
 name = "openvpn-mgmt-codec"
 version = "0.7.0"
 dependencies = [
+ "anyhow",
  "better_default",
  "bytes",
  "clap",

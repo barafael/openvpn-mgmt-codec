@@ -35,7 +35,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-async fn handle_connection(stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
+async fn handle_connection(stream: TcpStream) -> anyhow::Result<()> {
     let framed = Framed::new(stream, OvpnCodec::new());
     let (mut sink, raw_stream) = framed.split();
     let mut mgmt = raw_stream.map(classify);
