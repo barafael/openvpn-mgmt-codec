@@ -87,18 +87,15 @@ impl FromStr for AuthRetryMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_case::test_case;
 
-    #[test]
-    fn auth_type_roundtrip() {
-        for at in [
-            AuthType::Auth,
-            AuthType::PrivateKey,
-            AuthType::HttpProxy,
-            AuthType::SocksProxy,
-        ] {
-            let s = at.to_string();
-            assert_eq!(s.parse::<AuthType>().unwrap(), at);
-        }
+    #[test_case(AuthType::Auth)]
+    #[test_case(AuthType::PrivateKey)]
+    #[test_case(AuthType::HttpProxy)]
+    #[test_case(AuthType::SocksProxy)]
+    fn auth_type_roundtrip(at: AuthType) {
+        let s = at.to_string();
+        assert_eq!(s.parse::<AuthType>().unwrap(), at);
     }
 
     #[test]
@@ -126,25 +123,12 @@ mod tests {
         assert!("MyPlugin".parse::<AuthType>().is_err());
     }
 
-    #[test]
-    fn auth_type_unknown_falls_back() {
-        let s = "MyPlugin";
-        let at: AuthType = s
-            .parse()
-            .unwrap_or_else(|_| AuthType::Unknown(s.to_string()));
-        assert_eq!(at, AuthType::Unknown("MyPlugin".to_string()));
-    }
-
-    #[test]
-    fn auth_retry_roundtrip() {
-        for mode in [
-            AuthRetryMode::None,
-            AuthRetryMode::Interact,
-            AuthRetryMode::NoInteract,
-        ] {
-            let s = mode.to_string();
-            assert_eq!(s.parse::<AuthRetryMode>().unwrap(), mode);
-        }
+    #[test_case(AuthRetryMode::None)]
+    #[test_case(AuthRetryMode::Interact)]
+    #[test_case(AuthRetryMode::NoInteract)]
+    fn auth_retry_roundtrip(mode: AuthRetryMode) {
+        let s = mode.to_string();
+        assert_eq!(s.parse::<AuthRetryMode>().unwrap(), mode);
     }
 
     #[test]
