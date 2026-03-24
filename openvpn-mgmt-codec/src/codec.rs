@@ -145,6 +145,10 @@ pub enum AccumulationLimit {
 /// kinds — one per encoded command. This allows callers to pipeline
 /// multiple commands (encode A, then B, then C) without waiting for each
 /// response, as long as responses arrive in the same order.
+/// Outgoing bytes are not buffered by the codec itself —
+/// the [`Encoder`] implementation writes into the `BytesMut` that
+/// `tokio_util::codec::Framed` owns, and `Framed` flushes them to the
+/// socket.
 ///
 /// Encoding while a multi-line response or `>CLIENT:` notification is
 /// being accumulated is still discouraged (and logged as a warning),
