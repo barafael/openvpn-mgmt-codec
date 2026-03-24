@@ -82,20 +82,15 @@ fn wire_safe<'a>(
     }
 }
 
-/// Escape a string value per the OpenVPN config-file lexer rules and
-/// wrap it in double quotes. This is required for any user-supplied
-/// string that might contain whitespace, backslashes, or quotes —
-/// passwords, reason strings, needstr values, etc.
-///
-/// The escaping rules from the "Command Parsing" section:
+/// Backslash-escape `\` and `"` per the OpenVPN config-file lexer rules
+/// ("Command Parsing" section):
 ///   `\` → `\\`
 ///   `"` → `\"`
 ///
 /// This function performs *only* lexer escaping. Wire-safety validation
 /// or sanitization must happen upstream via [`wire_safe`].
-fn quote_and_escape(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
+fn escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
             '\\' => out.push_str("\\\\"),
@@ -103,8 +98,16 @@ fn quote_and_escape(s: &str) -> String {
             _ => out.push(c),
         }
     }
-    out.push('"');
     out
+}
+
+/// Wrap an already-escaped string in double quotes for the wire format.
+///
+/// This is required for any user-supplied string that might contain
+/// whitespace, backslashes, or quotes — passwords, reason strings,
+/// needstr values, etc.
+fn quote(s: &str) -> String {
+    format!("\"{s}\"")
 }
 
 /// Codec-internal state for accumulating multi-line `>CLIENT:` notifications.
@@ -351,24 +354,24 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 // Per the doc: username "Auth" foo
                 // Values containing special chars must be quoted+escaped:
                 //   username "Auth" "foo\"bar"
-                let at = quote_and_escape(&wire_safe(
+                let at = quote(&escape(&wire_safe(
                     &auth_type.to_string(),
                     "username auth_type",
                     mode,
-                )?);
-                let val = quote_and_escape(&wire_safe(value.expose(), "username value", mode)?);
+                )?));
+                let val = quote(&escape(&wire_safe(value.expose(), "username value", mode)?));
                 write_line(dst, &format!("username {at} {val}"));
             }
             OvpnCommand::Password {
                 ref auth_type,
                 ref value,
             } => {
-                let at = quote_and_escape(&wire_safe(
+                let at = quote(&escape(&wire_safe(
                     &auth_type.to_string(),
                     "password auth_type",
                     mode,
-                )?);
-                let val = quote_and_escape(&wire_safe(value.expose(), "password value", mode)?);
+                )?));
+                let val = quote(&escape(&wire_safe(value.expose(), "password value", mode)?));
                 write_line(dst, &format!("password {at} {val}"));
             }
             OvpnCommand::AuthRetry(auth_retry_mode) => {
@@ -384,7 +387,7 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 let sid = wire_safe(state_id, "challenge-response state_id", mode)?;
                 let resp = wire_safe(response.expose(), "challenge-response response", mode)?;
                 let value = format!("CRV1::{sid}::{resp}");
-                let escaped = quote_and_escape(&value);
+                let escaped = quote(&escape(&value));
                 write_line(dst, &format!("password \"Auth\" {escaped}"));
             }
             OvpnCommand::StaticChallengeResponse {
@@ -394,7 +397,7 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 let pw = wire_safe(password_b64.expose(), "static-challenge password_b64", mode)?;
                 let resp = wire_safe(response_b64.expose(), "static-challenge response_b64", mode)?;
                 let value = format!("SCRV1:{pw}:{resp}");
-                let escaped = quote_and_escape(&value);
+                let escaped = quote(&escape(&value));
                 write_line(dst, &format!("password \"Auth\" {escaped}"));
             }
 
@@ -408,7 +411,7 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref value,
             } => {
                 let name = wire_safe(name, "needstr name", mode)?;
-                let escaped = quote_and_escape(&wire_safe(value, "needstr value", mode)?);
+                let escaped = quote(&escape(&wire_safe(value, "needstr value", mode)?));
                 write_line(dst, &format!("needstr {name} {escaped}"));
             }
 
@@ -444,12 +447,12 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             // --- Push updates ---
             OvpnCommand::PushUpdateBroad { ref options } => {
                 let options = wire_safe(options, "push-update-broad options", mode)?;
-                let opts = quote_and_escape(&options);
+                let opts = quote(&escape(&options));
                 write_line(dst, &format!("push-update-broad {opts}"));
             }
             OvpnCommand::PushUpdateCid { cid, ref options } => {
                 let options = wire_safe(options, "push-update-cid options", mode)?;
-                let opts = quote_and_escape(&options);
+                let opts = quote(&escape(&options));
                 write_line(dst, &format!("push-update-cid {cid} {opts}"));
             }
 
@@ -478,11 +481,11 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref reason,
                 ref client_reason,
             } => {
-                let r = quote_and_escape(&wire_safe(reason, "client-deny reason", mode)?);
+                let r = quote(&escape(&wire_safe(reason, "client-deny reason", mode)?));
                 match client_reason {
                     Some(cr) => {
                         let options = wire_safe(cr, "client-deny client_reason", mode)?;
-                        let cr_esc = quote_and_escape(&options);
+                        let cr_esc = quote(&escape(&options));
                         write_line(dst, &format!("client-deny {cid} {kid} {r} {cr_esc}"));
                     }
                     None => write_line(dst, &format!("client-deny {cid} {kid} {r}")),
@@ -599,7 +602,14 @@ fn write_block(
     lines: &[String],
     mode: EncoderMode,
 ) -> Result<(), io::Error> {
-    let total: usize = header.len() + 1 + lines.iter().map(|l| l.len() + 2).sum::<usize>() + 4;
+    // Upper-bound byte count for the entire block on the wire:
+    //   header.len()  — header line text (e.g. ">client-auth 7 42")
+    //   + 1           — '\n' terminating the header
+    //   + Σ(l.len()+2)— each body line's text + "\r\n" (2 bytes)
+    //   + 4           — "END\n" block terminator
+    // This is a conservative estimate: sanitized lines may shrink or grow
+    // slightly, but over-reserving is harmless — only written bytes count.
+    let total: usize = header.len() + 1 + lines.iter().map(|line| line.len() + 2).sum::<usize>() + 4;
     dst.reserve(total);
     dst.put_slice(header.as_bytes());
     dst.put_u8(b'\n');
@@ -851,7 +861,7 @@ impl OvpnCodec {
         if kind == "CLIENT" {
             let (event, args) = payload
                 .split_once(',')
-                .map(|(e, a)| (e.to_string(), a.to_string()))
+                .map(|(event_str, args_str)| (event_str.to_string(), args_str.to_string()))
                 .unwrap_or_else(|| (payload.to_string(), String::new()));
 
             // ADDRESS notifications are always single-line (no ENV block).
@@ -859,7 +869,7 @@ impl OvpnCodec {
                 let mut parts = args.splitn(3, ',');
                 let cid = parts
                     .next()
-                    .and_then(|s| parse_field(s, "client address cid"))
+                    .and_then(|field| parse_field(field, "client address cid"))
                     .unwrap_or(0);
                 let addr = parts.next().unwrap_or("").to_string();
                 let primary = parts.next() == Some("1");
@@ -876,9 +886,9 @@ impl OvpnCodec {
             let mut id_parts = args.splitn(3, ',');
             let cid = id_parts
                 .next()
-                .and_then(|s| parse_field(s, "client cid"))
+                .and_then(|field| parse_field(field, "client cid"))
                 .unwrap_or(0);
-            let kid = id_parts.next().and_then(|s| parse_field(s, "client kid"));
+            let kid = id_parts.next().and_then(|field| parse_field(field, "client kid"));
 
             let parsed_event = if event == "CR_RESPONSE" {
                 let response = id_parts.next().unwrap_or("").to_string();
@@ -1474,7 +1484,7 @@ mod tests {
         assert_eq!(
             encode_to_string(OvpnCommand::RemoteEntryGet(RemoteEntryRange::Range {
                 from: 0,
-                to: 3
+                end: 3
             })),
             "remote-entry-get 0 3\n"
         );
@@ -1767,10 +1777,10 @@ mod tests {
     }
 
     #[test]
-    fn quote_and_escape_special_chars() {
-        assert_eq!(quote_and_escape(r#"foo"bar"#), r#""foo\"bar""#);
-        assert_eq!(quote_and_escape(r"a\b"), r#""a\\b""#);
-        assert_eq!(quote_and_escape("simple"), r#""simple""#);
+    fn escape_and_quote_special_chars() {
+        assert_eq!(quote(&escape(r#"foo"bar"#)), r#""foo\"bar""#);
+        assert_eq!(quote(&escape(r"a\b")), r#""a\\b""#);
+        assert_eq!(quote(&escape("simple")), r#""simple""#);
     }
 
     #[test]
@@ -2064,10 +2074,3 @@ mod tests {
         );
     }
 }
-    // Upper-bound byte count for the entire block on the wire:
-    //   header.len()  — header line text (e.g. ">client-auth 7 42")
-    //   + 1           — '\n' terminating the header
-    //   + Σ(l.len()+2)— each body line's text + "\r\n" (2 bytes)
-    //   + 4           — "END\n" block terminator
-    // This is a conservative estimate: sanitized lines may shrink or grow
-    // slightly, but over-reserving is harmless — only written bytes count.
