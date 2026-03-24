@@ -76,7 +76,7 @@ fn wire_safe<'a>(
     }
     match mode {
         EncoderMode::Sanitize => Ok(Cow::Owned(
-            s.chars().filter(|c| !WIRE_UNSAFE.contains(c)).collect(),
+            s.chars().filter(|chr| !WIRE_UNSAFE.contains(chr)).collect(),
         )),
         EncoderMode::Strict => Err(io::Error::other(EncodeError::UnsafeCharacters(field))),
     }
@@ -187,7 +187,7 @@ pub struct OvpnCodec {
 
     /// Accumulator for multi-line `>CLIENT:` notifications. When this is
     /// `Some(...)`, the decoder is waiting for `>CLIENT:ENV,END`.
-    client_notif: Option<ClientNotificationAccumulator>,
+    client_notification: Option<ClientNotificationAccumulator>,
 
     /// Maximum lines to accumulate in a multi-line response.
     ///
@@ -287,10 +287,10 @@ impl Encoder<OvpnCommand> for OvpnCodec {
     type Error = io::Error;
 
     fn encode(&mut self, item: OvpnCommand, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        if self.multi_line_buf.is_some() || self.client_notif.is_some() {
+        if self.multi_line_buf.is_some() || self.client_notification.is_some() {
             warn!(
                 "encode() called while the decoder is mid-accumulation \
-                 (multi_line_buf or client_notif is active). \
+                 (multi_line_buf or client_notification is active). \
                  Drain decode() before sending a new command."
             );
         }
@@ -335,8 +335,8 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref ip,
                 port,
             }) => {
-                let ip = wire_safe(ip, "kill address ip", mode)?;
-                write_line(dst, &format!("kill {protocol}:{ip}:{port}",));
+                let safe_ip = wire_safe(ip, "kill address ip", mode)?;
+                write_line(dst, &format!("kill {protocol}:{safe_ip}:{port}",));
             }
             OvpnCommand::HoldQuery => write_line(dst, "hold"),
             OvpnCommand::HoldOn => write_line(dst, "hold on"),
@@ -354,25 +354,25 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 // Per the doc: username "Auth" foo
                 // Values containing special chars must be quoted+escaped:
                 //   username "Auth" "foo\"bar"
-                let at = quote(&escape(&wire_safe(
+                let auth_quoted = quote(&escape(&wire_safe(
                     &auth_type.to_string(),
                     "username auth_type",
                     mode,
                 )?));
                 let val = quote(&escape(&wire_safe(value.expose(), "username value", mode)?));
-                write_line(dst, &format!("username {at} {val}"));
+                write_line(dst, &format!("username {auth_quoted} {val}"));
             }
             OvpnCommand::Password {
                 ref auth_type,
                 ref value,
             } => {
-                let at = quote(&escape(&wire_safe(
+                let auth_quoted = quote(&escape(&wire_safe(
                     &auth_type.to_string(),
                     "password auth_type",
                     mode,
                 )?));
                 let val = quote(&escape(&wire_safe(value.expose(), "password value", mode)?));
-                write_line(dst, &format!("password {at} {val}"));
+                write_line(dst, &format!("password {auth_quoted} {val}"));
             }
             OvpnCommand::AuthRetry(auth_retry_mode) => {
                 write_line(dst, &format!("auth-retry {auth_retry_mode}"));
@@ -394,9 +394,9 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref password_b64,
                 ref response_b64,
             } => {
-                let pw = wire_safe(password_b64.expose(), "static-challenge password_b64", mode)?;
+                let password = wire_safe(password_b64.expose(), "static-challenge password_b64", mode)?;
                 let resp = wire_safe(response_b64.expose(), "static-challenge response_b64", mode)?;
-                let value = format!("SCRV1:{pw}:{resp}");
+                let value = format!("SCRV1:{password}:{resp}");
                 let escaped = quote(&escape(&value));
                 write_line(dst, &format!("password \"Auth\" {escaped}"));
             }
@@ -481,14 +481,14 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 ref reason,
                 ref client_reason,
             } => {
-                let r = quote(&escape(&wire_safe(reason, "client-deny reason", mode)?));
+                let reason_quoted = quote(&escape(&wire_safe(reason, "client-deny reason", mode)?));
                 match client_reason {
-                    Some(cr) => {
-                        let options = wire_safe(cr, "client-deny client_reason", mode)?;
-                        let cr_esc = quote(&escape(&options));
-                        write_line(dst, &format!("client-deny {cid} {kid} {r} {cr_esc}"));
+                    Some(client_reason_str) => {
+                        let options = wire_safe(client_reason_str, "client-deny client_reason", mode)?;
+                        let client_reason_quoted = quote(&escape(&options));
+                        write_line(dst, &format!("client-deny {cid} {kid} {reason_quoted} {client_reason_quoted}"));
                     }
-                    None => write_line(dst, &format!("client-deny {cid} {kid} {r}")),
+                    None => write_line(dst, &format!("client-deny {cid} {kid} {reason_quoted}")),
                 }
             }
 
@@ -609,7 +609,8 @@ fn write_block(
     //   + 4           — "END\n" block terminator
     // This is a conservative estimate: sanitized lines may shrink or grow
     // slightly, but over-reserving is harmless — only written bytes count.
-    let total: usize = header.len() + 1 + lines.iter().map(|line| line.len() + 2).sum::<usize>() + 4;
+    let total: usize =
+        header.len() + 1 + lines.iter().map(|line| line.len() + 2).sum::<usize>() + 4;
     dst.reserve(total);
     dst.put_slice(header.as_bytes());
     dst.put_u8(b'\n');
@@ -668,20 +669,25 @@ impl Decoder for OvpnCodec {
                     src.advance(consume);
                     return Ok(Some(OvpnMessage::PasswordPrompt));
                 }
+                // Hint to Framed: reserve enough for a typical management
+                // protocol line so the next read_buf doesn't micro-allocate.
+                if src.capacity() - src.len() < 256 {
+                    src.reserve(256);
+                }
                 return Ok(None); // Need more data.
             };
 
             // Extract the line and advance the buffer past the newline.
             let line_bytes = src.split_to(newline_pos + 1);
             let line = match std::str::from_utf8(&line_bytes) {
-                Ok(s) => s,
-                Err(e) => {
+                Ok(text) => text,
+                Err(error) => {
                     // Reset all accumulation state so the decoder doesn't
                     // remain stuck in a half-finished multi-line block.
                     self.multi_line_buf = None;
-                    self.client_notif = None;
+                    self.client_notification = None;
                     self.expected_queue.clear();
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, e));
+                    return Err(io::Error::new(io::ErrorKind::InvalidData, error));
                 }
             }
             .trim_end_matches(['\r', '\n'])
@@ -695,7 +701,7 @@ impl Decoder for OvpnCodec {
             // a line terminator (OpenVPN ≥ 2.6).
             if line.is_empty()
                 && self.multi_line_buf.is_none()
-                && self.client_notif.is_none()
+                && self.client_notification.is_none()
                 && !matches!(self.expected_front(), ResponseKind::MultiLine)
             {
                 continue;
@@ -709,11 +715,11 @@ impl Decoder for OvpnCodec {
             // interleaving here should not occur. Any other line (SUCCESS,
             // ERROR, other notifications) falls through to normal processing
             // as a defensive measure.
-            if let Some(ref mut accum) = self.client_notif
+            if let Some(ref mut accum) = self.client_notification
                 && let Some(rest) = line.strip_prefix(">CLIENT:ENV,")
             {
                 if rest == "END" {
-                    let finished = self.client_notif.take().expect("guarded by if-let");
+                    let finished = self.client_notification.take().expect("guarded by if-let");
                     debug!(event = ?finished.event, cid = finished.cid, env_count = finished.env.len(), "decoded CLIENT notification");
                     return Ok(Some(OvpnMessage::Notification(Notification::Client {
                         event: finished.event,
@@ -888,7 +894,9 @@ impl OvpnCodec {
                 .next()
                 .and_then(|field| parse_field(field, "client cid"))
                 .unwrap_or(0);
-            let kid = id_parts.next().and_then(|field| parse_field(field, "client kid"));
+            let kid = id_parts
+                .next()
+                .and_then(|field| parse_field(field, "client kid"));
 
             let parsed_event = if event == "CR_RESPONSE" {
                 let response = id_parts.next().unwrap_or("").to_string();
@@ -901,7 +909,7 @@ impl OvpnCodec {
             };
 
             // Start accumulation — don't emit anything yet.
-            self.client_notif = Some(ClientNotificationAccumulator {
+            self.client_notification = Some(ClientNotificationAccumulator {
                 event: parsed_event,
                 cid,
                 kid,
@@ -963,13 +971,13 @@ impl OvpnCodec {
 /// Parse a port field that may be empty. Empty or whitespace-only strings
 /// yield `None`; non-empty non-numeric strings also yield `None` (the STATE
 /// notification degrades gracefully via the caller's `?` on other fields).
-fn parse_optional_port(s: &str) -> Option<u16> {
-    let s = s.trim();
-    if s.is_empty() {
+fn parse_optional_port(input: &str) -> Option<u16> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
         return None;
     }
-    s.parse()
-        .inspect_err(|error| warn!(%error, port = s, "non-numeric port in STATE notification"))
+    trimmed.parse()
+        .inspect_err(|error| warn!(%error, port = trimmed, "non-numeric port in STATE notification"))
         .ok()
 }
 
@@ -1413,10 +1421,7 @@ mod tests {
             extra: long_extra.clone(),
             timeout: 60,
         });
-        assert_eq!(
-            wire,
-            format!("client-pending-auth 1 0 {long_extra} 60\n")
-        );
+        assert_eq!(wire, format!("client-pending-auth 1 0 {long_extra} 60\n"));
         assert!(logs_contain("exceeds 245-character limit"));
     }
 
@@ -1869,7 +1874,7 @@ mod tests {
             .unwrap();
         // Feed partial multi-line response (no END yet).
         let mut dec = BytesMut::from("header line\n");
-        let _ = codec.decode(&mut dec); // starts multi_line_buf accumulation
+        codec.decode(&mut dec).unwrap(); // starts multi_line_buf accumulation
         // Encoding again while accumulating logs a warning but succeeds.
         codec.encode(OvpnCommand::Pid, &mut buf).unwrap();
         assert_eq!(
@@ -1885,10 +1890,10 @@ mod tests {
     fn encode_during_client_notif_accumulation_warns_but_succeeds() {
         let mut codec = OvpnCodec::new();
         let mut buf = BytesMut::new();
-        // Feed a CLIENT header — starts client_notif accumulation.
+        // Feed a CLIENT header — starts client_notification accumulation.
         let mut dec = BytesMut::from(">CLIENT:CONNECT,0,1\n");
-        let _ = codec.decode(&mut dec);
-        // Encoding while client_notif is active logs a warning but succeeds.
+        codec.decode(&mut dec).unwrap();
+        // Encoding while client_notification is active logs a warning but succeeds.
         codec.encode(OvpnCommand::Pid, &mut buf).unwrap();
         assert_eq!(codec.expected_queue.len(), 1);
         assert!(logs_contain("mid-accumulation"));
@@ -1966,7 +1971,7 @@ mod tests {
             match codec.decode(&mut dec) {
                 Ok(Some(msg)) => break Ok(msg),
                 Ok(None) => continue,
-                Err(e) => break Err(e),
+                Err(error) => break Err(error),
             }
         };
         assert!(result.is_err(), "expected error when limit exceeded");
@@ -2011,7 +2016,7 @@ mod tests {
             match codec.decode(&mut dec) {
                 Ok(Some(msg)) => break Ok(msg),
                 Ok(None) => continue,
-                Err(e) => break Err(e),
+                Err(error) => break Err(error),
             }
         };
         assert!(

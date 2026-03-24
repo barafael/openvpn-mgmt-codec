@@ -101,7 +101,7 @@ async fn framed_classify_stream_adapter() {
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .map(|r| r.unwrap())
+        .map(|result| result.unwrap())
         .collect();
 
     assert_eq!(events.len(), 2);

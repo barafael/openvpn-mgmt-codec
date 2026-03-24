@@ -54,8 +54,8 @@ impl FromStr for OpenVpnState {
     type Err = ParseOpenVpnStateError;
 
     /// Parse a recognized state string.
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "CONNECTING" => Ok(Self::Connecting),
             "WAIT" => Ok(Self::Wait),
             "AUTH" => Ok(Self::Auth),

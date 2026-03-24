@@ -217,17 +217,20 @@ impl App {
         let startup_section = column![
             Space::new().height(4),
             section_heading("Startup Options"),
-            stream_mode_row("Log", startup.log, |mode| {
-                Message::Startup(StartupMsg::LogMode(mode))
-            }),
-            stream_mode_row("State", startup.state, |mode| {
-                Message::Startup(StartupMsg::StateMode(mode))
-            }),
-            stream_mode_row("Echo", startup.echo, |mode| {
-                Message::Startup(StartupMsg::EchoMode(mode))
-            }),
+            column![
+                stream_mode_row("Log", startup.log, |mode| {
+                    Message::Startup(StartupMsg::LogMode(mode))
+                }),
+                stream_mode_row("State", startup.state, |mode| {
+                    Message::Startup(StartupMsg::StateMode(mode))
+                }),
+                stream_mode_row("Echo", startup.echo, |mode| {
+                    Message::Startup(StartupMsg::EchoMode(mode))
+                }),
+            ]
+            .spacing(10),
             row![
-                text("ByteCount").size(11).style(text_label).width(55),
+                text("ByteCount").size(11).style(text_label).width(65),
                 text_input("sec", &startup.bytecount_interval)
                     .on_input(|value| {
                         Message::Startup(StartupMsg::ByteCountIntervalChanged(value))
@@ -249,7 +252,7 @@ impl App {
                 .size(14)
                 .text_size(11),
         ]
-        .spacing(6);
+        .spacing(10);
 
         // Theme picker (visible while Ctrl is held)
         let theme_picker: Element<'_, Message> = if self.ctrl_held {
@@ -270,7 +273,29 @@ impl App {
             status_indicator,
             Space::new().height(12),
             section_heading("Connection"),
-            labeled_input("Host", &self.host, Message::HostChanged),
+            column![
+                text("Host").size(11).style(text_label),
+                tooltip(
+                    text_input("Host", &self.host).on_input(Message::HostChanged),
+                    container(text(self.host.clone()).size(11))
+                        .max_width(400)
+                        .padding([6, 10])
+                        .style(|theme: &iced::Theme| container::Style {
+                            background: Some(
+                                theme.extended_palette().background.weak.color.into(),
+                            ),
+                            border: iced::Border {
+                                radius: 4.0.into(),
+                                width: 1.0,
+                                color: theme.extended_palette().background.strong.color,
+                            },
+                            ..Default::default()
+                        }),
+                    tooltip::Position::Top,
+                ),
+            ]
+            .spacing(3)
+            .width(Length::Fill),
             labeled_input("Port", &self.port, Message::PortChanged),
             column![
                 text("Password").size(11).style(text_label),
@@ -714,7 +739,7 @@ impl App {
         let matches = if has_args {
             crate::completions::fuzzy_match(first_word)
                 .into_iter()
-                .filter(|e| e.name == first_word)
+                .filter(|entry| entry.name == first_word)
                 .collect::<Vec<_>>()
         } else {
             let mut m = crate::completions::fuzzy_match(first_word);

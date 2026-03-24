@@ -45,8 +45,8 @@ impl FromStr for ClientEvent {
     ///
     /// Note: `CR_RESPONSE` is handled separately in the codec because it
     /// carries an inline base64 field; it is not recognized by `FromStr`.
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "CONNECT" => Ok(Self::Connect),
             "REAUTH" => Ok(Self::Reauth),
             "ESTABLISHED" => Ok(Self::Established),

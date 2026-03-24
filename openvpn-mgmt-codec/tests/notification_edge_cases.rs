@@ -27,7 +27,7 @@ fn decode_single(input: &str) -> OvpnMessage {
 
 fn expect_notification(input: &str) -> Notification {
     match decode_single(input) {
-        OvpnMessage::Notification(n) => n,
+        OvpnMessage::Notification(notification) => notification,
         other => panic!("expected Notification, got {other:?}"),
     }
 }
@@ -47,9 +47,9 @@ fn expect_simple(input: &str) -> (String, String) {
 fn state_minimal_fields() {
     // Only timestamp, state name, desc, local_ip, remote_ip are required
     // (the parser needs 5 fields via .next()?)
-    let n = expect_notification(">STATE:1711000000,CONNECTED,SUCCESS,10.0.0.2,1.2.3.4\n");
+    let notification= expect_notification(">STATE:1711000000,CONNECTED,SUCCESS,10.0.0.2,1.2.3.4\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::State {
             timestamp: 1711000000,
             name: OpenVpnState::Connected,
@@ -60,9 +60,9 @@ fn state_minimal_fields() {
 
 #[test]
 fn state_empty_optional_fields() {
-    let n = expect_notification(">STATE:1711000000,CONNECTING,,,,,,\n");
+    let notification= expect_notification(">STATE:1711000000,CONNECTING,,,,,,\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::State {
             name: OpenVpnState::Connecting,
             ..
@@ -92,14 +92,14 @@ fn state_too_few_fields_falls_back_to_simple() {
 
 #[test]
 fn state_with_all_nine_fields() {
-    let n = expect_notification(
+    let notification= expect_notification(
         ">STATE:1711000000,CONNECTED,SUCCESS,10.0.0.2,1.2.3.4,1194,192.168.1.5,51234,fd00::1\n",
     );
     if let Notification::State {
         local_ipv6,
         remote_port,
         ..
-    } = n
+    } = notification
     {
         assert_eq!(local_ipv6, "fd00::1");
         assert_eq!(remote_port, Some(1194));
@@ -110,8 +110,8 @@ fn state_with_all_nine_fields() {
 
 #[test]
 fn state_unknown_state_name() {
-    let n = expect_notification(">STATE:1711000000,FUTURE_STATE,desc,,,,,\n");
-    if let Notification::State { name, .. } = n {
+    let notification= expect_notification(">STATE:1711000000,FUTURE_STATE,desc,,,,,\n");
+    if let Notification::State { name, .. } = notification{
         assert!(matches!(name, OpenVpnState::Unknown(s) if s == "FUTURE_STATE"));
     } else {
         panic!("expected State");
@@ -124,9 +124,9 @@ fn state_unknown_state_name() {
 
 #[test]
 fn bytecount_zero_values() {
-    let n = expect_notification(">BYTECOUNT:0,0\n");
+    let notification= expect_notification(">BYTECOUNT:0,0\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::ByteCount {
             bytes_in: 0,
             bytes_out: 0
@@ -136,9 +136,9 @@ fn bytecount_zero_values() {
 
 #[test]
 fn bytecount_large_values() {
-    let n = expect_notification(">BYTECOUNT:18446744073709551615,18446744073709551615\n");
+    let notification= expect_notification(">BYTECOUNT:18446744073709551615,18446744073709551615\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::ByteCount {
             bytes_in: u64::MAX,
             bytes_out: u64::MAX,
@@ -172,9 +172,9 @@ fn bytecount_negative_falls_back_to_simple() {
 
 #[test]
 fn bytecount_cli_valid() {
-    let n = expect_notification(">BYTECOUNT_CLI:42,1024,2048\n");
+    let notification= expect_notification(">BYTECOUNT_CLI:42,1024,2048\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::ByteCountCli {
             cid: 42,
             bytes_in: 1024,
@@ -195,8 +195,8 @@ fn bytecount_cli_missing_field_falls_back() {
 
 #[test]
 fn log_with_commas_in_message() {
-    let n = expect_notification(">LOG:1711000000,I,message with, commas, inside\n");
-    if let Notification::Log { level, message, .. } = n {
+    let notification= expect_notification(">LOG:1711000000,I,message with, commas, inside\n");
+    if let Notification::Log { level, message, .. } = notification{
         assert_eq!(level, LogLevel::Info);
         assert_eq!(message, "message with, commas, inside");
     } else {
@@ -206,8 +206,8 @@ fn log_with_commas_in_message() {
 
 #[test]
 fn log_unknown_level() {
-    let n = expect_notification(">LOG:1711000000,X,some message\n");
-    if let Notification::Log { level, .. } = n {
+    let notification= expect_notification(">LOG:1711000000,X,some message\n");
+    if let Notification::Log { level, .. } = notification{
         assert!(matches!(level, LogLevel::Unknown(s) if s == "X"));
     } else {
         panic!("expected Log");
@@ -216,8 +216,8 @@ fn log_unknown_level() {
 
 #[test]
 fn log_empty_message() {
-    let n = expect_notification(">LOG:1711000000,I,\n");
-    if let Notification::Log { message, .. } = n {
+    let notification= expect_notification(">LOG:1711000000,I,\n");
+    if let Notification::Log { message, .. } = notification{
         assert_eq!(message, "");
     } else {
         panic!("expected Log");
@@ -242,8 +242,8 @@ fn log_missing_fields_falls_back() {
 
 #[test]
 fn echo_with_commas() {
-    let n = expect_notification(">ECHO:1711000000,key=value,extra,data\n");
-    if let Notification::Echo { param, .. } = n {
+    let notification= expect_notification(">ECHO:1711000000,key=value,extra,data\n");
+    if let Notification::Echo { param, .. } = notification{
         assert_eq!(param, "key=value,extra,data");
     } else {
         panic!("expected Echo");
@@ -252,8 +252,8 @@ fn echo_with_commas() {
 
 #[test]
 fn echo_empty_param() {
-    let n = expect_notification(">ECHO:1711000000,\n");
-    if let Notification::Echo { param, .. } = n {
+    let notification= expect_notification(">ECHO:1711000000,\n");
+    if let Notification::Echo { param, .. } = notification{
         assert_eq!(param, "");
     } else {
         panic!("expected Echo");
@@ -272,9 +272,9 @@ fn password_need_auth_all_known_types() {
         ("HTTP Proxy", AuthType::HttpProxy),
         ("SOCKS Proxy", AuthType::SocksProxy),
     ] {
-        let n = expect_notification(&format!(">PASSWORD:Need '{wire}' username/password\n"));
+        let notification= expect_notification(&format!(">PASSWORD:Need '{wire}' username/password\n"));
         assert!(matches!(
-            &n,
+            &notification,
             Notification::Password(PasswordNotification::NeedAuth { auth_type })
             if *auth_type == expected
         ));
@@ -283,9 +283,9 @@ fn password_need_auth_all_known_types() {
 
 #[test]
 fn password_need_password_private_key() {
-    let n = expect_notification(">PASSWORD:Need 'Private Key' password\n");
+    let notification= expect_notification(">PASSWORD:Need 'Private Key' password\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::Password(PasswordNotification::NeedPassword {
             auth_type: AuthType::PrivateKey,
         })
@@ -294,9 +294,9 @@ fn password_need_password_private_key() {
 
 #[test]
 fn password_custom_auth_type() {
-    let n = expect_notification(">PASSWORD:Need 'MyPlugin' username/password\n");
+    let notification= expect_notification(">PASSWORD:Need 'MyPlugin' username/password\n");
     assert!(matches!(
-        &n,
+        &notification,
         Notification::Password(PasswordNotification::NeedAuth { auth_type })
         if *auth_type == AuthType::Unknown("MyPlugin".to_string())
     ));
@@ -304,9 +304,9 @@ fn password_custom_auth_type() {
 
 #[test]
 fn password_verification_failed() {
-    let n = expect_notification(">PASSWORD:Verification Failed: 'Auth'\n");
+    let notification= expect_notification(">PASSWORD:Verification Failed: 'Auth'\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::Password(PasswordNotification::VerificationFailed {
             auth_type: AuthType::Auth,
         })
@@ -315,18 +315,18 @@ fn password_verification_failed() {
 
 #[test]
 fn password_auth_token() {
-    let n = expect_notification(">PASSWORD:Auth-Token:abc123xyz\n");
-    if let Notification::Password(PasswordNotification::AuthToken { token }) = n {
+    let notification= expect_notification(">PASSWORD:Auth-Token:abc123xyz\n");
+    if let Notification::Password(PasswordNotification::AuthToken { token }) = notification{
         assert_eq!(token.expose(), "abc123xyz");
     } else {
-        panic!("expected AuthToken, got {n:?}");
+        panic!("expected AuthToken, got {notification:?}");
     }
 }
 
 #[test]
 fn password_auth_token_empty() {
-    let n = expect_notification(">PASSWORD:Auth-Token:\n");
-    if let Notification::Password(PasswordNotification::AuthToken { token }) = n {
+    let notification= expect_notification(">PASSWORD:Auth-Token:\n");
+    if let Notification::Password(PasswordNotification::AuthToken { token }) = notification{
         assert_eq!(token.expose(), "");
     } else {
         panic!("expected AuthToken");
@@ -336,12 +336,12 @@ fn password_auth_token_empty() {
 #[test]
 fn password_static_challenge_echo_and_concat_flags() {
     // flag=0: echo=false, response_concat=false
-    let n = expect_notification(">PASSWORD:Need 'Auth' username/password SC:0,Enter PIN\n");
+    let notification= expect_notification(">PASSWORD:Need 'Auth' username/password SC:0,Enter PIN\n");
     if let Notification::Password(PasswordNotification::StaticChallenge {
         echo,
         response_concat,
         challenge,
-    }) = n
+    }) = notification
     {
         assert!(!echo);
         assert!(!response_concat);
@@ -351,12 +351,12 @@ fn password_static_challenge_echo_and_concat_flags() {
     }
 
     // flag=1: echo=true, response_concat=false
-    let n = expect_notification(">PASSWORD:Need 'Auth' username/password SC:1,Enter OTP\n");
+    let notification= expect_notification(">PASSWORD:Need 'Auth' username/password SC:1,Enter OTP\n");
     if let Notification::Password(PasswordNotification::StaticChallenge {
         echo,
         response_concat,
         ..
-    }) = n
+    }) = notification
     {
         assert!(echo);
         assert!(!response_concat);
@@ -365,12 +365,12 @@ fn password_static_challenge_echo_and_concat_flags() {
     }
 
     // flag=2: echo=false, response_concat=true
-    let n = expect_notification(">PASSWORD:Need 'Auth' username/password SC:2,Challenge\n");
+    let notification= expect_notification(">PASSWORD:Need 'Auth' username/password SC:2,Challenge\n");
     if let Notification::Password(PasswordNotification::StaticChallenge {
         echo,
         response_concat,
         ..
-    }) = n
+    }) = notification
     {
         assert!(!echo);
         assert!(response_concat);
@@ -379,12 +379,12 @@ fn password_static_challenge_echo_and_concat_flags() {
     }
 
     // flag=3: echo=true, response_concat=true
-    let n = expect_notification(">PASSWORD:Need 'Auth' username/password SC:3,Both\n");
+    let notification= expect_notification(">PASSWORD:Need 'Auth' username/password SC:3,Both\n");
     if let Notification::Password(PasswordNotification::StaticChallenge {
         echo,
         response_concat,
         ..
-    }) = n
+    }) = notification
     {
         assert!(echo);
         assert!(response_concat);
@@ -395,7 +395,7 @@ fn password_static_challenge_echo_and_concat_flags() {
 
 #[test]
 fn password_dynamic_challenge_crv1() {
-    let n = expect_notification(
+    let notification= expect_notification(
         ">PASSWORD:Verification Failed: 'Auth' ['CRV1:R,E:sid123:dXNlcg==:Enter OTP']\n",
     );
     if let Notification::Password(PasswordNotification::DynamicChallenge {
@@ -403,14 +403,14 @@ fn password_dynamic_challenge_crv1() {
         state_id,
         username_b64,
         challenge,
-    }) = n
+    }) = notification
     {
         assert_eq!(flags, "R,E");
         assert_eq!(state_id, "sid123");
         assert_eq!(username_b64, "dXNlcg==");
         assert_eq!(challenge, "Enter OTP");
     } else {
-        panic!("expected DynamicChallenge, got {n:?}");
+        panic!("expected DynamicChallenge, got {notification:?}");
     }
 }
 
@@ -433,8 +433,8 @@ fn password_need_with_unknown_suffix_falls_back() {
 
 #[test]
 fn remote_valid() {
-    let n = expect_notification(">REMOTE:vpn.example.com,1194,udp\n");
-    assert!(matches!(n, Notification::Remote { port: 1194, .. }));
+    let notification= expect_notification(">REMOTE:vpn.example.com,1194,udp\n");
+    assert!(matches!(notification, Notification::Remote { port: 1194, .. }));
 }
 
 #[test]
@@ -451,8 +451,8 @@ fn remote_missing_protocol_falls_back() {
 
 #[test]
 fn proxy_valid() {
-    let n = expect_notification(">PROXY:1,TCP,proxy.local\n");
-    assert!(matches!(n, Notification::Proxy { index: 1, .. }));
+    let notification= expect_notification(">PROXY:1,TCP,proxy.local\n");
+    assert!(matches!(notification, Notification::Proxy { index: 1, .. }));
 }
 
 #[test]
@@ -467,11 +467,11 @@ fn proxy_non_numeric_index_falls_back() {
 
 #[test]
 fn need_ok_valid() {
-    let n = expect_notification(
+    let notification= expect_notification(
         ">NEED-OK:Need 'token-insertion-request' confirmation MSG:Insert token\n",
     );
     assert!(matches!(
-        n,
+        notification,
         Notification::NeedOk { ref name, ref message }
         if name == "token-insertion-request" && message == "Insert token"
     ));
@@ -491,9 +491,9 @@ fn need_ok_no_quote_falls_back() {
 
 #[test]
 fn need_str_valid() {
-    let n = expect_notification(">NEED-STR:Need 'username' input MSG:Enter username\n");
+    let notification= expect_notification(">NEED-STR:Need 'username' input MSG:Enter username\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::NeedStr { ref name, ref message }
         if name == "username" && message == "Enter username"
     ));
@@ -505,14 +505,14 @@ fn need_str_valid() {
 
 #[test]
 fn pkcs11_id_count_valid() {
-    let n = expect_notification(">PKCS11ID-COUNT:3\n");
-    assert!(matches!(n, Notification::Pkcs11IdCount { count: 3 }));
+    let notification= expect_notification(">PKCS11ID-COUNT:3\n");
+    assert!(matches!(notification, Notification::Pkcs11IdCount { count: 3 }));
 }
 
 #[test]
 fn pkcs11_id_count_zero() {
-    let n = expect_notification(">PKCS11ID-COUNT:0\n");
-    assert!(matches!(n, Notification::Pkcs11IdCount { count: 0 }));
+    let notification= expect_notification(">PKCS11ID-COUNT:0\n");
+    assert!(matches!(notification, Notification::Pkcs11IdCount { count: 0 }));
 }
 
 #[test]
@@ -550,27 +550,27 @@ fn pkcs11_id_entry_malformed_falls_back() {
 
 #[test]
 fn hold_preserves_full_text() {
-    let n = expect_notification(">HOLD:Waiting for hold release:5\n");
+    let notification= expect_notification(">HOLD:Waiting for hold release:5\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::Hold { ref text } if text == "Waiting for hold release:5"
     ));
 }
 
 #[test]
 fn fatal_preserves_message() {
-    let n = expect_notification(">FATAL:cannot allocate TUN/TAP dev\n");
+    let notification= expect_notification(">FATAL:cannot allocate TUN/TAP dev\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::Fatal { ref message } if message == "cannot allocate TUN/TAP dev"
     ));
 }
 
 #[test]
 fn rsa_sign_preserves_data() {
-    let n = expect_notification(">RSA_SIGN:AQID/base64data==\n");
+    let notification= expect_notification(">RSA_SIGN:AQID/base64data==\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::RsaSign { ref data } if data == "AQID/base64data=="
     ));
 }
@@ -590,8 +590,8 @@ fn info_banner_is_separate_variant() {
 
 #[test]
 fn notification_with_empty_payload() {
-    let n = expect_notification(">HOLD:\n");
-    assert!(matches!(n, Notification::Hold { ref text } if text.is_empty()));
+    let notification= expect_notification(">HOLD:\n");
+    assert!(matches!(notification, Notification::Hold { ref text } if text.is_empty()));
 }
 
 #[test]
@@ -602,9 +602,9 @@ fn notification_with_no_colon_is_unrecognized() {
 
 #[test]
 fn client_address_notification() {
-    let n = expect_notification(">CLIENT:ADDRESS,42,10.8.0.6,1\n");
+    let notification= expect_notification(">CLIENT:ADDRESS,42,10.8.0.6,1\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::ClientAddress {
             cid: 42,
             addr: ref a,
@@ -615,9 +615,9 @@ fn client_address_notification() {
 
 #[test]
 fn client_address_not_primary() {
-    let n = expect_notification(">CLIENT:ADDRESS,42,10.8.0.6,0\n");
+    let notification= expect_notification(">CLIENT:ADDRESS,42,10.8.0.6,0\n");
     assert!(matches!(
-        n,
+        notification,
         Notification::ClientAddress { primary: false, .. }
     ));
 }

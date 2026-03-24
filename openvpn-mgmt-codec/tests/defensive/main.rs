@@ -302,7 +302,7 @@ fn client_auth_end_in_config_lines_must_not_split_block() {
 
     // Count "END" occurrences — a safe encoder must have exactly ONE
     // terminal END, not an early one that splits the block.
-    let end_count = wire.lines().filter(|l| *l == "END").count();
+    let end_count = wire.lines().filter(|line| *line == "END").count();
     assert_eq!(
         end_count, 1,
         "client-auth config_lines containing 'END' produced {end_count} \
@@ -316,7 +316,7 @@ fn rsa_sig_end_in_base64_must_not_split_block() {
         base64_lines: vec!["AAAA".into(), "END".into(), "signal SIGTERM".into()],
     });
 
-    let end_count = wire.lines().filter(|l| *l == "END").count();
+    let end_count = wire.lines().filter(|line| *line == "END").count();
     assert_eq!(
         end_count, 1,
         "rsa-sig base64_lines containing 'END' produced {end_count} \
@@ -335,7 +335,7 @@ fn certificate_end_in_pem_must_not_split_block() {
         ],
     });
 
-    let end_count = wire.lines().filter(|l| *l == "END").count();
+    let end_count = wire.lines().filter(|line| *line == "END").count();
     assert_eq!(
         end_count, 1,
         "certificate pem_lines containing 'END' produced {end_count} \
@@ -485,7 +485,7 @@ fn client_auth_end_injection_roundtrip() {
     // Verify the wire bytes: the body "END" must have been escaped so
     // the only bare END is the block terminator.
     let wire = String::from_utf8(enc.to_vec()).unwrap();
-    let bare_end_count = wire.lines().filter(|l| *l == "END").count();
+    let bare_end_count = wire.lines().filter(|line| *line == "END").count();
     assert_eq!(
         bare_end_count, 1,
         "encoded client-auth has {bare_end_count} bare END lines (expected \

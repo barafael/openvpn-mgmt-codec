@@ -98,13 +98,13 @@ fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
     let era = days / 146_097;
     let doe = days - era * 146_097;
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
+    let year = yoe + era * 400;
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
-    (y, m, d)
+    let month_offset = (5 * doy + 2) / 153;
+    let day = doy - (153 * month_offset + 2) / 5 + 1;
+    let month = if month_offset < 10 { month_offset + 3 } else { month_offset - 9 };
+    let year = if month <= 2 { year + 1 } else { year };
+    (year, month, day)
 }
 
 /// Pretty-print a decoded message.
@@ -121,7 +121,7 @@ fn print_message(msg: &OvpnMessage) {
         OvpnMessage::PasswordPrompt => {
             println!("[MGMT] Management password required (type the password and press enter)");
         }
-        OvpnMessage::Notification(notif) => print_notification(notif),
+        OvpnMessage::Notification(notification) => print_notification(notification),
         OvpnMessage::Pkcs11IdEntry { index, id, blob } => {
             println!("[PKCS11] index={index} id={id} blob={blob}");
         }
@@ -131,8 +131,8 @@ fn print_message(msg: &OvpnMessage) {
     }
 }
 
-fn print_notification(notif: &Notification) {
-    match notif {
+fn print_notification(notification: &Notification) {
+    match notification {
         Notification::State {
             timestamp,
             name,
@@ -141,8 +141,8 @@ fn print_notification(notif: &Notification) {
             remote_ip,
             ..
         } => {
-            let ts = format_timestamp(*timestamp);
-            println!("[STATE] {name} — {description} (local={local_ip}, remote={remote_ip}, {ts})");
+            let formatted_timestamp = format_timestamp(*timestamp);
+            println!("[STATE] {name} — {description} (local={local_ip}, remote={remote_ip}, {formatted_timestamp})");
         }
         Notification::ByteCount {
             bytes_in,
@@ -162,12 +162,12 @@ fn print_notification(notif: &Notification) {
             level,
             message,
         } => {
-            let ts = format_timestamp(*timestamp);
-            println!("[LOG {level}] {message} ({ts})");
+            let formatted_timestamp = format_timestamp(*timestamp);
+            println!("[LOG {level}] {message} ({formatted_timestamp})");
         }
         Notification::Echo { timestamp, param } => {
-            let ts = format_timestamp(*timestamp);
-            println!("[ECHO] {param} ({ts})");
+            let formatted_timestamp = format_timestamp(*timestamp);
+            println!("[ECHO] {param} ({formatted_timestamp})");
         }
         Notification::Hold { text } => {
             println!("[HOLD] {text}");
@@ -284,8 +284,8 @@ where
             msg = stream.next(), if connected => {
                 match msg {
                     Some(Ok(msg)) => print_message(&msg),
-                    Some(Err(e)) => {
-                        eprintln!("[CONN ERROR] {e}");
+                    Some(Err(error)) => {
+                        eprintln!("[CONN ERROR] {error}");
                         connected = false;
                     }
                     None => {
@@ -310,15 +310,15 @@ where
                 match line.parse::<OvpnCommand>() {
                     Ok(cmd) => {
                         let is_exit = matches!(cmd, OvpnCommand::Exit | OvpnCommand::Quit);
-                        if let Err(e) = sink.send(cmd).await {
-                            eprintln!("[SEND ERROR] {e}");
+                        if let Err(error) = sink.send(cmd).await {
+                            eprintln!("[SEND ERROR] {error}");
                             break;
                         }
                         if is_exit {
                             break;
                         }
                     }
-                    Err(e) => eprintln!("parse error: {e}"),
+                    Err(error) => eprintln!("parse error: {error}"),
                 }
             }
         }
@@ -359,7 +359,7 @@ fn warn_if_non_loopback(addr: &str) {
     // Strip IPv6 brackets: [::1] → ::1
     let host = host
         .strip_prefix('[')
-        .and_then(|h| h.strip_suffix(']'))
+        .and_then(|inner| inner.strip_suffix(']'))
         .unwrap_or(host);
     match host {
         "127.0.0.1" | "localhost" | "::1" => {}

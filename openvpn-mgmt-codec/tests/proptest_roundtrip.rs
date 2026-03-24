@@ -29,7 +29,7 @@ fn safe_text() -> BoxedStrategy<String> {
 /// ENV key: alphanumeric + underscore, at least one char, not "END".
 fn safe_env_key() -> BoxedStrategy<String> {
     "[a-zA-Z_][a-zA-Z0-9_]{0,30}"
-        .prop_filter("must not be END", |s| s != "END")
+        .prop_filter("must not be END", |val| val != "END")
         .boxed()
 }
 
@@ -101,9 +101,9 @@ fn arb_transport_protocol() -> BoxedStrategy<TransportProtocol> {
 
 fn arb_password_notification() -> BoxedStrategy<PasswordNotification> {
     prop_oneof![
-        arb_auth_type().prop_map(|at| PasswordNotification::NeedAuth { auth_type: at }),
-        arb_auth_type().prop_map(|at| PasswordNotification::NeedPassword { auth_type: at }),
-        arb_auth_type().prop_map(|at| PasswordNotification::VerificationFailed { auth_type: at }),
+        arb_auth_type().prop_map(|auth| PasswordNotification::NeedAuth { auth_type: auth }),
+        arb_auth_type().prop_map(|auth| PasswordNotification::NeedPassword { auth_type: auth }),
+        arb_auth_type().prop_map(|auth| PasswordNotification::VerificationFailed { auth_type: auth }),
         (any::<bool>(), any::<bool>(), safe_text()).prop_map(
             |(echo, response_concat, challenge)| {
                 PasswordNotification::StaticChallenge {
@@ -136,8 +136,8 @@ fn arb_password_notification() -> BoxedStrategy<PasswordNotification> {
 // would emit for each message type. The decoder should reconstruct
 // the original message from these bytes.
 
-fn notification_to_wire(notif: &Notification) -> String {
-    match notif {
+fn notification_to_wire(notification: &Notification) -> String {
+    match notification{
         Notification::State {
             timestamp,
             name,
@@ -149,8 +149,8 @@ fn notification_to_wire(notif: &Notification) -> String {
             local_port,
             local_ipv6,
         } => {
-            let rport = remote_port.map(|p| p.to_string()).unwrap_or_default();
-            let lport = local_port.map(|p| p.to_string()).unwrap_or_default();
+            let rport = remote_port.map(|port| port.to_string()).unwrap_or_default();
+            let lport = local_port.map(|port| port.to_string()).unwrap_or_default();
             format!(
                 ">STATE:{timestamp},{name},{description},{local_ip},\
                      {remote_ip},{rport},{local_addr},{lport},{local_ipv6}\n"
@@ -311,7 +311,7 @@ proptest! {
     #[test]
     fn roundtrip_multiline(
         lines in prop::collection::vec(
-            safe_field().prop_filter("not END", |s| s != "END"),
+            safe_field().prop_filter("not END", |val| val != "END"),
             0..10,
         )
     ) {
@@ -366,7 +366,7 @@ proptest! {
         local_port in proptest::option::of(any::<u16>()),
         local_ipv6 in safe_field(),
     ) {
-        let notif = Notification::State {
+        let notification= Notification::State {
             timestamp,
             name,
             description,
@@ -377,10 +377,10 @@ proptest! {
             local_port,
             local_ipv6,
         };
-        let wire = notification_to_wire(&notif);
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -388,11 +388,11 @@ proptest! {
         bytes_in in any::<u64>(),
         bytes_out in any::<u64>(),
     ) {
-        let notif = Notification::ByteCount { bytes_in, bytes_out };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::ByteCount { bytes_in, bytes_out };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -401,11 +401,11 @@ proptest! {
         bytes_in in any::<u64>(),
         bytes_out in any::<u64>(),
     ) {
-        let notif = Notification::ByteCountCli { cid, bytes_in, bytes_out };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::ByteCountCli { cid, bytes_in, bytes_out };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -414,11 +414,11 @@ proptest! {
         level in arb_log_level(),
         message in safe_text(),
     ) {
-        let notif = Notification::Log { timestamp, level, message };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Log { timestamp, level, message };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -426,38 +426,38 @@ proptest! {
         timestamp in any::<u64>(),
         param in safe_text(),
     ) {
-        let notif = Notification::Echo { timestamp, param };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Echo { timestamp, param };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
     fn roundtrip_notif_hold(text in safe_text()) {
-        let notif = Notification::Hold { text };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Hold { text };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
     fn roundtrip_notif_fatal(message in safe_text()) {
-        let notif = Notification::Fatal { message };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Fatal { message };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
     fn roundtrip_notif_pkcs11id_count(count in any::<u32>()) {
-        let notif = Notification::Pkcs11IdCount { count };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Pkcs11IdCount { count };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -465,11 +465,11 @@ proptest! {
         name in safe_field(),
         message in safe_text(),
     ) {
-        let notif = Notification::NeedOk { name, message };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::NeedOk { name, message };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -477,20 +477,20 @@ proptest! {
         name in safe_field(),
         message in safe_text(),
     ) {
-        let notif = Notification::NeedStr { name, message };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::NeedStr { name, message };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
     fn roundtrip_notif_rsa_sign(data in safe_text()) {
-        let notif = Notification::RsaSign { data };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::RsaSign { data };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -499,11 +499,11 @@ proptest! {
         port in any::<u16>(),
         protocol in arb_transport_protocol(),
     ) {
-        let notif = Notification::Remote { host, port, protocol };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Remote { host, port, protocol };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -512,20 +512,20 @@ proptest! {
         proxy_type in arb_transport_protocol(),
         host in safe_field(),
     ) {
-        let notif = Notification::Proxy { index, proxy_type, host };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Proxy { index, proxy_type, host };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
     fn roundtrip_notif_password(pw in arb_password_notification()) {
-        let notif = Notification::Password(pw);
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Password(pw);
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -538,11 +538,11 @@ proptest! {
             0..10,
         ),
     ) {
-        let notif = Notification::Client { event, cid, kid, env };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Client { event, cid, kid, env };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -551,11 +551,11 @@ proptest! {
         addr in safe_field(),
         primary in any::<bool>(),
     ) {
-        let notif = Notification::ClientAddress { cid, addr, primary };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::ClientAddress { cid, addr, primary };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 
     #[test]
@@ -563,11 +563,11 @@ proptest! {
         kind in "CUSTOM_[A-Z]{1,10}",
         payload in safe_text(),
     ) {
-        let notif = Notification::Simple { kind, payload };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Simple { kind, payload };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
     }
 }
 
@@ -603,9 +603,9 @@ fn adversarial_string() -> BoxedStrategy<String> {
         Just("line1\r\nline2\r\n".to_string()),
         Just("\\\"\\\\".to_string()),
         safe_text(),
-        safe_field().prop_map(|s| format!("{s}\n{s}")),
-        safe_field().prop_map(|s| format!("{s}\0{s}")),
-        safe_field().prop_map(|s| format!("{s}\rEND\n{s}")),
+        safe_field().prop_map(|field| format!("{field}\n{field}")),
+        safe_field().prop_map(|field| format!("{field}\0{field}")),
+        safe_field().prop_map(|field| format!("{field}\rEND\n{field}")),
     ]
     .boxed()
 }
@@ -750,23 +750,23 @@ fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand>
             })
             .boxed(),
         (s.clone(), s.clone())
-            .prop_map(|(n, v)| OvpnCommand::NeedStr { name: n, value: v })
+            .prop_map(|(name, value)| OvpnCommand::NeedStr { name, value })
             .boxed(),
         s.clone()
-            .prop_map(|s| OvpnCommand::ManagementPassword(Redacted::new(s)))
+            .prop_map(|password| OvpnCommand::ManagementPassword(Redacted::new(password)))
             .boxed(),
         s.clone().prop_map(OvpnCommand::Raw).boxed(),
         s.clone()
-            .prop_map(|r| OvpnCommand::CrResponse {
-                response: Redacted::new(r),
+            .prop_map(|resp| OvpnCommand::CrResponse {
+                response: Redacted::new(resp),
             })
             .boxed(),
         (any::<u64>(), any::<u64>(), s.clone(), any::<u32>())
-            .prop_map(|(c, k, e, t)| OvpnCommand::ClientPendingAuth {
-                cid: c,
-                kid: k,
-                extra: e,
-                timeout: t,
+            .prop_map(|(cid, kid, extra, timeout)| OvpnCommand::ClientPendingAuth {
+                cid,
+                kid,
+                extra,
+                timeout,
             })
             .boxed(),
         // --- Complex with Option strings ---
@@ -917,25 +917,25 @@ fn arb_roundtrippable_command() -> BoxedStrategy<OvpnCommand> {
             })
             .boxed(),
         (safe_host.clone(), arb_need_ok_response())
-            .prop_map(|(n, r)| OvpnCommand::NeedOk {
-                name: n,
-                response: r,
+            .prop_map(|(name, response)| OvpnCommand::NeedOk {
+                name,
+                response,
             })
             .boxed(),
         (safe_host.clone(), safe_val.clone())
-            .prop_map(|(n, v)| OvpnCommand::NeedStr { name: n, value: v })
+            .prop_map(|(name, value)| OvpnCommand::NeedStr { name, value })
             .boxed(),
         // --- Push updates (quoted options) ---
         safe_val
             .clone()
-            .prop_map(|o| OvpnCommand::PushUpdateBroad { options: o })
+            .prop_map(|options| OvpnCommand::PushUpdateBroad { options })
             .boxed(),
         (any::<u64>(), safe_val.clone())
-            .prop_map(|(c, o)| OvpnCommand::PushUpdateCid { cid: c, options: o })
+            .prop_map(|(cid, options)| OvpnCommand::PushUpdateCid { cid, options })
             .boxed(),
         // --- Client management ---
         (any::<u64>(), any::<u64>())
-            .prop_map(|(c, k)| OvpnCommand::ClientAuthNt { cid: c, kid: k })
+            .prop_map(|(cid, kid)| OvpnCommand::ClientAuthNt { cid, kid })
             .boxed(),
         (
             any::<u64>(),
@@ -943,15 +943,15 @@ fn arb_roundtrippable_command() -> BoxedStrategy<OvpnCommand> {
             safe_val.clone(),
             prop::option::of(safe_val.clone()),
         )
-            .prop_map(|(c, k, r, cr)| OvpnCommand::ClientDeny {
-                cid: c,
-                kid: k,
-                reason: r,
-                client_reason: cr,
+            .prop_map(|(cid, kid, reason, client_reason)| OvpnCommand::ClientDeny {
+                cid,
+                kid,
+                reason,
+                client_reason,
             })
             .boxed(),
         (any::<u64>(), prop::option::of(safe_host.clone()))
-            .prop_map(|(c, m)| OvpnCommand::ClientKill { cid: c, message: m })
+            .prop_map(|(cid, message)| OvpnCommand::ClientKill { cid, message })
             .boxed(),
         // --- ENV filter ---
         any::<u32>().prop_map(OvpnCommand::EnvFilter).boxed(),
@@ -959,18 +959,18 @@ fn arb_roundtrippable_command() -> BoxedStrategy<OvpnCommand> {
         Just(OvpnCommand::RemoteEntryCount).boxed(),
         // --- Extended client management ---
         (any::<u64>(), any::<u64>(), safe_host.clone(), any::<u32>())
-            .prop_map(|(c, k, e, t)| OvpnCommand::ClientPendingAuth {
-                cid: c,
-                kid: k,
-                extra: e,
-                timeout: t,
+            .prop_map(|(cid, kid, extra, timeout)| OvpnCommand::ClientPendingAuth {
+                cid,
+                kid,
+                extra,
+                timeout,
             })
             .boxed(),
         // cr-response value is base64, not quoted on the wire — no spaces.
         safe_host
             .clone()
-            .prop_map(|r| OvpnCommand::CrResponse {
-                response: Redacted::new(r),
+            .prop_map(|resp| OvpnCommand::CrResponse {
+                response: Redacted::new(resp),
             })
             .boxed(),
     ])
@@ -1024,47 +1024,47 @@ fn arb_single_line_notification() -> BoxedStrategy<Notification> {
                 message: msg,
             }
         }),
-        (any::<u64>(), safe_text()).prop_map(|(ts, param)| Notification::Echo {
-            timestamp: ts,
+        (any::<u64>(), safe_text()).prop_map(|(timestamp, param)| Notification::Echo {
+            timestamp,
             param
         }),
-        safe_text().prop_map(|t| Notification::Hold { text: t }),
-        safe_text().prop_map(|m| Notification::Fatal { message: m }),
-        any::<u32>().prop_map(|c| Notification::Pkcs11IdCount { count: c }),
-        (safe_field(), safe_text()).prop_map(|(n, m)| Notification::NeedOk {
-            name: n,
-            message: m
+        safe_text().prop_map(|text| Notification::Hold { text }),
+        safe_text().prop_map(|message| Notification::Fatal { message }),
+        any::<u32>().prop_map(|count| Notification::Pkcs11IdCount { count }),
+        (safe_field(), safe_text()).prop_map(|(name, message)| Notification::NeedOk {
+            name,
+            message
         }),
-        (safe_field(), safe_text()).prop_map(|(n, m)| Notification::NeedStr {
-            name: n,
-            message: m
+        (safe_field(), safe_text()).prop_map(|(name, message)| Notification::NeedStr {
+            name,
+            message
         }),
-        safe_text().prop_map(|d| Notification::RsaSign { data: d }),
-        (safe_field(), any::<u16>(), arb_transport_protocol()).prop_map(|(h, p, pr)| {
+        safe_text().prop_map(|data| Notification::RsaSign { data }),
+        (safe_field(), any::<u16>(), arb_transport_protocol()).prop_map(|(host, port, protocol)| {
             Notification::Remote {
-                host: h,
-                port: p,
-                protocol: pr,
+                host,
+                port,
+                protocol,
             }
         }),
-        (any::<u32>(), arb_transport_protocol(), safe_field()).prop_map(|(idx, pt, h)| {
+        (any::<u32>(), arb_transport_protocol(), safe_field()).prop_map(|(index, proxy_type, host)| {
             Notification::Proxy {
-                index: idx,
-                proxy_type: pt,
-                host: h,
+                index,
+                proxy_type,
+                host,
             }
         }),
         arb_password_notification().prop_map(Notification::Password),
-        (any::<u64>(), safe_field(), any::<bool>()).prop_map(|(c, a, p)| {
+        (any::<u64>(), safe_field(), any::<bool>()).prop_map(|(cid, addr, primary)| {
             Notification::ClientAddress {
-                cid: c,
-                addr: a,
-                primary: p,
+                cid,
+                addr,
+                primary,
             }
         }),
-        ("CUSTOM_[A-Z]{1,10}", safe_text()).prop_map(|(k, p)| Notification::Simple {
-            kind: k,
-            payload: p
+        ("CUSTOM_[A-Z]{1,10}", safe_text()).prop_map(|(kind, payload)| Notification::Simple {
+            kind,
+            payload
         }),
     ]
     .boxed()
@@ -1074,11 +1074,11 @@ fn arb_single_line_notification() -> BoxedStrategy<Notification> {
 /// on the codec's `expected` response-kind state.
 fn arb_self_describing_wire() -> BoxedStrategy<String> {
     prop_oneof![
-        safe_text().prop_map(|t| format!("SUCCESS: {t}\n")),
-        safe_text().prop_map(|t| format!("ERROR: {t}\n")),
-        safe_text().prop_map(|t| format!(">INFO:{t}\n")),
+        safe_text().prop_map(|text| format!("SUCCESS: {text}\n")),
+        safe_text().prop_map(|text| format!("ERROR: {text}\n")),
+        safe_text().prop_map(|text| format!(">INFO:{text}\n")),
         Just("ENTER PASSWORD:\n".to_string()),
-        arb_single_line_notification().prop_map(|n| notification_to_wire(&n)),
+        arb_single_line_notification().prop_map(|notification| notification_to_wire(&notification)),
     ]
     .boxed()
 }
@@ -1172,9 +1172,9 @@ proptest! {
             codec.encode(c, &mut buf).unwrap();
             buf.to_vec()
         };
-        let a = encode(cmd.clone());
-        let b = encode(cmd);
-        prop_assert_eq!(a, b);
+        let first = encode(cmd.clone());
+        let second = encode(cmd);
+        prop_assert_eq!(first, second);
     }
 
     // --- 6. Self-describing message state independence ---
@@ -1201,9 +1201,9 @@ proptest! {
             }
             msgs
         };
-        let a = decode_after(cmd_a, &wire);
-        let b = decode_after(cmd_b, &wire);
-        prop_assert_eq!(a, b);
+        let decoded_a = decode_after(cmd_a, &wire);
+        let decoded_b = decode_after(cmd_b, &wire);
+        prop_assert_eq!(decoded_a, decoded_b);
     }
 
     // --- 7. Interleaving safety ---
@@ -1216,14 +1216,14 @@ proptest! {
     #[test]
     fn notification_interleaved_in_multiline_is_safe(
         lines in prop::collection::vec(
-            safe_field().prop_filter("not END", |s| s != "END"),
+            safe_field().prop_filter("not END", |val| val != "END"),
             1..10,
         ),
-        notif in arb_single_line_notification(),
+        notification in arb_single_line_notification(),
         inject_idx in 0..10usize,
     ) {
         let inject_pos = inject_idx % lines.len();
-        let notif_wire = notification_to_wire(&notif);
+        let notif_wire = notification_to_wire(&notification);
 
         // Build wire: lines[..pos], notification, lines[pos..], END
         let mut wire = String::new();
@@ -1248,7 +1248,7 @@ proptest! {
             "expected 2 messages (notification + multiline), got {}",
             msgs.len(),
         );
-        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notif));
+        prop_assert_eq!(&msgs[0], &OvpnMessage::Notification(notification));
         prop_assert_eq!(&msgs[1], &OvpnMessage::MultiLine(lines));
     }
 
@@ -1294,8 +1294,8 @@ proptest! {
             0..10,
         ),
     ) {
-        let notif = Notification::Client { event, cid, kid, env };
-        let wire = notification_to_wire(&notif);
+        let notification= Notification::Client { event, cid, kid, env };
+        let wire = notification_to_wire(&notification);
 
         let bulk = decode_all(&wire);
 
@@ -1328,9 +1328,9 @@ proptest! {
             0..20,
         ),
     ) {
-        let n = env.len();
-        let notif = Notification::Client { event, cid, kid, env };
-        let wire = notification_to_wire(&notif);
+        let env_count = env.len();
+        let notification= Notification::Client { event, cid, kid, env };
+        let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
 
         prop_assert_eq!(msgs.len(), 1, "expected 1 message, got {}", msgs.len());
@@ -1338,7 +1338,7 @@ proptest! {
             OvpnMessage::Notification(Notification::Client {
                 env: decoded_env, ..
             }) => {
-                prop_assert_eq!(decoded_env.len(), n);
+                prop_assert_eq!(decoded_env.len(), env_count);
             }
             other => prop_assert!(false, "expected Client notification, got {:?}", other),
         }
@@ -1353,11 +1353,11 @@ proptest! {
     #[test]
     fn multiline_block_has_exact_line_count(
         lines in prop::collection::vec(
-            safe_field().prop_filter("not END", |s| s != "END"),
+            safe_field().prop_filter("not END", |val| val != "END"),
             0..50,
         ),
     ) {
-        let n = lines.len();
+        let line_count = lines.len();
         let mut wire = String::new();
         for line in &lines {
             wire.push_str(line);
@@ -1373,7 +1373,7 @@ proptest! {
         prop_assert_eq!(msgs.len(), 1);
         match &msgs[0] {
             OvpnMessage::MultiLine(decoded) => {
-                prop_assert_eq!(decoded.len(), n);
+                prop_assert_eq!(decoded.len(), line_count);
                 prop_assert_eq!(decoded, &lines);
             }
             other => prop_assert!(false, "expected MultiLine, got {:?}", other),
@@ -1440,8 +1440,8 @@ proptest! {
             .expect("encoded output must be valid UTF-8");
         let trimmed = wire.trim();
         let parsed: OvpnCommand = trimmed.parse()
-            .unwrap_or_else(|e| panic!(
-                "FromStr failed on encoder output {trimmed:?}: {e}"
+            .unwrap_or_else(|error| panic!(
+                "FromStr failed on encoder output {trimmed:?}: {error}"
             ));
         prop_assert_eq!(
             parsed, cmd,

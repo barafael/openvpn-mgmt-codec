@@ -57,7 +57,7 @@ pub async fn send_ok(framed: &mut Framed<TcpStream, OvpnCodec>, cmd: OvpnCommand
 pub async fn connect_and_auth(addr: &str) -> Framed<TcpStream, OvpnCodec> {
     let stream = TcpStream::connect(addr)
         .await
-        .unwrap_or_else(|e| panic!("cannot connect to {addr}: {e}"));
+        .unwrap_or_else(|error| panic!("cannot connect to {addr}: {error}"));
     let mut framed = Framed::new(stream, OvpnCodec::new());
 
     let msg = recv(&mut framed).await;

@@ -30,8 +30,8 @@ impl FromStr for Signal {
     type Err = ParseSignalError;
 
     /// Parse a signal name: `SIGHUP`, `SIGTERM`, `SIGUSR1`, or `SIGUSR2`.
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "SIGHUP" => Ok(Self::SigHup),
             "SIGTERM" => Ok(Self::SigTerm),
             "SIGUSR1" => Ok(Self::SigUsr1),
@@ -51,8 +51,8 @@ mod tests {
     #[test_case(Signal::SigUsr1)]
     #[test_case(Signal::SigUsr2)]
     fn parse_roundtrip(sig: Signal) {
-        let s = sig.to_string();
-        assert_eq!(s.parse::<Signal>().unwrap(), sig);
+        let string = sig.to_string();
+        assert_eq!(string.parse::<Signal>().unwrap(), sig);
     }
 
     #[test]

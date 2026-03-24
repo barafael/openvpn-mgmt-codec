@@ -57,10 +57,10 @@ impl ThroughputHistory {
             return;
         }
 
-        let dt = interval_secs.max(1) as f64;
+        let elapsed = interval_secs.max(1) as f64;
         let sample = Sample {
-            in_bps: bytes_in.saturating_sub(self.prev_in) as f64 / dt,
-            out_bps: bytes_out.saturating_sub(self.prev_out) as f64 / dt,
+            in_bps: bytes_in.saturating_sub(self.prev_in) as f64 / elapsed,
+            out_bps: bytes_out.saturating_sub(self.prev_out) as f64 / elapsed,
         };
         self.prev_in = bytes_in;
         self.prev_out = bytes_out;
@@ -108,20 +108,20 @@ impl Chart<Message> for ThroughputChart<'_> {
         root: DrawingArea<DB, plotters::coord::Shift>,
     ) {
         // Gruvbox colours
-        let bg = RGBColor(40, 40, 40);
+        let background = RGBColor(40, 40, 40);
         let fg_muted = RGBColor(146, 131, 116);
         let green = RGBColor(184, 187, 38);
         let blue = RGBColor(131, 165, 152);
 
-        root.fill(&bg).ok();
+        root.fill(&background).ok();
 
         let samples = self.history.samples();
-        let n = samples.len();
+        let count = samples.len();
 
         // Determine y-axis max (auto-scale with a floor).
         let y_max = samples
             .iter()
-            .map(|s| s.in_bps.max(s.out_bps))
+            .map(|sample| sample.in_bps.max(sample.out_bps))
             .fold(1024.0_f64, f64::max)
             * 1.15;
 
@@ -141,7 +141,7 @@ impl Chart<Message> for ThroughputChart<'_> {
                 .disable_x_mesh()
                 .disable_x_axis()
                 .y_labels(2)
-                .y_label_formatter(&|v| format_rate(*v))
+                .y_label_formatter(&|rate| format_rate(*rate))
                 .label_style(TextStyle::from(("monospace", 10).into_font()).color(&fg_muted))
                 .axis_style(fg_muted)
                 .light_line_style(RGBColor(60, 56, 54))
@@ -149,7 +149,7 @@ impl Chart<Message> for ThroughputChart<'_> {
                 .ok();
 
             // Offset so the latest sample is at the right edge.
-            let offset = MAX_SAMPLES.saturating_sub(n) as f64;
+            let offset = MAX_SAMPLES.saturating_sub(count) as f64;
 
             // Download (in) — green
             chart
@@ -188,6 +188,17 @@ fn format_rate(bps: f64) -> String {
     } else {
         format!("{:.0}B", bps)
     }
+}
+
+/// Create a chart widget element for the throughput history with a custom height.
+pub(crate) fn throughput_chart_sized(
+    history: &ThroughputHistory,
+    height: f32,
+) -> Element<'_, Message> {
+    ChartWidget::new(ThroughputChart::new(history))
+        .width(Length::Fill)
+        .height(Length::Fixed(height))
+        .into()
 }
 
 // -------------------------------------------------------------------
@@ -234,9 +245,9 @@ mod tests {
         h.push(0, 0, 5);
         h.push(5000, 10000, 5);
         assert_eq!(h.samples().len(), 1);
-        let s = &h.samples()[0];
-        assert!((s.in_bps - 1000.0).abs() < f64::EPSILON);
-        assert!((s.out_bps - 2000.0).abs() < f64::EPSILON);
+        let sample = &h.samples()[0];
+        assert!((sample.in_bps - 1000.0).abs() < f64::EPSILON);
+        assert!((sample.out_bps - 2000.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -260,15 +271,4 @@ mod tests {
         h.push(50, 50, 1);
         assert!(h.samples().is_empty());
     }
-}
-
-/// Create a chart widget element for the throughput history with a custom height.
-pub(crate) fn throughput_chart_sized(
-    history: &ThroughputHistory,
-    height: f32,
-) -> Element<'_, Message> {
-    ChartWidget::new(ThroughputChart::new(history))
-        .width(Length::Fill)
-        .height(Length::Fixed(height))
-        .into()
 }

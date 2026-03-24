@@ -51,8 +51,8 @@ impl FromStr for LogLevel {
     type Err = ParseLogLevelError;
 
     /// Parse a recognized log-flag string: `I`, `D`, `W`, `N`, `F`.
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "I" => Ok(Self::Info),
             "D" => Ok(Self::Debug),
             "W" => Ok(Self::Warning),

@@ -187,7 +187,7 @@ async fn help_returns_multiline() {
     let lines = send_multiline(&mut framed, OvpnCommand::Help).await;
     assert!(lines.len() > 10, "help should list many commands");
     assert!(
-        lines.iter().any(|l| l.contains("version")),
+        lines.iter().any(|line| line.contains("version")),
         "help should mention the version command"
     );
 }

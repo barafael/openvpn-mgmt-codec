@@ -45,16 +45,16 @@ impl FromStr for StreamMode {
     type Err = ParseStreamModeError;
 
     /// Parse a stream mode string: `on`, `off`, `all`, `on all`, or a number.
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "on" => Ok(Self::On),
             "off" => Ok(Self::Off),
             "all" => Ok(Self::All),
             "on all" => Ok(Self::OnAll),
-            n => n
+            other => other
                 .parse::<u32>()
                 .map(Self::Recent)
-                .map_err(|_| ParseStreamModeError(s.to_string())),
+                .map_err(|_| ParseStreamModeError(input.to_string())),
         }
     }
 }
@@ -70,8 +70,8 @@ mod tests {
     #[test_case(StreamMode::OnAll)]
     #[test_case(StreamMode::Recent(42))]
     fn parse_roundtrip(mode: StreamMode) {
-        let s = mode.to_string();
-        assert_eq!(s.parse::<StreamMode>().unwrap(), mode);
+        let string = mode.to_string();
+        assert_eq!(string.parse::<StreamMode>().unwrap(), mode);
     }
 
     #[test]

@@ -223,13 +223,13 @@ mod tests {
     #[test]
     fn prefix_match() {
         let results = fuzzy_match("ver");
-        assert!(results.first().is_some_and(|e| e.name == "version"));
+        assert!(results.first().is_some_and(|entry| entry.name == "version"));
     }
 
     #[test]
     fn fuzzy_across_hyphen() {
         let results = fuzzy_match("cd");
-        assert!(results.iter().any(|e| e.name == "client-deny"));
+        assert!(results.iter().any(|entry| entry.name == "client-deny"));
     }
 
     #[test]
@@ -237,13 +237,13 @@ mod tests {
         // "st" should rank "status" and "state" above "load-stats" because
         // the match starts at a word boundary.
         let results = fuzzy_match("st");
-        let names: Vec<_> = results.iter().map(|e| e.name).collect();
+        let names: Vec<_> = results.iter().map(|entry| entry.name).collect();
         assert!(names.contains(&"status"));
         assert!(names.contains(&"state"));
 
         // status/state should appear before load-stats
-        let status_pos = names.iter().position(|n| *n == "status").unwrap();
-        let load_stats_pos = names.iter().position(|n| *n == "load-stats").unwrap();
+        let status_pos = names.iter().position(|name| *name == "status").unwrap();
+        let load_stats_pos = names.iter().position(|name| *name == "load-stats").unwrap();
         assert!(
             status_pos < load_stats_pos,
             "status ({status_pos}) should rank before load-stats ({load_stats_pos})"

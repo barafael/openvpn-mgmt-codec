@@ -46,10 +46,10 @@ fn next_token(input: &str) -> Option<(String, &str)> {
             match chars.next() {
                 None | Some('"') => break,
                 Some('\\') => match chars.next() {
-                    Some(c) => token.push(c),
+                    Some(escaped) => token.push(escaped),
                     None => break,
                 },
-                Some(c) => token.push(c),
+                Some(plain) => token.push(plain),
             }
         }
         let rest = chars.as_str().trim_start();
@@ -109,12 +109,12 @@ pub enum RemoteEntryRange {
     /// A single entry by index.
     Single(u32),
 
-    /// A range of entries `[from, to)`.
+    /// A range of entries `[from, end)`.
     Range {
         /// Start index (inclusive).
         from: u32,
         /// End index (exclusive).
-        to: u32,
+        end: u32,
     },
 
     /// All entries.
@@ -124,8 +124,8 @@ pub enum RemoteEntryRange {
 impl fmt::Display for RemoteEntryRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Single(i) => write!(f, "{i}"),
-            Self::Range { from, to } => write!(f, "{from} {to}"),
+            Self::Single(index) => write!(f, "{index}"),
+            Self::Range { from, end } => write!(f, "{from} {end}"),
             Self::All => f.write_str("all"),
         }
     }
@@ -603,7 +603,7 @@ impl FromStr for OvpnCommand {
                     Ok(Self::Verb(None))
                 } else {
                     args.parse::<u8>()
-                        .map(|n| Self::Verb(Some(n)))
+                        .map(|level| Self::Verb(Some(level)))
                         .map_err(|_| CommandParseError::InvalidNumber {
                             field: "verbosity",
                             input: args.to_string(),
@@ -616,7 +616,7 @@ impl FromStr for OvpnCommand {
                     Ok(Self::Mute(None))
                 } else {
                     args.parse::<u32>()
-                        .map(|n| Self::Mute(Some(n)))
+                        .map(|threshold| Self::Mute(Some(threshold)))
                         .map_err(|_| CommandParseError::InvalidNumber {
                             field: "mute threshold",
                             input: args.to_string(),
@@ -778,7 +778,10 @@ impl FromStr for OvpnCommand {
                     .parse::<u64>()
                     .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
                 let config_lines = match parts.next() {
-                    Some(rest) => rest.split(',').map(|s| s.trim().to_string()).collect(),
+                    Some(rest) => rest
+                        .split(',')
+                        .map(|line| line.trim().to_string())
+                        .collect(),
                     None => vec![],
                 };
                 Ok(Self::ClientAuth {
@@ -919,13 +922,13 @@ impl FromStr for OvpnCommand {
                     })?;
                     match parts.next() {
                         Some(to_str) => {
-                            let to = to_str.trim().parse::<u32>().map_err(|_| {
+                            let end = to_str.trim().parse::<u32>().map_err(|_| {
                                 CommandParseError::InvalidNumber {
                                     field: "remote-entry-get end index",
                                     input: to_str.to_string(),
                                 }
                             })?;
-                            RemoteEntryRange::Range { from, to }
+                            RemoteEntryRange::Range { from, end }
                         }
                         None => RemoteEntryRange::Single(from),
                     }
@@ -1072,7 +1075,7 @@ impl FromStr for OvpnCommand {
 /// use openvpn_mgmt_codec::OvpnCommand;
 ///
 /// let cmds = connection_sequence(5);
-/// assert!(cmds.iter().any(|c| matches!(c, OvpnCommand::HoldRelease)));
+/// assert!(cmds.iter().any(|cmd| matches!(cmd, OvpnCommand::HoldRelease)));
 /// ```
 ///
 /// To send these over a framed connection:
@@ -1836,7 +1839,7 @@ mod tests {
             "remote-entry-get 0 3".parse(),
             Ok(OvpnCommand::RemoteEntryGet(RemoteEntryRange::Range {
                 from: 0,
-                to: 3
+                end: 3
             }))
         );
         assert_eq!(

@@ -25,8 +25,8 @@ impl FromStr for TransportProtocol {
 
     /// Parse a recognized protocol string (case-insensitive: `udp`/`UDP`,
     /// `tcp`/`TCP`).
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "udp" | "UDP" => Ok(Self::Udp),
             "tcp" | "TCP" => Ok(Self::Tcp),
             other => Err(ParseTransportProtocolError(other.to_string())),

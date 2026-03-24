@@ -43,8 +43,8 @@ impl FromStr for AuthType {
     /// Recognized values: `Auth`, `Private Key`, `HTTP Proxy`, `SOCKS Proxy`.
     /// Returns `Err` for anything else — use [`AuthType::Unknown`] explicitly
     /// if forward-compatible fallback is desired.
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "Auth" => Ok(Self::Auth),
             "Private Key" => Ok(Self::PrivateKey),
             "HTTP Proxy" => Ok(Self::HttpProxy),
@@ -73,8 +73,8 @@ impl FromStr for AuthRetryMode {
     type Err = ParseAuthRetryModeError;
 
     /// Parse an auth-retry mode: `none`, `interact`, or `nointeract`.
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "none" => Ok(Self::None),
             "interact" => Ok(Self::Interact),
             "nointeract" => Ok(Self::NoInteract),
@@ -93,8 +93,8 @@ mod tests {
     #[test_case(AuthType::HttpProxy)]
     #[test_case(AuthType::SocksProxy)]
     fn auth_type_roundtrip(at: AuthType) {
-        let s = at.to_string();
-        assert_eq!(s.parse::<AuthType>().unwrap(), at);
+        let string = at.to_string();
+        assert_eq!(string.parse::<AuthType>().unwrap(), at);
     }
 
     #[test]
@@ -113,8 +113,8 @@ mod tests {
     #[test_case(AuthRetryMode::Interact)]
     #[test_case(AuthRetryMode::NoInteract)]
     fn auth_retry_roundtrip(mode: AuthRetryMode) {
-        let s = mode.to_string();
-        assert_eq!(s.parse::<AuthRetryMode>().unwrap(), mode);
+        let string = mode.to_string();
+        assert_eq!(string.parse::<AuthRetryMode>().unwrap(), mode);
     }
 
     #[test]

@@ -469,7 +469,7 @@ fn very_long_password_encodes_successfully() {
 #[test]
 fn very_long_config_lines_encode_successfully() {
     let lines: Vec<String> = (0..1000)
-        .map(|i| format!("push \"route 10.{}.0.0 255.255.0.0\"", i % 256))
+        .map(|idx| format!("push \"route 10.{}.0.0 255.255.0.0\"", idx % 256))
         .collect();
     let wire = encode_str(OvpnCommand::ClientAuth {
         cid: 1,

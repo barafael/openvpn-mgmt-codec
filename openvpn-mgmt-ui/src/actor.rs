@@ -134,14 +134,14 @@ async fn run_connection(
     port: &str,
     startup_commands: Vec<OvpnCommand>,
 ) -> Result<(), UiGone> {
-    let addr = format!("{host}:{port}");
+    let addr = socket_addr(host, port);
     tracing::info!(addr, "connecting");
 
     let stream = match TcpStream::connect(&addr).await {
-        Ok(s) => s,
-        Err(e) => {
-            tracing::warn!(addr, error = %e, "connection failed");
-            tx.send_event(ActorEvent::Disconnected(Some(e.to_string())))
+        Ok(stream) => stream,
+        Err(error) => {
+            tracing::warn!(addr, %error, "connection failed");
+            tx.send_event(ActorEvent::Disconnected(Some(error.to_string())))
                 .await?;
             return Ok(());
         }
@@ -161,8 +161,8 @@ async fn run_connection(
     // arrives (e.g. log history flood at high verbosity).
     tracing::debug!(count = startup_commands.len(), "running startup sequence");
     for cmd in startup_commands {
-        if let Err(e) = sink.send(cmd).await {
-            tx.send_event(ActorEvent::Disconnected(Some(e.to_string())))
+        if let Err(error) = sink.send(cmd).await {
+            tx.send_event(ActorEvent::Disconnected(Some(error.to_string())))
                 .await?;
             return Ok(());
         }
@@ -183,8 +183,8 @@ async fn run_connection(
                         break;
                     }
                 }
-                Ok(Some(Err(e))) => {
-                    tx.send_event(ActorEvent::Disconnected(Some(e.to_string())))
+                Ok(Some(Err(error))) => {
+                    tx.send_event(ActorEvent::Disconnected(Some(error.to_string())))
                         .await?;
                     return Ok(());
                 }
@@ -209,8 +209,8 @@ async fn run_connection(
                     Some(Ok(msg)) => {
                         tx.send_event(ActorEvent::Message(msg)).await?;
                     }
-                    Some(Err(e)) => {
-                        tx.send_event(ActorEvent::Disconnected(Some(e.to_string()))).await?;
+                    Some(Err(error)) => {
+                        tx.send_event(ActorEvent::Disconnected(Some(error.to_string()))).await?;
                         return Ok(());
                     }
                     None => {
@@ -238,14 +238,75 @@ async fn run_connection(
                     }
                     ActorCommand::Send(ovpn_cmd) => {
                         tracing::debug!(?ovpn_cmd, "sending");
-                        if let Err(e) = sink.send(ovpn_cmd).await {
-                            tracing::warn!(error = %e, "send failed, disconnecting");
-                            tx.send_event(ActorEvent::Disconnected(Some(e.to_string()))).await?;
+                        if let Err(error) = sink.send(ovpn_cmd).await {
+                            tracing::warn!(%error, "send failed, disconnecting");
+                            tx.send_event(ActorEvent::Disconnected(Some(error.to_string()))).await?;
                             return Ok(());
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/// Build a `host:port` string suitable for [`TcpStream::connect`].
+///
+/// IPv6 literals are wrapped in brackets so that `ToSocketAddrs` can
+/// distinguish the colon-separated address from the port delimiter.
+fn socket_addr(host: &str, port: &str) -> String {
+    if host.contains(':') {
+        format!("[{host}]:{port}")
+    } else {
+        format!("{host}:{port}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ipv4() {
+        assert_eq!(socket_addr("127.0.0.1", "1194"), "127.0.0.1:1194");
+    }
+
+    #[test]
+    fn ipv6_loopback() {
+        assert_eq!(socket_addr("::1", "1194"), "[::1]:1194");
+    }
+
+    #[test]
+    fn ipv6_global() {
+        assert_eq!(socket_addr("2001:db8::1", "443"), "[2001:db8::1]:443");
+    }
+
+    #[test]
+    fn ipv6_full() {
+        assert_eq!(
+            socket_addr("2001:0db8:85a3:0000:0000:8a2e:0370:7334", "9090"),
+            "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:9090"
+        );
+    }
+
+    #[test]
+    fn dns_name() {
+        assert_eq!(
+            socket_addr("vpn.example.com", "1194"),
+            "vpn.example.com:1194"
+        );
+    }
+
+    #[test]
+    fn long_dns_name() {
+        assert_eq!(
+            socket_addr("vpn.us-east-1.prod.example.internal", "443"),
+            "vpn.us-east-1.prod.example.internal:443"
+        );
+    }
+
+    #[test]
+    fn localhost() {
+        assert_eq!(socket_addr("localhost", "1194"), "localhost:1194");
     }
 }

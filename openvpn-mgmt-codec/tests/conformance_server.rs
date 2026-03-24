@@ -143,12 +143,12 @@ async fn server_mode_lifecycle() {
     let keys: Vec<&str> = env.iter().map(|(k, _)| k.as_str()).collect();
     assert!(
         keys.iter()
-            .any(|k| k.contains("common_name") || k.contains("CN")),
+            .any(|key| key.contains("common_name") || k.contains("CN")),
         "ENV should contain common_name or CN, got keys: {keys:?}",
     );
     assert!(
         keys.iter()
-            .any(|k| k.contains("untrusted_ip") || k.contains("trusted_ip")),
+            .any(|key| key.contains("untrusted_ip") || k.contains("trusted_ip")),
         "ENV should contain an IP-related key, got keys: {keys:?}",
     );
 
@@ -180,19 +180,19 @@ async fn server_mode_lifecycle() {
     // --- Status with real client data ---
     let v1 = query_status(&mut framed, StatusFormat::V1).await;
     assert!(
-        v1.iter().any(|l| l.contains("10.8.0")),
+        v1.iter().any(|line| line.contains("10.8.0")),
         "status 1 should contain VPN address, got {v1:?}",
     );
 
     let v2 = query_status(&mut framed, StatusFormat::V2).await;
     assert!(
-        v2.iter().any(|l| l.contains("CLIENT_LIST")),
+        v2.iter().any(|line| line.contains("CLIENT_LIST")),
         "status 2 should contain CLIENT_LIST, got {v2:?}",
     );
 
     let v3 = query_status(&mut framed, StatusFormat::V3).await;
     assert!(
-        v3.iter().any(|l| l.contains("CLIENT_LIST")),
+        v3.iter().any(|line| line.contains("CLIENT_LIST")),
         "status 3 should contain CLIENT_LIST, got {v3:?}",
     );
 
@@ -272,7 +272,7 @@ async fn server_mode_lifecycle() {
                             assert!(
                                 lines
                                     .iter()
-                                    .any(|l| { l.contains("HEADER") || l.contains("CLIENT_LIST") }),
+                                    .any(|line| { line.contains("HEADER") || line.contains("CLIENT_LIST") }),
                                 "status response should be intact, got {lines:?}",
                             );
                             status_count += 1;
@@ -351,7 +351,7 @@ async fn server_mode_lifecycle() {
     // While pending, the client should still show up in status.
     let pending_status = query_status(&mut framed, StatusFormat::V2).await;
     assert!(
-        pending_status.iter().any(|l| l.contains("client")),
+        pending_status.iter().any(|line| line.contains("client")),
         "client should be visible in status during pending-auth, got {pending_status:?}",
     );
 

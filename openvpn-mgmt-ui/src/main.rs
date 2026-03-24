@@ -507,8 +507,8 @@ impl App {
                     lines.iter().map(|line| format!("  {line}")).collect(),
                 );
             }
-            OvpnMessage::Notification(notif) => {
-                self.handle_notification(notif);
+            OvpnMessage::Notification(notification) => {
+                self.handle_notification(notification);
             }
             OvpnMessage::Info(info) => {
                 self.add_log(LogLevel::Info, "", &info);
@@ -529,8 +529,8 @@ impl App {
         }
     }
 
-    fn handle_notification(&mut self, notif: Notification) {
-        match notif {
+    fn handle_notification(&mut self, notification: Notification) {
+        match notification{
             Notification::State {
                 timestamp,
                 name,
@@ -656,7 +656,7 @@ impl App {
                     &format!("Client address cid={cid} addr={addr} primary={primary}"),
                 );
             }
-            Notification::Password(password_notif) => match password_notif {
+            Notification::Password(password_notification) => match password_notification{
                 PasswordNotification::NeedAuth { auth_type } => {
                     self.add_log(
                         LogLevel::Warning,
@@ -1034,8 +1034,8 @@ impl App {
     }
 
     fn send_actor(&self, command: ActorCommand) -> Result<(), ActorGone> {
-        let tx = self.actor_tx.as_ref().ok_or(ActorGone)?;
-        tx.try_send(command).map_err(|_| ActorGone)
+        let sender = self.actor_tx.as_ref().ok_or(ActorGone)?;
+        sender.try_send(command).map_err(|_| ActorGone)
     }
 
     /// Send a command and record it in the output history so the response
@@ -1183,13 +1183,13 @@ fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
     let era = days / 146_097;
     let doe = days - era * 146_097;
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
+    let year = yoe + era * 400;
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
-    (y, m, d)
+    let month_offset = (5 * doy + 2) / 153;
+    let day = doy - (153 * month_offset + 2) / 5 + 1;
+    let month = if month_offset < 10 { month_offset + 3 } else { month_offset - 9 };
+    let year = if month <= 2 { year + 1 } else { year };
+    (year, month, day)
 }
 
 #[cfg(test)]

@@ -149,10 +149,10 @@ fn status_v1_server_with_clients() {
     match &msgs[0] {
         OvpnMessage::MultiLine(lines) => {
             assert_eq!(lines[0], "OpenVPN CLIENT LIST");
-            assert!(lines.iter().any(|l| l.contains("client1")));
-            assert!(lines.iter().any(|l| l.contains("client2")));
-            assert!(lines.iter().any(|l| l.contains("ROUTING TABLE")));
-            assert!(lines.iter().any(|l| l.contains("GLOBAL STATS")));
+            assert!(lines.iter().any(|line| line.contains("client1")));
+            assert!(lines.iter().any(|line| line.contains("client2")));
+            assert!(lines.iter().any(|line| line.contains("ROUTING TABLE")));
+            assert!(lines.iter().any(|line| line.contains("GLOBAL STATS")));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -166,9 +166,9 @@ fn status_v2_with_headers() {
     match &msgs[0] {
         OvpnMessage::MultiLine(lines) => {
             assert!(lines[0].starts_with("HEADER,CLIENT_LIST"));
-            assert!(lines.iter().any(|l| l.starts_with("CLIENT_LIST,client1")));
-            assert!(lines.iter().any(|l| l.starts_with("ROUTING_TABLE,")));
-            assert!(lines.iter().any(|l| l.starts_with("GLOBAL_STATS,")));
+            assert!(lines.iter().any(|line| line.starts_with("CLIENT_LIST,client1")));
+            assert!(lines.iter().any(|line| line.starts_with("ROUTING_TABLE,")));
+            assert!(lines.iter().any(|line| line.starts_with("GLOBAL_STATS,")));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -202,7 +202,7 @@ fn status_v1_client_mode() {
     match &msgs[0] {
         OvpnMessage::MultiLine(lines) => {
             assert_eq!(lines[0], "OpenVPN STATISTICS");
-            assert!(lines.iter().any(|l| l.starts_with("TUN/TAP read bytes")));
+            assert!(lines.iter().any(|line| line.starts_with("TUN/TAP read bytes")));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -297,7 +297,7 @@ fn log_notifications_all_flags() {
 
     let levels: Vec<LogLevel> = msgs
         .iter()
-        .map(|m| match m {
+        .map(|msg| match msg {
             OvpnMessage::Notification(Notification::Log { level, .. }) => level.clone(),
             other => panic!("unexpected: {other:?}"),
         })
@@ -1146,7 +1146,7 @@ fn notification_interleaved_in_multiline_status() {
     match &msgs[1] {
         OvpnMessage::MultiLine(lines) => {
             assert_eq!(lines.len(), 4);
-            assert!(!lines.iter().any(|l| l.contains(">STATE:")));
+            assert!(!lines.iter().any(|line| line.contains(">STATE:")));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -1639,18 +1639,18 @@ fn status_v1_server_empty_no_clients() {
     match &msgs[0] {
         OvpnMessage::MultiLine(lines) => {
             assert_eq!(lines[0], "OpenVPN CLIENT LIST");
-            assert!(lines.iter().any(|l| l.contains("ROUTING TABLE")));
+            assert!(lines.iter().any(|line| line.contains("ROUTING TABLE")));
             assert!(
                 lines
                     .iter()
-                    .any(|l| l.contains("Max bcast/mcast queue length,0"))
+                    .any(|line| line.contains("Max bcast/mcast queue length,0"))
             );
             // No client lines between the header row and ROUTING TABLE
             let client_header_idx = lines
                 .iter()
-                .position(|l| l.starts_with("Common Name,"))
+                .position(|line| line.starts_with("Common Name,"))
                 .unwrap();
-            let routing_idx = lines.iter().position(|l| l == "ROUTING TABLE").unwrap();
+            let routing_idx = lines.iter().position(|line| line =="ROUTING TABLE").unwrap();
             assert_eq!(
                 client_header_idx + 1,
                 routing_idx,
@@ -1671,15 +1671,15 @@ fn status_v1_server_many_clients() {
             // Three clients, three routing entries
             let client_count = lines
                 .iter()
-                .filter(|l| l.contains("@example.com") || l.contains("@corp.local"))
+                .filter(|line| line.contains("@example.com") || line.contains("@corp.local"))
                 .count();
             assert!(
                 client_count >= 3,
                 "should find at least 3 client references"
             );
-            assert!(lines.iter().any(|l| l.contains("foo@example.com")));
-            assert!(lines.iter().any(|l| l.contains("bar@example.com")));
-            assert!(lines.iter().any(|l| l.contains("admin@corp.local")));
+            assert!(lines.iter().any(|line| line.contains("foo@example.com")));
+            assert!(lines.iter().any(|line| line.contains("bar@example.com")));
+            assert!(lines.iter().any(|line| line.contains("admin@corp.local")));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -1698,15 +1698,15 @@ fn status_v2_full_with_title_time_dco() {
             // Multiple clients
             let client_lines: Vec<_> = lines
                 .iter()
-                .filter(|l| l.starts_with("CLIENT_LIST,"))
+                .filter(|line| line.starts_with("CLIENT_LIST,"))
                 .collect();
             assert_eq!(client_lines.len(), 2);
             // IPv6 virtual address present for first client
             assert!(client_lines[0].contains("2002:232:324:12::8"));
             // DCO stats
-            assert!(lines.iter().any(|l| l.contains("dco_enabled")));
+            assert!(lines.iter().any(|line| line.contains("dco_enabled")));
             // IPv6 routing entry
-            assert!(lines.iter().any(|l| l.starts_with("ROUTING_TABLE,2002:")));
+            assert!(lines.iter().any(|line| line.starts_with("ROUTING_TABLE,2002:")));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -1723,7 +1723,7 @@ fn status_v2_old_format_fewer_columns() {
             // Old format: no Virtual IPv6 Address, Client ID, Peer ID, Data Channel Cipher
             let header = lines
                 .iter()
-                .find(|l| l.starts_with("HEADER,CLIENT_LIST"))
+                .find(|line| line.starts_with("HEADER,CLIENT_LIST"))
                 .unwrap();
             assert!(!header.contains("Virtual IPv6 Address"));
             assert!(!header.contains("Data Channel Cipher"));
@@ -1741,11 +1741,11 @@ fn status_v1_client_full_with_compression_stats() {
         OvpnMessage::MultiLine(lines) => {
             assert_eq!(lines[0], "OpenVPN STATISTICS");
             // Should include compression stats
-            assert!(lines.iter().any(|l| l.starts_with("pre-compress bytes")));
-            assert!(lines.iter().any(|l| l.starts_with("post-compress bytes")));
-            assert!(lines.iter().any(|l| l.starts_with("pre-decompress bytes")));
-            assert!(lines.iter().any(|l| l.starts_with("post-decompress bytes")));
-            assert!(lines.iter().any(|l| l.starts_with("Auth read bytes")));
+            assert!(lines.iter().any(|line| line.starts_with("pre-compress bytes")));
+            assert!(lines.iter().any(|line| line.starts_with("post-compress bytes")));
+            assert!(lines.iter().any(|line| line.starts_with("pre-decompress bytes")));
+            assert!(lines.iter().any(|line| line.starts_with("post-decompress bytes")));
+            assert!(lines.iter().any(|line| line.starts_with("Auth read bytes")));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -1794,13 +1794,13 @@ fn help_response_2_6_9_with_newer_commands() {
         OvpnMessage::MultiLine(lines) => {
             assert!(lines.len() > 30, "2.6.9 help should be extensive");
             // New commands not in older versions
-            assert!(lines.iter().any(|l| l.contains("cr-response")));
-            assert!(lines.iter().any(|l| l.contains("client-pending-auth")));
-            assert!(lines.iter().any(|l| l.contains("pk-sig")));
-            assert!(lines.iter().any(|l| l.contains("certificate")));
-            assert!(lines.iter().any(|l| l.contains("load-stats")));
-            assert!(lines.iter().any(|l| l.contains("remote-entry-count")));
-            assert!(lines.iter().any(|l| l.contains("env-filter")));
+            assert!(lines.iter().any(|line| line.contains("cr-response")));
+            assert!(lines.iter().any(|line| line.contains("client-pending-auth")));
+            assert!(lines.iter().any(|line| line.contains("pk-sig")));
+            assert!(lines.iter().any(|line| line.contains("certificate")));
+            assert!(lines.iter().any(|line| line.contains("load-stats")));
+            assert!(lines.iter().any(|line| line.contains("remote-entry-count")));
+            assert!(lines.iter().any(|line| line.contains("env-filter")));
         }
         other => panic!("unexpected: {other:?}"),
     }
@@ -3411,7 +3411,7 @@ fn client_notification_interleaved_in_multiline_response() {
     // The multiline response should contain the lines that were NOT part
     // of the CLIENT block.
     if let OvpnMessage::MultiLine(lines) = &msgs[1] {
-        assert!(lines.iter().any(|l| l.contains("TITLE")));
-        assert!(lines.iter().any(|l| l.contains("TIME")));
+        assert!(lines.iter().any(|line| line.contains("TITLE")));
+        assert!(lines.iter().any(|line| line.contains("TIME")));
     }
 }

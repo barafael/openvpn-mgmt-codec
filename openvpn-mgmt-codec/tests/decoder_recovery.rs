@@ -51,7 +51,7 @@ fn utf8_error_during_multiline_accumulation_resets_state() {
 
     // decode() loops internally: processes "line1" (accumulates into
     // multi_line_buf), then hits invalid UTF-8 → error. The error handler
-    // resets multi_line_buf, client_notif, and expected.
+    // resets multi_line_buf, client_notification, and expected.
     let result = c.decode(&mut buf);
     assert!(result.is_err(), "should error on invalid UTF-8");
 
@@ -80,7 +80,7 @@ fn utf8_error_during_client_env_accumulation_resets_state() {
     let result = c.decode(&mut buf);
     assert!(result.is_err());
 
-    // After error, client_notif state should be reset.
+    // After error, client_notificationstate should be reset.
     let msg = c.decode(&mut buf).unwrap().unwrap();
     assert!(matches!(
         msg,

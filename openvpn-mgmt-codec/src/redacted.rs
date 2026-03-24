@@ -64,46 +64,46 @@ mod tests {
 
     #[test]
     fn debug_is_redacted() {
-        let r = Redacted::new("secret");
-        assert_eq!(format!("{r:?}"), "<redacted>");
+        let redacted = Redacted::new("secret");
+        assert_eq!(format!("{redacted:?}"), "<redacted>");
     }
 
     #[test]
     fn display_is_redacted() {
-        let r = Redacted::new("secret");
-        assert_eq!(format!("{r}"), "<redacted>");
+        let redacted = Redacted::new("secret");
+        assert_eq!(format!("{redacted}"), "<redacted>");
     }
 
     #[test]
     fn expose_returns_inner() {
-        let r = Redacted::new("hunter2");
-        assert_eq!(r.expose(), "hunter2");
+        let redacted = Redacted::new("hunter2");
+        assert_eq!(redacted.expose(), "hunter2");
     }
 
     #[test]
     fn into_inner_returns_owned() {
-        let r = Redacted::new("pass");
-        assert_eq!(r.into_inner(), "pass");
+        let redacted = Redacted::new("pass");
+        assert_eq!(redacted.into_inner(), "pass");
     }
 
     #[test]
     fn from_string() {
-        let r: Redacted = "hello".to_string().into();
-        assert_eq!(r.expose(), "hello");
+        let redacted: Redacted = "hello".to_string().into();
+        assert_eq!(redacted.expose(), "hello");
     }
 
     #[test]
     fn from_str() {
-        let r: Redacted = "hello".into();
-        assert_eq!(r.expose(), "hello");
+        let redacted: Redacted = "hello".into();
+        assert_eq!(redacted.expose(), "hello");
     }
 
     #[test]
     fn equality() {
-        let a = Redacted::new("same");
-        let b = Redacted::new("same");
-        let c = Redacted::new("different");
-        assert_eq!(a, b);
-        assert_ne!(a, c);
+        let first = Redacted::new("same");
+        let second = Redacted::new("same");
+        let third = Redacted::new("different");
+        assert_eq!(first, second);
+        assert_ne!(first, third);
     }
 }

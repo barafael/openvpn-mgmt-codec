@@ -34,8 +34,8 @@
 //!
 //! while let Some(event) = mgmt.next().await {
 //!     match event? {
-//!         ManagementEvent::Notification(n) => {
-//!             println!("async notification: {n:?}");
+//!         ManagementEvent::Notification(notification) => {
+//!             println!("async notification: {notification:?}");
 //!         }
 //!         ManagementEvent::Response(msg) => {
 //!             println!("command response: {msg:?}");
@@ -67,7 +67,7 @@ pub enum ManagementEvent {
 impl From<OvpnMessage> for ManagementEvent {
     fn from(msg: OvpnMessage) -> Self {
         match msg {
-            OvpnMessage::Notification(n) => Self::Notification(n),
+            OvpnMessage::Notification(notification) => Self::Notification(notification),
             other => Self::Response(other),
         }
     }
@@ -85,6 +85,7 @@ impl From<OvpnMessage> for ManagementEvent {
 /// # Extracting notifications with timeout
 ///
 /// ```no_run
+/// use anyhow::Context;
 /// # async fn example() -> anyhow::Result<()> {
 /// use tokio::net::TcpStream;
 /// use tokio_util::codec::Framed;
@@ -99,9 +100,9 @@ impl From<OvpnMessage> for ManagementEvent {
 /// let response = tokio::time::timeout(
 ///     std::time::Duration::from_secs(5),
 ///     framed.next(),
-/// ).await?
-///  .ok_or("stream ended")?
-///  ?;
+/// ).await
+///  .context("stream ended")?;
+///
 /// println!("got: {response:?}");
 /// # Ok(())
 /// # }
@@ -124,14 +125,14 @@ impl From<OvpnMessage> for ManagementEvent {
 ///             let mut framed = Framed::new(stream, OvpnCodec::new());
 ///             while let Some(msg) = framed.next().await {
 ///                 match msg {
-///                     Ok(m) => println!("{m:?}"),
-///                     Err(e) => { eprintln!("decode error: {e}"); break; }
+///                     Ok(msg) => println!("{msg:?}"),
+///                     Err(error) => { eprintln!("decode error: {error}"); break; }
 ///                 }
 ///             }
 ///             eprintln!("connection closed, reconnecting...");
 ///         }
-///         Err(e) => {
-///             eprintln!("connect failed: {e}, retrying in {backoff:?}");
+///         Err(error) => {
+///             eprintln!("connect failed: {error}, retrying in {backoff:?}");
 ///         }
 ///     }
 ///     tokio::time::sleep(backoff).await;

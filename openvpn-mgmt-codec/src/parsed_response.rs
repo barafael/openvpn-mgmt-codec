@@ -226,9 +226,9 @@ pub struct StateEntry {
 /// use openvpn_mgmt_codec::parsed_response::parse_state_entry;
 ///
 /// // Minimal (just timestamp + state):
-/// let e = parse_state_entry("1711234567,CONNECTED").unwrap();
-/// assert_eq!(e.name.to_string(), "CONNECTED");
-/// assert!(e.description.is_empty());
+/// let entry = parse_state_entry("1711234567,CONNECTED").unwrap();
+/// assert_eq!(entry.name.to_string(), "CONNECTED");
+/// assert!(entry.description.is_empty());
 ///
 /// // Invalid state name:
 /// assert!(parse_state_entry("1711234567,BOGUS").is_err());
@@ -244,13 +244,18 @@ pub fn parse_state_entry(line: &str) -> Result<StateEntry, ParseResponseError> {
         .map_err(|_| ParseResponseError::InvalidTimestamp(fields[0].to_string()))?;
     let name = fields[1].parse::<OpenVpnState>()?;
 
-    let get = |i: usize| fields.get(i).copied().unwrap_or("").to_string();
-    let get_port = |i: usize| {
-        fields.get(i).and_then(|s| {
-            if s.is_empty() {
+    let get = |idx: usize| fields.get(idx).copied().unwrap_or("").to_string();
+    let get_port = |idx: usize| {
+        fields.get(idx).and_then(|field| {
+            if field.is_empty() {
                 None
             } else {
-                s.parse::<u16>().ok()
+                field
+                    .parse::<u16>()
+                    .inspect_err(
+                        |error| tracing::warn!(%error, field, "non-numeric port in state entry"),
+                    )
+                    .ok()
             }
         })
     };
@@ -285,7 +290,7 @@ pub fn parse_state_entry(line: &str) -> Result<StateEntry, ParseResponseError> {
 /// assert_eq!(entries[1].name.to_string(), "CONNECTED");
 /// ```
 pub fn parse_state_history(lines: &[String]) -> Result<Vec<StateEntry>, ParseResponseError> {
-    lines.iter().map(|l| parse_state_entry(l)).collect()
+    lines.iter().map(|line| parse_state_entry(line)).collect()
 }
 
 /// Extract the current (most recent) state from a `state` or `state on all`
@@ -341,18 +346,18 @@ mod tests {
 
     #[test]
     fn load_stats_normal() {
-        let s = parse_load_stats("nclients=10,bytesin=123456,bytesout=789012").unwrap();
-        assert_eq!(s.nclients, 10);
-        assert_eq!(s.bytesin, 123456);
-        assert_eq!(s.bytesout, 789012);
+        let stats = parse_load_stats("nclients=10,bytesin=123456,bytesout=789012").unwrap();
+        assert_eq!(stats.nclients, 10);
+        assert_eq!(stats.bytesin, 123456);
+        assert_eq!(stats.bytesout, 789012);
     }
 
     #[test]
     fn load_stats_reordered() {
-        let s = parse_load_stats("bytesout=1,nclients=2,bytesin=3").unwrap();
-        assert_eq!(s.nclients, 2);
-        assert_eq!(s.bytesin, 3);
-        assert_eq!(s.bytesout, 1);
+        let stats = parse_load_stats("bytesout=1,nclients=2,bytesin=3").unwrap();
+        assert_eq!(stats.nclients, 2);
+        assert_eq!(stats.bytesin, 3);
+        assert_eq!(stats.bytesout, 1);
     }
 
     #[test]
@@ -405,34 +410,34 @@ mod tests {
 
     #[test]
     fn state_entry_full() {
-        let e =
+        let entry =
             parse_state_entry("1711234567,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,0.0.0.0,0")
                 .unwrap();
-        assert_eq!(e.timestamp, 1711234567);
-        assert_eq!(e.name.to_string(), "CONNECTED");
-        assert_eq!(e.description, "SUCCESS");
-        assert_eq!(e.local_ip, "10.8.0.6");
-        assert_eq!(e.remote_ip, "198.51.100.1");
-        assert_eq!(e.remote_port, Some(1194));
-        assert_eq!(e.local_addr, "0.0.0.0");
-        assert_eq!(e.local_port, Some(0));
+        assert_eq!(entry.timestamp, 1711234567);
+        assert_eq!(entry.name.to_string(), "CONNECTED");
+        assert_eq!(entry.description, "SUCCESS");
+        assert_eq!(entry.local_ip, "10.8.0.6");
+        assert_eq!(entry.remote_ip, "198.51.100.1");
+        assert_eq!(entry.remote_port, Some(1194));
+        assert_eq!(entry.local_addr, "0.0.0.0");
+        assert_eq!(entry.local_port, Some(0));
     }
 
     #[test]
     fn state_entry_minimal() {
-        let e = parse_state_entry("0,CONNECTING").unwrap();
-        assert_eq!(e.timestamp, 0);
-        assert!(e.description.is_empty());
-        assert!(e.remote_port.is_none());
+        let entry = parse_state_entry("0,CONNECTING").unwrap();
+        assert_eq!(entry.timestamp, 0);
+        assert!(entry.description.is_empty());
+        assert!(entry.remote_port.is_none());
     }
 
     #[test]
     fn state_entry_optional_ports_empty() {
-        let e = parse_state_entry("100,WAIT,desc,10.0.0.1,1.2.3.4,,eth0,").unwrap();
-        assert_eq!(e.remote_ip, "1.2.3.4");
-        assert_eq!(e.remote_port, None);
-        assert_eq!(e.local_addr, "eth0");
-        assert_eq!(e.local_port, None);
+        let entry = parse_state_entry("100,WAIT,desc,10.0.0.1,1.2.3.4,,eth0,").unwrap();
+        assert_eq!(entry.remote_ip, "1.2.3.4");
+        assert_eq!(entry.remote_port, None);
+        assert_eq!(entry.local_addr, "eth0");
+        assert_eq!(entry.local_port, None);
     }
 
     #[test]

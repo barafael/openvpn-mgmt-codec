@@ -30,8 +30,8 @@ impl FromStr for StatusFormat {
     type Err = ParseStatusFormatError;
 
     /// Parse a status format version: `1`, `2`, or `3`.
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        match input {
             "1" => Ok(Self::V1),
             "2" => Ok(Self::V2),
             "3" => Ok(Self::V3),
@@ -49,8 +49,8 @@ mod tests {
     #[test_case(StatusFormat::V2)]
     #[test_case(StatusFormat::V3)]
     fn display_roundtrip(fmt: StatusFormat) {
-        let s = fmt.to_string();
-        assert_eq!(s.parse::<StatusFormat>().unwrap(), fmt);
+        let string = fmt.to_string();
+        assert_eq!(string.parse::<StatusFormat>().unwrap(), fmt);
     }
 
     #[test]

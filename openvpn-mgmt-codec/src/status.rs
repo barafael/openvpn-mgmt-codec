@@ -211,7 +211,11 @@ fn parse_optional_u64(s: &str) -> Option<u64> {
     if s.is_empty() || s == "UNDEF" {
         None
     } else {
-        s.parse().ok()
+        s.parse()
+            .inspect_err(|error| {
+                tracing::warn!(%error, value = s, "non-numeric optional u64 in status response")
+            })
+            .ok()
     }
 }
 
@@ -225,7 +229,10 @@ fn parse_optional_u64(s: &str) -> Option<u64> {
 /// prefix markers.
 pub fn parse_status(lines: &[String]) -> Result<StatusResponse, ParseStatusError> {
     // Detect V1 by looking for the header line.
-    if lines.first().is_some_and(|l| l == "OpenVPN CLIENT LIST") {
+    if lines
+        .first()
+        .is_some_and(|line| line == "OpenVPN CLIENT LIST")
+    {
         return parse_status_v1(lines);
     }
 
@@ -348,11 +355,17 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
 
         match tag {
             "TITLE" => {
-                status.title = fields.get(1).map(|s| s.to_string());
+                status.title = fields.get(1).map(|val| val.to_string());
             }
             "TIME" => {
-                status.updated = fields.get(1).map(|s| s.to_string());
-                status.timestamp = fields.get(2).and_then(|s| s.parse().ok());
+                status.updated = fields.get(1).map(|val| val.to_string());
+                status.timestamp = fields.get(2).and_then(|val| {
+                    val.parse()
+                        .inspect_err(|error| {
+                            tracing::warn!(%error, value = val, "non-numeric timestamp in TIME row")
+                        })
+                        .ok()
+                });
             }
             "HEADER" => {
                 // Skip header rows — they describe columns, not data.
@@ -365,41 +378,41 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
                 // Older (2.3) layout omits VirtIPv6, PeerID, Cipher:
                 // 0:CN 1:RealAddr 2:VirtAddr 3:BytesRecv 4:BytesSent
                 // 5:ConnSince 6:ConnSince_t 7:Username
-                let f = &fields[1..]; // Skip the "CLIENT_LIST" tag
-                let has_ipv6_column = f.len() >= 12;
+                let cols = &fields[1..]; // Skip the "CLIENT_LIST" tag
+                let has_ipv6_column = cols.len() >= 12;
 
                 if has_ipv6_column {
-                    // has_ipv6_column requires f.len() >= 12, so all
-                    // indexed accesses (up to f[7]) are in-bounds.
+                    // has_ipv6_column requires cols.len() >= 12, so all
+                    // indexed accesses (up to cols[7]) are in-bounds.
                     status.clients.push(ConnectedClient {
-                        common_name: f[0].to_string(),
-                        real_address: f[1].to_string(),
-                        virtual_address: f[2].to_string(),
-                        virtual_ipv6: f[3].to_string(),
-                        bytes_in: parse_u64(f[4], "bytes_received")?,
-                        bytes_out: parse_u64(f[5], "bytes_sent")?,
-                        connected_since: f[6].to_string(),
-                        connected_since_t: parse_optional_u64(f.get(7).copied().unwrap_or("")),
-                        username: f.get(8).map(|s| s.to_string()),
-                        cid: f.get(9).and_then(|s| parse_optional_u64(s)),
-                        peer_id: f.get(10).and_then(|s| parse_optional_u64(s)),
-                        cipher: f.get(11).map(|s| s.to_string()),
+                        common_name: cols[0].to_string(),
+                        real_address: cols[1].to_string(),
+                        virtual_address: cols[2].to_string(),
+                        virtual_ipv6: cols[3].to_string(),
+                        bytes_in: parse_u64(cols[4], "bytes_received")?,
+                        bytes_out: parse_u64(cols[5], "bytes_sent")?,
+                        connected_since: cols[6].to_string(),
+                        connected_since_t: parse_optional_u64(cols.get(7).copied().unwrap_or("")),
+                        username: cols.get(8).map(|val| val.to_string()),
+                        cid: cols.get(9).and_then(|val| parse_optional_u64(val)),
+                        peer_id: cols.get(10).and_then(|val| parse_optional_u64(val)),
+                        cipher: cols.get(11).map(|val| val.to_string()),
                     });
                 } else {
                     // Older layout: no IPv6, no PeerID, no Cipher
-                    if f.len() < 5 {
-                        return Err(ParseStatusError::ClientListTooFewFields(f.len()));
+                    if cols.len() < 5 {
+                        return Err(ParseStatusError::ClientListTooFewFields(cols.len()));
                     }
                     status.clients.push(ConnectedClient {
-                        common_name: f[0].to_string(),
-                        real_address: f[1].to_string(),
-                        virtual_address: f[2].to_string(),
+                        common_name: cols[0].to_string(),
+                        real_address: cols[1].to_string(),
+                        virtual_address: cols[2].to_string(),
                         virtual_ipv6: String::new(),
-                        bytes_in: parse_u64(f[3], "bytes_received")?,
-                        bytes_out: parse_u64(f[4], "bytes_sent")?,
-                        connected_since: f.get(5).unwrap_or(&"").to_string(),
-                        connected_since_t: f.get(6).and_then(|s| parse_optional_u64(s)),
-                        username: f.get(7).map(|s| s.to_string()),
+                        bytes_in: parse_u64(cols[3], "bytes_received")?,
+                        bytes_out: parse_u64(cols[4], "bytes_sent")?,
+                        connected_since: cols.get(5).unwrap_or(&"").to_string(),
+                        connected_since_t: cols.get(6).and_then(|val| parse_optional_u64(val)),
+                        username: cols.get(7).map(|val| val.to_string()),
                         cid: None,
                         peer_id: None,
                         cipher: None,
@@ -407,16 +420,16 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
                 }
             }
             "ROUTING_TABLE" => {
-                let f = &fields[1..];
-                if f.len() < 4 {
-                    return Err(ParseStatusError::RoutingTableTooFewFields(f.len()));
+                let cols = &fields[1..];
+                if cols.len() < 4 {
+                    return Err(ParseStatusError::RoutingTableTooFewFields(cols.len()));
                 }
                 status.routes.push(RoutingEntry {
-                    virtual_address: f[0].to_string(),
-                    common_name: f[1].to_string(),
-                    real_address: f[2].to_string(),
-                    last_ref: f[3].to_string(),
-                    last_ref_t: f.get(4).and_then(|s| parse_optional_u64(s)),
+                    virtual_address: cols[0].to_string(),
+                    common_name: cols[1].to_string(),
+                    real_address: cols[2].to_string(),
+                    last_ref: cols[3].to_string(),
+                    last_ref_t: cols.get(4).and_then(|val| parse_optional_u64(val)),
                 });
             }
             "GLOBAL_STATS" if fields.len() >= 3 => {
@@ -522,7 +535,7 @@ mod tests {
     fn v3_single_client() {
         let lines: Vec<String> = include_str!("../tests/fixtures/status_v3.txt")
             .lines()
-            .filter(|l| !l.is_empty() && *l != "END")
+            .filter(|line| !line.is_empty() && *line != "END")
             .map(String::from)
             .collect();
         let status = parse_status(&lines).unwrap();
@@ -533,23 +546,23 @@ mod tests {
         assert_eq!(status.timestamp, Some(1711031400));
         assert_eq!(status.updated.as_deref(), Some("2024-03-21 14:30:00"));
         assert_eq!(status.clients.len(), 1);
-        let c = &status.clients[0];
-        assert_eq!(c.common_name, "client1");
-        assert_eq!(c.real_address, "203.0.113.10:52841");
-        assert_eq!(c.virtual_address, "10.8.0.6");
-        assert!(c.virtual_ipv6.is_empty());
-        assert_eq!(c.bytes_in, 1548576);
-        assert_eq!(c.bytes_out, 984320);
-        assert_eq!(c.connected_since_t, Some(1711012500));
-        assert_eq!(c.username.as_deref(), Some("UNDEF"));
-        assert_eq!(c.cid, Some(0));
-        assert_eq!(c.peer_id, Some(0));
-        assert_eq!(c.cipher.as_deref(), Some("AES-256-GCM"));
+        let client = &status.clients[0];
+        assert_eq!(client.common_name, "client1");
+        assert_eq!(client.real_address, "203.0.113.10:52841");
+        assert_eq!(client.virtual_address, "10.8.0.6");
+        assert!(client.virtual_ipv6.is_empty());
+        assert_eq!(client.bytes_in, 1548576);
+        assert_eq!(client.bytes_out, 984320);
+        assert_eq!(client.connected_since_t, Some(1711012500));
+        assert_eq!(client.username.as_deref(), Some("UNDEF"));
+        assert_eq!(client.cid, Some(0));
+        assert_eq!(client.peer_id, Some(0));
+        assert_eq!(client.cipher.as_deref(), Some("AES-256-GCM"));
 
         assert_eq!(status.routes.len(), 1);
-        let r = &status.routes[0];
-        assert_eq!(r.virtual_address, "10.8.0.6");
-        assert_eq!(r.last_ref_t, Some(1711031390));
+        let route = &status.routes[0];
+        assert_eq!(route.virtual_address, "10.8.0.6");
+        assert_eq!(route.last_ref_t, Some(1711031390));
 
         assert_eq!(status.global_stats.len(), 1);
         assert_eq!(status.global_stats[0].0, "Max bcast/mcast queue length");
@@ -562,7 +575,7 @@ mod tests {
     fn v2_single_client() {
         let lines: Vec<String> = include_str!("../tests/fixtures/status_v2.txt")
             .lines()
-            .filter(|l| !l.is_empty() && *l != "END")
+            .filter(|line| !line.is_empty() && *line != "END")
             .map(String::from)
             .collect();
         let status = parse_status(&lines).unwrap();
@@ -576,7 +589,7 @@ mod tests {
     fn v2_full_multiple_clients() {
         let lines: Vec<String> = include_str!("../tests/fixtures/status_v2_full.txt")
             .lines()
-            .filter(|l| !l.is_empty() && *l != "END")
+            .filter(|line| !line.is_empty() && *line != "END")
             .map(String::from)
             .collect();
         let status = parse_status(&lines).unwrap();
@@ -603,7 +616,7 @@ mod tests {
     fn v2_old_openvpn_23() {
         let lines: Vec<String> = include_str!("../tests/fixtures/status_v2_old.txt")
             .lines()
-            .filter(|l| !l.is_empty() && *l != "END")
+            .filter(|line| !line.is_empty() && *line != "END")
             .map(String::from)
             .collect();
         let status = parse_status(&lines).unwrap();
@@ -627,7 +640,7 @@ mod tests {
     fn v1_server_two_clients() {
         let lines: Vec<String> = include_str!("../tests/fixtures/status_v1_server.txt")
             .lines()
-            .filter(|l| !l.is_empty() && *l != "END")
+            .filter(|line| !line.is_empty() && *line != "END")
             .map(String::from)
             .collect();
         let status = parse_status(&lines).unwrap();
@@ -650,7 +663,7 @@ mod tests {
     fn v1_server_empty() {
         let lines: Vec<String> = include_str!("../tests/fixtures/status_v1_server_empty.txt")
             .lines()
-            .filter(|l| !l.is_empty() && *l != "END")
+            .filter(|line| !line.is_empty() && *line != "END")
             .map(String::from)
             .collect();
         let status = parse_status(&lines).unwrap();
@@ -664,7 +677,7 @@ mod tests {
         let lines: Vec<String> =
             include_str!("../tests/fixtures/status_v1_server_many_clients.txt")
                 .lines()
-                .filter(|l| !l.is_empty() && *l != "END")
+                .filter(|line| !line.is_empty() && *line != "END")
                 .map(String::from)
                 .collect();
         let status = parse_status(&lines).unwrap();
@@ -678,7 +691,7 @@ mod tests {
     fn client_statistics_basic() {
         let lines: Vec<String> = include_str!("../tests/fixtures/status_v1_client.txt")
             .lines()
-            .filter(|l| !l.is_empty() && *l != "END")
+            .filter(|line| !line.is_empty() && *line != "END")
             .map(String::from)
             .collect();
         let stats = parse_client_statistics(&lines).unwrap();
@@ -694,7 +707,7 @@ mod tests {
     fn client_statistics_with_compression() {
         let lines: Vec<String> = include_str!("../tests/fixtures/status_v1_client_full.txt")
             .lines()
-            .filter(|l| !l.is_empty() && *l != "END")
+            .filter(|line| !line.is_empty() && *line != "END")
             .map(String::from)
             .collect();
         let stats = parse_client_statistics(&lines).unwrap();

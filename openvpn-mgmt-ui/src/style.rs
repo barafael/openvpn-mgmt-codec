@@ -12,9 +12,9 @@ use iced_aw::style::{Status as TabStatus, tab_bar};
 // -------------------------------------------------------------------
 
 pub(crate) fn tab_style(theme: &Theme, status: TabStatus) -> tab_bar::Style {
-    let pal = theme.extended_palette();
-    let bg = pal.background.base.color;
-    let fg = pal.background.base.text;
+    let palette = theme.extended_palette();
+    let background = palette.background.base.color;
+    let foreground = palette.background.base.text;
 
     let base = tab_bar::Style {
         background: None,
@@ -23,22 +23,22 @@ pub(crate) fn tab_style(theme: &Theme, status: TabStatus) -> tab_bar::Style {
         tab_label_background: Color::TRANSPARENT.into(),
         tab_label_border_color: Color::TRANSPARENT,
         tab_label_border_width: 0.0,
-        icon_color: fg,
+        icon_color: foreground,
         icon_background: None,
         icon_border_radius: 0.0.into(),
         tab_border_radius: 0.0.into(),
-        text_color: mix(fg, bg, 0.4),
+        text_color: mix(foreground, background, 0.4),
     };
 
     match status {
         TabStatus::Active => tab_bar::Style {
-            tab_label_background: mix(bg, fg, 0.08).into(),
-            text_color: fg,
+            tab_label_background: mix(background, foreground, 0.08).into(),
+            text_color: foreground,
             ..base
         },
         TabStatus::Hovered => tab_bar::Style {
-            tab_label_background: mix(bg, fg, 0.06).into(),
-            text_color: mix(fg, bg, 0.15),
+            tab_label_background: mix(background, foreground, 0.06).into(),
+            text_color: mix(foreground, background, 0.15),
             ..base
         },
         _ => base,
@@ -50,23 +50,23 @@ pub(crate) fn tab_style(theme: &Theme, status: TabStatus) -> tab_bar::Style {
 // -------------------------------------------------------------------
 
 pub(crate) fn text_label(theme: &Theme) -> text::Style {
-    let (fg, bg) = fg_bg(theme);
+    let (foreground, background) = foreground_background(theme);
     text::Style {
-        color: Some(mix(fg, bg, 0.4)),
+        color: Some(mix(foreground, background, 0.4)),
     }
 }
 
 pub(crate) fn text_muted(theme: &Theme) -> text::Style {
-    let (fg, bg) = fg_bg(theme);
+    let (foreground, background) = foreground_background(theme);
     text::Style {
-        color: Some(mix(fg, bg, 0.5)),
+        color: Some(mix(foreground, background, 0.5)),
     }
 }
 
 pub(crate) fn text_warning(theme: &Theme) -> text::Style {
-    let pal = theme.extended_palette();
-    let danger = pal.danger.base.color;
-    let success = pal.success.base.color;
+    let palette = theme.extended_palette();
+    let danger = palette.danger.base.color;
+    let success = palette.success.base.color;
     text::Style {
         color: Some(Color {
             r: danger.r * 0.67 + success.r * 0.33,
@@ -85,15 +85,15 @@ pub(crate) fn text_warning(theme: &Theme) -> text::Style {
 #[expect(dead_code, reason = "reserved for future response display")]
 pub(crate) fn code_block() -> <Theme as container::Catalog>::Class<'static> {
     Box::new(|theme: &Theme| {
-        let pal = theme.extended_palette();
+        let palette = theme.extended_palette();
         container::Style {
-            background: Some(pal.background.weak.color.into()),
+            background: Some(palette.background.weak.color.into()),
             border: Border {
-                color: pal.background.strong.color,
+                color: palette.background.strong.color,
                 width: 1.0,
                 radius: 4.0.into(),
             },
-            text_color: Some(pal.background.weak.text),
+            text_color: Some(palette.background.weak.text),
             ..Default::default()
         }
     })
@@ -102,9 +102,16 @@ pub(crate) fn code_block() -> <Theme as container::Catalog>::Class<'static> {
 /// Selected log row — highlighted background.
 pub(crate) fn log_row_selected() -> <Theme as container::Catalog>::Class<'static> {
     Box::new(|theme: &Theme| {
-        let pal = theme.extended_palette();
+        let palette = theme.extended_palette();
         container::Style {
-            background: Some(mix(pal.background.base.color, pal.primary.base.color, 0.15).into()),
+            background: Some(
+                mix(
+                    palette.background.base.color,
+                    palette.primary.base.color,
+                    0.15,
+                )
+                .into(),
+            ),
             border: Border {
                 radius: 2.0.into(),
                 ..Default::default()
@@ -117,11 +124,22 @@ pub(crate) fn log_row_selected() -> <Theme as container::Catalog>::Class<'static
 /// Status card container — subtle raised surface.
 pub(crate) fn card() -> <Theme as container::Catalog>::Class<'static> {
     Box::new(|theme: &Theme| {
-        let pal = theme.extended_palette();
+        let palette = theme.extended_palette();
         container::Style {
-            background: Some(mix(pal.background.base.color, pal.background.base.text, 0.04).into()),
+            background: Some(
+                mix(
+                    palette.background.base.color,
+                    palette.background.base.text,
+                    0.04,
+                )
+                .into(),
+            ),
             border: Border {
-                color: mix(pal.background.base.color, pal.background.base.text, 0.10),
+                color: mix(
+                    palette.background.base.color,
+                    palette.background.base.text,
+                    0.10,
+                ),
                 width: 1.0,
                 radius: 6.0.into(),
             },
@@ -134,17 +152,17 @@ pub(crate) fn card() -> <Theme as container::Catalog>::Class<'static> {
 // Helpers
 // -------------------------------------------------------------------
 
-fn fg_bg(theme: &Theme) -> (Color, Color) {
-    let pal = theme.extended_palette();
-    (pal.background.base.text, pal.background.base.color)
+fn foreground_background(theme: &Theme) -> (Color, Color) {
+    let palette = theme.extended_palette();
+    (palette.background.base.text, palette.background.base.color)
 }
 
-/// Linearly interpolate between two colours. `t = 0.0` → `a`, `t = 1.0` → `b`.
-pub(crate) fn mix(a: Color, b: Color, t: f32) -> Color {
+/// Linearly interpolate between two colours. `ratio = 0.0` → `start`, `ratio = 1.0` → `end`.
+pub(crate) fn mix(start: Color, end: Color, ratio: f32) -> Color {
     Color {
-        r: a.r + (b.r - a.r) * t,
-        g: a.g + (b.g - a.g) * t,
-        b: a.b + (b.b - a.b) * t,
+        r: start.r + (end.r - start.r) * ratio,
+        g: start.g + (end.g - start.g) * ratio,
+        b: start.b + (end.b - start.b) * ratio,
         a: 1.0,
     }
 }

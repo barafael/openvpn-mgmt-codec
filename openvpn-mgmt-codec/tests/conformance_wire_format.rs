@@ -56,9 +56,7 @@ async fn send_and_check_accepted(
     // prove the command was parsed and dispatched, just not applicable.
     if let OvpnMessage::Error(ref e) = msg {
         assert!(
-            !e.contains("unknown command")
-                && !e.contains("parse")
-                && !e.contains("Usage"),
+            !e.contains("unknown command") && !e.contains("parse") && !e.contains("Usage"),
             "{label}: encoder output rejected by OpenVPN: {e:?}",
         );
     }
@@ -87,14 +85,8 @@ async fn basic_commands_accepted() {
         (OvpnCommand::Status(StatusFormat::V2), "status 2"),
         (OvpnCommand::Status(StatusFormat::V3), "status 3"),
         (OvpnCommand::State, "state"),
-        (
-            OvpnCommand::StateStream(StreamMode::On),
-            "state on",
-        ),
-        (
-            OvpnCommand::StateStream(StreamMode::Off),
-            "state off",
-        ),
+        (OvpnCommand::StateStream(StreamMode::On), "state on"),
+        (OvpnCommand::StateStream(StreamMode::Off), "state off"),
         (OvpnCommand::Log(StreamMode::On), "log on"),
         (OvpnCommand::Log(StreamMode::Off), "log off"),
         (OvpnCommand::Echo(StreamMode::On), "echo on"),
@@ -166,7 +158,9 @@ async fn password_wire_format_accepted_by_openvpn() {
     let msg = common::recv(&mut server).await;
     assert!(matches!(msg, OvpnMessage::PasswordPrompt));
     server
-        .send(OvpnCommand::ManagementPassword(common::MGMT_PASSWORD.into()))
+        .send(OvpnCommand::ManagementPassword(
+            common::MGMT_PASSWORD.into(),
+        ))
         .await
         .unwrap();
     let _auth_ok = common::recv(&mut server).await;
@@ -202,12 +196,7 @@ async fn password_wire_format_accepted_by_openvpn() {
 
     // --- Set up client: wait for >PASSWORD:Need 'Auth' ---
     let mut client = connect_and_auth(CLIENT_PASSWORD_ADDR).await;
-    send_ok(
-        &mut client,
-        OvpnCommand::StateStream(StreamMode::On),
-        "",
-    )
-    .await;
+    send_ok(&mut client, OvpnCommand::StateStream(StreamMode::On), "").await;
     send_ok(&mut client, OvpnCommand::HoldRelease, "hold release").await;
 
     let pw_notification = timeout(Duration::from_secs(30), async {
@@ -269,6 +258,9 @@ async fn password_wire_format_accepted_by_openvpn() {
     .await
     .ok();
 
-    assert!(saw_state, "should observe state transitions after credentials");
+    assert!(
+        saw_state,
+        "should observe state transitions after credentials"
+    );
     client.send(OvpnCommand::Exit).await.unwrap();
 }

@@ -61,9 +61,15 @@ impl VersionInfo {
                 && lower.contains("version")
             {
                 management_version = line
-                    .rsplit(|c: char| !c.is_ascii_digit())
-                    .find(|s| !s.is_empty())
-                    .and_then(|s| s.parse().ok());
+                    .rsplit(|chr: char| !chr.is_ascii_digit())
+                    .find(|part| !part.is_empty())
+                    .and_then(|part| {
+                        part.parse()
+                            .inspect_err(|error| {
+                                tracing::warn!(%error, part, "non-numeric management version")
+                            })
+                            .ok()
+                    });
             } else if lower.starts_with("openvpn version") {
                 openvpn_version_line = Some(line.clone());
             }

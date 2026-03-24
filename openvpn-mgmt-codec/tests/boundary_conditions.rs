@@ -176,8 +176,8 @@ fn empty_multiline_response() {
 #[test]
 fn status_format_display_roundtrip_all() {
     for fmt in [StatusFormat::V1, StatusFormat::V2, StatusFormat::V3] {
-        let s = fmt.to_string();
-        let parsed: StatusFormat = s.parse().unwrap();
+        let string = fmt.to_string();
+        let parsed: StatusFormat = string.parse().unwrap();
         assert_eq!(parsed, fmt);
     }
 }
@@ -193,23 +193,23 @@ fn stream_mode_display_roundtrip_all() {
         StreamMode::Recent(1),
         StreamMode::Recent(u32::MAX),
     ] {
-        let s = mode.to_string();
-        let parsed: StreamMode = s.parse().unwrap();
+        let string = mode.to_string();
+        let parsed: StreamMode = string.parse().unwrap();
         assert_eq!(parsed, mode);
     }
 }
 
 #[test]
 fn auth_type_display_roundtrip_including_custom() {
-    for at in [
+    for auth in [
         AuthType::Auth,
         AuthType::PrivateKey,
         AuthType::HttpProxy,
         AuthType::SocksProxy,
     ] {
-        let s = at.to_string();
-        let parsed: AuthType = s.parse().unwrap();
-        assert_eq!(parsed, at);
+        let string = auth.to_string();
+        let parsed: AuthType = string.parse().unwrap();
+        assert_eq!(parsed, auth);
     }
     // Unknown values don't roundtrip through FromStr (which is fallible).
     assert!("MyPlugin".parse::<AuthType>().is_err());
@@ -222,8 +222,8 @@ fn auth_retry_mode_display_roundtrip() {
         AuthRetryMode::Interact,
         AuthRetryMode::NoInteract,
     ] {
-        let s = mode.to_string();
-        let parsed: AuthRetryMode = s.parse().unwrap();
+        let string = mode.to_string();
+        let parsed: AuthRetryMode = string.parse().unwrap();
         assert_eq!(parsed, mode);
     }
 }
@@ -236,8 +236,8 @@ fn signal_display_roundtrip() {
         Signal::SigUsr1,
         Signal::SigUsr2,
     ] {
-        let s = sig.to_string();
-        let parsed: Signal = s.parse().unwrap();
+        let string = sig.to_string();
+        let parsed: Signal = string.parse().unwrap();
         assert_eq!(parsed, sig);
     }
 }
@@ -251,11 +251,11 @@ fn stream_mode_recent_zero() {
 
 #[test]
 fn auth_type_custom_empty_string() {
-    let at = AuthType::Unknown(String::new());
-    let s = at.to_string();
-    assert_eq!(s, "");
+    let auth = AuthType::Unknown(String::new());
+    let string = auth.to_string();
+    assert_eq!(string, "");
     // Empty string is not a recognized auth type.
-    assert!(s.parse::<AuthType>().is_err());
+    assert!(string.parse::<AuthType>().is_err());
 }
 
 #[test]

@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn debug_redacts_password_env_key() {
-        let notif = Notification::Client {
+        let notification = Notification::Client {
             event: ClientEvent::Connect,
             cid: 1,
             kid: Some(0),
@@ -316,7 +316,7 @@ mod tests {
                 ("password".to_string(), "s3cret".to_string()),
             ],
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("alice"), "non-sensitive values should appear");
         assert!(
             !dbg.contains("s3cret"),
@@ -330,13 +330,13 @@ mod tests {
 
     #[test]
     fn debug_does_not_redact_non_sensitive_keys() {
-        let notif = Notification::Client {
+        let notification = Notification::Client {
             event: ClientEvent::Disconnect,
             cid: 5,
             kid: None,
             env: vec![("untrusted_ip".to_string(), "10.0.0.1".to_string())],
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("10.0.0.1"));
     }
 
@@ -344,10 +344,10 @@ mod tests {
 
     #[test]
     fn password_notification_debug_redacts_token() {
-        let notif = PasswordNotification::AuthToken {
+        let notification = PasswordNotification::AuthToken {
             token: Redacted::new("super-secret-token".to_string()),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(
             !dbg.contains("super-secret-token"),
             "auth token must not appear in Debug output"
@@ -356,23 +356,23 @@ mod tests {
 
     #[test]
     fn password_notification_eq() {
-        let a = PasswordNotification::NeedAuth {
+        let need_auth = PasswordNotification::NeedAuth {
             auth_type: AuthType::Auth,
         };
-        let b = PasswordNotification::NeedAuth {
+        let need_auth_same = PasswordNotification::NeedAuth {
             auth_type: AuthType::Auth,
         };
-        assert_eq!(a, b);
+        assert_eq!(need_auth, need_auth_same);
 
-        let c = PasswordNotification::NeedPassword {
+        let need_password = PasswordNotification::NeedPassword {
             auth_type: AuthType::PrivateKey,
         };
-        assert_ne!(a, c);
+        assert_ne!(need_auth, need_password);
     }
 
     #[test]
     fn password_notification_static_challenge_fields() {
-        let sc = PasswordNotification::StaticChallenge {
+        let static_challenge = PasswordNotification::StaticChallenge {
             echo: true,
             response_concat: false,
             challenge: "Enter PIN".to_string(),
@@ -381,7 +381,7 @@ mod tests {
             echo,
             response_concat,
             challenge,
-        } = sc
+        } = static_challenge
         {
             assert!(echo);
             assert!(!response_concat);
@@ -393,7 +393,7 @@ mod tests {
 
     #[test]
     fn password_notification_dynamic_challenge_fields() {
-        let dc = PasswordNotification::DynamicChallenge {
+        let dynamic_challenge = PasswordNotification::DynamicChallenge {
             flags: "R,E".to_string(),
             state_id: "abc123".to_string(),
             username_b64: "dXNlcg==".to_string(),
@@ -404,7 +404,7 @@ mod tests {
             state_id,
             challenge,
             ..
-        } = dc
+        } = dynamic_challenge
         {
             assert_eq!(flags, "R,E");
             assert_eq!(state_id, "abc123");
@@ -418,7 +418,7 @@ mod tests {
 
     #[test]
     fn debug_state_notification() {
-        let notif = Notification::State {
+        let notification = Notification::State {
             timestamp: 1700000000,
             name: OpenVpnState::Connected,
             description: "SUCCESS".to_string(),
@@ -429,7 +429,7 @@ mod tests {
             local_port: Some(51234),
             local_ipv6: String::new(),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("State"));
         assert!(dbg.contains("Connected"));
         assert!(dbg.contains("10.0.0.2"));
@@ -437,100 +437,100 @@ mod tests {
 
     #[test]
     fn debug_bytecount() {
-        let notif = Notification::ByteCount {
+        let notification = Notification::ByteCount {
             bytes_in: 1024,
             bytes_out: 2048,
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("1024"));
         assert!(dbg.contains("2048"));
     }
 
     #[test]
     fn debug_bytecount_cli() {
-        let notif = Notification::ByteCountCli {
+        let notification = Notification::ByteCountCli {
             cid: 7,
             bytes_in: 100,
             bytes_out: 200,
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("ByteCountCli"));
         assert!(dbg.contains("7"));
     }
 
     #[test]
     fn debug_log() {
-        let notif = Notification::Log {
+        let notification = Notification::Log {
             timestamp: 1700000000,
             level: LogLevel::Warning,
             message: "something happened".to_string(),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("Log"));
         assert!(dbg.contains("something happened"));
     }
 
     #[test]
     fn debug_echo() {
-        let notif = Notification::Echo {
+        let notification = Notification::Echo {
             timestamp: 123,
             param: "push-update".to_string(),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("Echo"));
         assert!(dbg.contains("push-update"));
     }
 
     #[test]
     fn debug_hold() {
-        let notif = Notification::Hold {
+        let notification = Notification::Hold {
             text: "Waiting for hold release".to_string(),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("Hold"));
     }
 
     #[test]
     fn debug_fatal() {
-        let notif = Notification::Fatal {
+        let notification = Notification::Fatal {
             message: "cannot allocate TUN/TAP".to_string(),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("Fatal"));
         assert!(dbg.contains("cannot allocate TUN/TAP"));
     }
 
     #[test]
     fn debug_remote() {
-        let notif = Notification::Remote {
+        let notification = Notification::Remote {
             host: "vpn.example.com".to_string(),
             port: 1194,
             protocol: TransportProtocol::Udp,
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("Remote"));
         assert!(dbg.contains("vpn.example.com"));
     }
 
     #[test]
     fn debug_proxy() {
-        let notif = Notification::Proxy {
+        let notification = Notification::Proxy {
             index: 1,
             proxy_type: TransportProtocol::Tcp,
             host: "proxy.local".to_string(),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("Proxy"));
         assert!(dbg.contains("proxy.local"));
     }
 
     #[test]
     fn debug_pk_sign_with_algorithm() {
-        let notif = Notification::PkSign {
+        let notification = Notification::PkSign {
             data: "dGVzdA==".to_string(),
             algorithm: Some("RSA_PKCS1_PADDING".to_string()),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("PkSign"));
         assert!(dbg.contains("RSA_PKCS1_PADDING"));
         assert!(dbg.contains("dGVzdA=="));
@@ -538,44 +538,44 @@ mod tests {
 
     #[test]
     fn debug_pk_sign_without_algorithm() {
-        let notif = Notification::PkSign {
+        let notification = Notification::PkSign {
             data: "dGVzdA==".to_string(),
             algorithm: None,
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("PkSign"));
         assert!(dbg.contains("None"));
     }
 
     #[test]
     fn debug_info_notification() {
-        let notif = Notification::Info {
+        let notification = Notification::Info {
             message: "WEB_AUTH::https://example.com/auth".to_string(),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("Info"));
         assert!(dbg.contains("WEB_AUTH"));
     }
 
     #[test]
     fn debug_simple_fallback() {
-        let notif = Notification::Simple {
+        let notification = Notification::Simple {
             kind: "FUTURE_TYPE".to_string(),
             payload: "some data".to_string(),
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("FUTURE_TYPE"));
         assert!(dbg.contains("some data"));
     }
 
     #[test]
     fn debug_client_address() {
-        let notif = Notification::ClientAddress {
+        let notification = Notification::ClientAddress {
             cid: 42,
             addr: "10.8.0.6".to_string(),
             primary: true,
         };
-        let dbg = format!("{notif:?}");
+        let dbg = format!("{notification:?}");
         assert!(dbg.contains("ClientAddress"));
         assert!(dbg.contains("10.8.0.6"));
         assert!(dbg.contains("true"));
