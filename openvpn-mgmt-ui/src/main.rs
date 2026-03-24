@@ -52,6 +52,14 @@ const MAX_COMMAND_HISTORY: usize = 100;
 #[derive(Debug)]
 struct ActorGone;
 
+/// Start a 350ms timer that sends the given message (used for copy flash).
+fn flash_timer(msg: Message) -> Task<Message> {
+    Task::perform(
+        async { tokio::time::sleep(std::time::Duration::from_millis(350)).await },
+        move |()| msg,
+    )
+}
+
 // -------------------------------------------------------------------
 // Auxiliary data
 // -------------------------------------------------------------------
@@ -110,6 +118,8 @@ pub(crate) struct App {
     log_entries: Vec<LogEntry>,
     /// Index of the currently selected log entry (for copy).
     selected_log_index: Option<usize>,
+    /// Temporary flash highlight on the selected log entry after copy.
+    log_flash_index: Option<usize>,
 
     // Clients (server mode)
     clients: Vec<ClientInfo>,
@@ -130,8 +140,10 @@ pub(crate) struct App {
     /// When `true` the next response (Success / Error / MultiLine) is
     /// appended to the most recent history entry instead of being discarded.
     awaiting_command_response: bool,
-    /// Flat line index currently flash-highlighted after a copy.
-    console_flash_index: Option<usize>,
+    /// Selected entry index in console output (index into reversed command_history).
+    selected_console_entry: Option<usize>,
+    /// Temporary flash highlight on a console entry after copy.
+    console_flash_entry: Option<usize>,
 
     // UI
     active_tab: Tab,
@@ -210,6 +222,7 @@ impl App {
 
             log_entries: Vec::new(),
             selected_log_index: None,
+            log_flash_index: None,
             clients: Vec::new(),
 
             help_lines: None,
@@ -221,7 +234,8 @@ impl App {
             raw_mode: false,
             command_history: Vec::new(),
             awaiting_command_response: false,
-            console_flash_index: None,
+            selected_console_entry: None,
+            console_flash_entry: None,
 
             active_tab: Tab::Dashboard,
             ctrl_held: false,
@@ -451,28 +465,79 @@ impl App {
                     } else {
                         format!("[{label}] {} {}", entry.timestamp, entry.message)
                     };
-                    return iced::clipboard::write(line);
+                    self.log_flash_index = Some(index);
+                    return Task::batch([
+                        iced::clipboard::write(line),
+                        flash_timer(Message::ClearLogFlash),
+                    ]);
                 }
+            }
+            Message::ClearLogFlash => {
+                self.log_flash_index = None;
             }
 
             // -- Console output --------------------------------------------------
-            Message::CopyConsoleLine(flat_index) => {
-                if let Some(line) = self.console_flat_line(flat_index) {
-                    self.console_flash_index = Some(flat_index);
+            Message::SelectConsoleEntry(entry_index) => {
+                self.selected_console_entry = Some(entry_index);
+            }
+            Message::CopyConsoleEntry => {
+                if let Some(rev_idx) = self.selected_console_entry
+                    && let Some(text) = self.console_entry_text(rev_idx)
+                {
+                    self.console_flash_entry = Some(rev_idx);
                     return Task::batch([
-                        iced::clipboard::write(line),
-                        Task::perform(
-                            async {
-                                tokio::time::sleep(std::time::Duration::from_millis(350)).await;
-                            },
-                            |()| Message::ClearConsoleFlash,
-                        ),
+                        iced::clipboard::write(text),
+                        flash_timer(Message::ClearConsoleFlash),
                     ]);
                 }
             }
             Message::ClearConsoleFlash => {
-                self.console_flash_index = None;
+                self.console_flash_entry = None;
             }
+
+            // -- Ctrl+C: dispatch to active tab --------------------------------
+            Message::CopySelection => match self.active_tab {
+                Tab::Log => return self.update(Message::CopyLogEntry),
+                Tab::Console => return self.update(Message::CopyConsoleEntry),
+                _ => {}
+            },
+
+            // -- Arrow navigation ------------------------------------------------
+            Message::SelectionUp => match self.active_tab {
+                Tab::Log if !self.log_entries.is_empty() => {
+                    // List is displayed newest-first; "up" visually = older = higher index.
+                    let max = self.log_entries.len() - 1;
+                    self.selected_log_index = Some(match self.selected_log_index {
+                        Some(idx) => (idx + 1).min(max),
+                        None => max, // start at top (newest) when nothing selected
+                    });
+                }
+                Tab::Console if !self.command_history.is_empty() => {
+                    let max = self.command_history.len() - 1;
+                    self.selected_console_entry = Some(match self.selected_console_entry {
+                        Some(idx) => (idx + 1).min(max),
+                        None => 0,
+                    });
+                }
+                _ => {}
+            },
+            Message::SelectionDown => match self.active_tab {
+                Tab::Log if !self.log_entries.is_empty() => {
+                    self.selected_log_index = Some(match self.selected_log_index {
+                        Some(idx) if idx > 0 => idx - 1,
+                        Some(_) => 0,
+                        None => self.log_entries.len() - 1,
+                    });
+                }
+                Tab::Console if !self.command_history.is_empty() => {
+                    self.selected_console_entry = Some(match self.selected_console_entry {
+                        Some(idx) if idx > 0 => idx - 1,
+                        Some(_) => 0,
+                        None => 0,
+                    });
+                }
+                _ => {}
+            },
 
             // -- Status refresh --------------------------------------------------
             Message::RefreshStatus => {
@@ -842,7 +907,6 @@ impl App {
                 self.send_and_record("status 3", OvpnCommand::Status(StatusFormat::V3))?;
             }
             OpsMsg::Pid => self.send_and_record("pid", OvpnCommand::Pid)?,
-            OpsMsg::Help => self.send_and_record("help", OvpnCommand::Help)?,
             OpsMsg::LoadStats => self.send_and_record("load-stats", OvpnCommand::LoadStats)?,
             OpsMsg::Net => self.send_and_record("net", OvpnCommand::Net)?,
 
@@ -1038,25 +1102,17 @@ impl App {
         }
     }
 
-    /// Return the text of a flat console output line by index.
+    /// Return the full text of a console entry by reverse index.
     ///
-    /// The flat indexing mirrors `view_output_pane`: entries in reverse order,
-    /// with the command line (`❯ cmd`) followed by its response lines.
-    fn console_flat_line(&self, flat_index: usize) -> Option<String> {
-        let mut idx = 0usize;
-        for entry in self.command_history.iter().rev() {
-            if idx == flat_index {
-                return Some(format!("❯ {}", entry.command));
-            }
-            idx += 1;
-            for line in &entry.response_lines {
-                if idx == flat_index {
-                    return Some(line.clone());
-                }
-                idx += 1;
-            }
+    /// Joins the command line and all response lines into a single string.
+    fn console_entry_text(&self, rev_index: usize) -> Option<String> {
+        let entry = self.command_history.iter().rev().nth(rev_index)?;
+        let mut text = format!("❯ {}", entry.command);
+        for line in &entry.response_lines {
+            text.push('\n');
+            text.push_str(line);
         }
-        None
+        Some(text)
     }
 
     /// Append text to the most recent command-history entry (if awaiting).
@@ -1200,12 +1256,14 @@ impl App {
         self.throughput.reset();
         self.log_entries.clear();
         self.selected_log_index = None;
+        self.log_flash_index = None;
         self.clients.clear();
         self.help_lines = None;
         self.ops = OperationsForm::default();
         self.command_history.clear();
         self.awaiting_command_response = false;
-        self.console_flash_index = None;
+        self.selected_console_entry = None;
+        self.console_flash_entry = None;
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {
@@ -1217,7 +1275,15 @@ impl App {
                 key: iced::keyboard::Key::Character(ref ch),
                 modifiers,
                 ..
-            }) if modifiers.control() && ch.as_ref() == "c" => Some(Message::CopyLogEntry),
+            }) if modifiers.control() && ch.as_ref() == "c" => Some(Message::CopySelection),
+            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
+                key: iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowUp),
+                ..
+            }) => Some(Message::SelectionUp),
+            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
+                key: iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowDown),
+                ..
+            }) => Some(Message::SelectionDown),
             _ => None,
         })
     }

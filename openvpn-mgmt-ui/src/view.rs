@@ -14,7 +14,7 @@ use openvpn_mgmt_codec::LogLevel;
 
 use crate::App;
 use crate::message::{ConnectionState, Message, OpsMsg, StartupMsg, StartupStreamMode, Tab};
-use crate::style::{card, log_row_selected, tab_style, text_label, text_muted, text_warning};
+use crate::style::{card, row_flash, row_selected, tab_style, text_label, text_muted, text_warning};
 
 // -------------------------------------------------------------------
 // Constants
@@ -513,7 +513,6 @@ impl App {
             row![
                 ops_btn("Version", OpsMsg::Version, connected),
                 ops_btn("PID", OpsMsg::Pid, connected),
-                ops_btn("Help", OpsMsg::Help, connected),
                 ops_btn("Load Stats", OpsMsg::LoadStats, connected),
                 ops_btn("Net", OpsMsg::Net, connected),
             ]
@@ -620,34 +619,52 @@ impl App {
                 .into();
         }
 
-        let mut flat_index = 0usize;
-        let lines: Vec<Element<'_, Message>> = self
+        let entries: Vec<Element<'_, Message>> = self
             .command_history
             .iter()
             .rev()
-            .flat_map(|entry| {
-                let mut rows: Vec<Element<'_, Message>> = Vec::new();
+            .enumerate()
+            .map(|(rev_idx, entry)| {
+                let is_flashing = self.console_flash_entry == Some(rev_idx);
+                let is_selected = self.selected_console_entry == Some(rev_idx);
 
-                let cmd_idx = flat_index;
-                flat_index += 1;
-                let cmd_text: Element<'_, Message> = text(format!("❯ {}", entry.command))
-                    .size(11)
-                    .style(text::primary)
-                    .into();
-                rows.push(console_line(cmd_text, cmd_idx, self.console_flash_index));
-
+                let mut lines: Vec<Element<'_, Message>> = Vec::new();
+                lines.push(
+                    text(format!("❯ {}", entry.command))
+                        .size(11)
+                        .style(text::primary)
+                        .into(),
+                );
                 for line in &entry.response_lines {
-                    let line_idx = flat_index;
-                    flat_index += 1;
-                    let line_text: Element<'_, Message> =
-                        text(format!("  {line}")).size(11).into();
-                    rows.push(console_line(line_text, line_idx, self.console_flash_index));
+                    lines.push(text(format!("  {line}")).size(11).into());
                 }
-                rows
+
+                let block = column(lines).spacing(1).width(Length::Fill);
+                let styled: Element<'_, Message> = if is_flashing {
+                    container(block)
+                        .padding(Padding::from([1, 4]))
+                        .style(row_flash())
+                        .width(Length::Fill)
+                        .into()
+                } else if is_selected {
+                    container(block)
+                        .padding(Padding::from([1, 4]))
+                        .style(row_selected())
+                        .width(Length::Fill)
+                        .into()
+                } else {
+                    container(block)
+                        .padding(Padding::from([1, 4]))
+                        .width(Length::Fill)
+                        .into()
+                };
+                mouse_area(styled)
+                    .on_press(Message::SelectConsoleEntry(rev_idx))
+                    .into()
             })
             .collect();
 
-        column(lines).spacing(1).width(Length::Fill).into()
+        column(entries).spacing(4).width(Length::Fill).into()
     }
 
     /// Build the auto-complete suggestion list based on the current input.
@@ -818,6 +835,7 @@ impl App {
                         LogLevel::Debug => text_muted,
                         _ => text_label,
                     };
+                    let is_flashing = self.log_flash_index == Some(idx);
                     let is_selected = self.selected_log_index == Some(idx);
                     let log_row = row![
                         container(text(format!("[{level_label}]")).size(11).style(level_style))
@@ -826,10 +844,16 @@ impl App {
                         text(&entry.message).size(11),
                     ]
                     .spacing(4);
-                    let styled_row: Element<'_, Message> = if is_selected {
+                    let styled_row: Element<'_, Message> = if is_flashing {
                         container(log_row)
                             .padding(Padding::from([1, 4]))
-                            .style(log_row_selected())
+                            .style(row_flash())
+                            .width(Length::Fill)
+                            .into()
+                    } else if is_selected {
+                        container(log_row)
+                            .padding(Padding::from([1, 4]))
+                            .style(row_selected())
                             .width(Length::Fill)
                             .into()
                     } else {
@@ -1082,31 +1106,6 @@ fn tab_scrollable<'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, M
     }))
     .height(Length::Fill)
     .into()
-}
-
-/// Wrap a console output line in a clickable mouse_area that copies on click
-/// and flash-highlights briefly.
-fn console_line<'a>(
-    content: Element<'a, Message>,
-    index: usize,
-    flash_index: Option<usize>,
-) -> Element<'a, Message> {
-    let is_flashing = flash_index == Some(index);
-    let styled: Element<'a, Message> = if is_flashing {
-        container(content)
-            .padding(Padding::from([1, 4]))
-            .style(log_row_selected())
-            .width(Length::Fill)
-            .into()
-    } else {
-        container(content)
-            .padding(Padding::from([1, 4]))
-            .width(Length::Fill)
-            .into()
-    };
-    mouse_area(styled)
-        .on_press(Message::CopyConsoleLine(index))
-        .into()
 }
 
 /// Format a byte count in a human-friendly way.

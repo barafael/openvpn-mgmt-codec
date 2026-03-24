@@ -99,8 +99,8 @@ pub(crate) fn code_block() -> <Theme as container::Catalog>::Class<'static> {
     })
 }
 
-/// Selected log row — highlighted background.
-pub(crate) fn log_row_selected() -> <Theme as container::Catalog>::Class<'static> {
+/// Selected row — subtle highlighted background.
+pub(crate) fn row_selected() -> <Theme as container::Catalog>::Class<'static> {
     Box::new(|theme: &Theme| {
         let palette = theme.extended_palette();
         container::Style {
@@ -109,6 +109,28 @@ pub(crate) fn log_row_selected() -> <Theme as container::Catalog>::Class<'static
                     palette.background.base.color,
                     palette.primary.base.color,
                     0.15,
+                )
+                .into(),
+            ),
+            border: Border {
+                radius: 2.0.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    })
+}
+
+/// Flash row — brighter highlight for copy feedback.
+pub(crate) fn row_flash() -> <Theme as container::Catalog>::Class<'static> {
+    Box::new(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        container::Style {
+            background: Some(
+                mix(
+                    palette.background.base.color,
+                    palette.primary.base.color,
+                    0.35,
                 )
                 .into(),
             ),

@@ -129,7 +129,6 @@ pub(crate) enum OpsMsg {
     Status2,
     Status3,
     Pid,
-    Help,
     LoadStats,
     Net,
 
@@ -227,16 +226,27 @@ pub(crate) enum Message {
     ToggleRawMode(bool),
 
     // -- Log tab --
-    /// The user clicked a log entry to select it.
+    /// Click a log entry: select, copy to clipboard, flash-highlight.
     SelectLogEntry(usize),
-    /// Copy the selected log entry to the clipboard (Ctrl+C).
+    /// Copy the selected log entry to the clipboard.
     CopyLogEntry,
+    /// Timer callback: clear the log flash highlight.
+    ClearLogFlash,
 
     // -- Console output --
-    /// Click a console output line: copy to clipboard and flash-highlight it.
-    CopyConsoleLine(usize),
+    /// Click a console entry to select it (command + all response lines).
+    SelectConsoleEntry(usize),
+    /// Copy the selected console entry to the clipboard.
+    CopyConsoleEntry,
     /// Timer callback: clear the console flash highlight.
     ClearConsoleFlash,
+
+    /// Ctrl+C: copy from whichever tab is active.
+    CopySelection,
+    /// Arrow up: move selection up in the active tab.
+    SelectionUp,
+    /// Arrow down: move selection down in the active tab.
+    SelectionDown,
 
     // -- Verb reset (disconnect → reconnect with verb 4) --
     /// Disconnect and reconnect with verb 4 to escape a log flood.
