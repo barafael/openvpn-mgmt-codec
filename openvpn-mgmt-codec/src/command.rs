@@ -30,10 +30,29 @@ pub enum CommandParseError {
     #[error(transparent)]
     AuthRetryMode(#[from] ParseAuthRetryModeError),
 
-    /// Malformed command syntax (wrong number of arguments, non-numeric
-    /// values where numbers are expected, etc.).
+    /// A numeric argument could not be parsed.
+    #[error("{field} must be a number, got: {input}")]
+    InvalidNumber {
+        /// Which parameter was expected to be numeric.
+        field: &'static str,
+        /// The value that failed to parse.
+        input: String,
+    },
+
+    /// An argument value is not one of the accepted choices.
+    #[error("invalid {field}: {input} ({hint})")]
+    InvalidChoice {
+        /// Which parameter had an invalid value.
+        field: &'static str,
+        /// The rejected value.
+        input: String,
+        /// Human-readable description of valid choices.
+        hint: &'static str,
+    },
+
+    /// Missing or insufficient arguments.
     #[error("{0}")]
-    Syntax(String),
+    MissingArgs(&'static str),
 }
 
 /// Range selector for `remote-entry-get`.
@@ -493,9 +512,9 @@ impl FromStr for OvpnCommand {
     /// assert_eq!(cmd, OvpnCommand::StateStream(openvpn_mgmt_codec::StreamMode::OnAll));
     /// ```
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        /// Shorthand for `Err(CommandParseError::Syntax(...))`.
-        fn cmd_err<T>(msg: impl Into<String>) -> Result<T, CommandParseError> {
-            Err(CommandParseError::Syntax(msg.into()))
+        /// Shorthand for `Err(CommandParseError::MissingArgs(...))`.
+        fn cmd_err<T>(msg: &'static str) -> Result<T, CommandParseError> {
+            Err(CommandParseError::MissingArgs(msg))
         }
 
         let line = line.trim();
@@ -516,7 +535,11 @@ impl FromStr for OvpnCommand {
                 "" | "1" => Ok(Self::Status(StatusFormat::V1)),
                 "2" => Ok(Self::Status(StatusFormat::V2)),
                 "3" => Ok(Self::Status(StatusFormat::V3)),
-                _ => cmd_err(format!("invalid status format: {args} (use 1, 2, or 3)")),
+                _ => Err(CommandParseError::InvalidChoice {
+                    field: "status format",
+                    input: args.to_string(),
+                    hint: "use 1, 2, or 3",
+                }),
             },
 
             "state" => match args {
@@ -534,7 +557,10 @@ impl FromStr for OvpnCommand {
                     args.parse::<u8>()
                         .map(|n| Self::Verb(Some(n)))
                         .map_err(|_| {
-                            CommandParseError::Syntax(format!("invalid verbosity: {args} (0-15)"))
+                            CommandParseError::InvalidNumber {
+                                field: "verbosity",
+                                input: args.to_string(),
+                            }
                         })
                 }
             }
@@ -546,13 +572,19 @@ impl FromStr for OvpnCommand {
                     args.parse::<u32>()
                         .map(|n| Self::Mute(Some(n)))
                         .map_err(|_| {
-                            CommandParseError::Syntax(format!("invalid mute value: {args}"))
+                            CommandParseError::InvalidNumber {
+                                field: "mute threshold",
+                                input: args.to_string(),
+                            }
                         })
                 }
             }
 
             "bytecount" => args.parse::<u32>().map(Self::ByteCount).map_err(|_| {
-                CommandParseError::Syntax(format!("bytecount requires a number, got: {args}"))
+                CommandParseError::InvalidNumber {
+                    field: "bytecount interval",
+                    input: args.to_string(),
+                }
             }),
 
             // --- Connection control ---
@@ -583,15 +615,19 @@ impl FromStr for OvpnCommand {
                 "on" => Ok(Self::HoldOn),
                 "off" => Ok(Self::HoldOff),
                 "release" => Ok(Self::HoldRelease),
-                _ => cmd_err(format!("invalid hold argument: {args}")),
+                _ => Err(CommandParseError::InvalidChoice {
+                    field: "hold argument",
+                    input: args.to_string(),
+                    hint: "use on, off, or release",
+                }),
             },
 
             // --- Authentication ---
             "username" => {
                 let (auth_type, value) =
                     args.split_once(char::is_whitespace)
-                        .ok_or(CommandParseError::Syntax(
-                            "usage: username <auth-type> <value>".into(),
+                        .ok_or(CommandParseError::MissingArgs(
+                            "usage: username <auth-type> <value>",
                         ))?;
                 Ok(Self::Username {
                     auth_type: auth_type
@@ -605,8 +641,8 @@ impl FromStr for OvpnCommand {
             "password" => {
                 let (auth_type, value) =
                     args.split_once(char::is_whitespace)
-                        .ok_or(CommandParseError::Syntax(
-                            "usage: password <auth-type> <value>".into(),
+                        .ok_or(CommandParseError::MissingArgs(
+                            "usage: password <auth-type> <value>",
                         ))?;
                 Ok(Self::Password {
                     auth_type: auth_type
@@ -625,14 +661,18 @@ impl FromStr for OvpnCommand {
             "needok" => {
                 let (name, resp) =
                     args.rsplit_once(char::is_whitespace)
-                        .ok_or(CommandParseError::Syntax(
-                            "usage: needok <name> ok|cancel".into(),
+                        .ok_or(CommandParseError::MissingArgs(
+                            "usage: needok <name> ok|cancel",
                         ))?;
                 let response = match resp {
                     "ok" => NeedOkResponse::Ok,
                     "cancel" => NeedOkResponse::Cancel,
                     _ => {
-                        return cmd_err(format!("invalid needok response: {resp} (use ok/cancel)"));
+                        return Err(CommandParseError::InvalidChoice {
+                            field: "needok response",
+                            input: resp.to_string(),
+                            hint: "use ok or cancel",
+                        });
                     }
                 };
                 Ok(Self::NeedOk {
@@ -644,8 +684,8 @@ impl FromStr for OvpnCommand {
             "needstr" => {
                 let (name, value) =
                     args.split_once(char::is_whitespace)
-                        .ok_or(CommandParseError::Syntax(
-                            "usage: needstr <name> <value>".into(),
+                        .ok_or(CommandParseError::MissingArgs(
+                            "usage: needstr <name> <value>",
                         ))?;
                 Ok(Self::NeedStr {
                     name: name.to_string(),
@@ -657,7 +697,10 @@ impl FromStr for OvpnCommand {
             "pkcs11-id-count" => Ok(Self::Pkcs11IdCount),
 
             "pkcs11-id-get" => args.parse::<u32>().map(Self::Pkcs11IdGet).map_err(|_| {
-                CommandParseError::Syntax(format!("pkcs11-id-get requires a number, got: {args}"))
+                CommandParseError::InvalidNumber {
+                    field: "pkcs11-id-get index",
+                    input: args.to_string(),
+                }
             }),
 
             // --- Client management (server mode) ---
@@ -665,18 +708,18 @@ impl FromStr for OvpnCommand {
                 let mut parts = args.splitn(3, char::is_whitespace);
                 let cid = parts
                     .next()
-                    .ok_or(CommandParseError::Syntax(
-                        "usage: client-auth <cid> <kid> [config-lines]".into(),
+                    .ok_or(CommandParseError::MissingArgs(
+                        "usage: client-auth <cid> <kid> [config-lines]",
                     ))?
                     .parse::<u64>()
-                    .map_err(|_| CommandParseError::Syntax("cid must be a number".into()))?;
+                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
                 let kid = parts
                     .next()
-                    .ok_or(CommandParseError::Syntax(
-                        "usage: client-auth <cid> <kid> [config-lines]".into(),
+                    .ok_or(CommandParseError::MissingArgs(
+                        "usage: client-auth <cid> <kid> [config-lines]",
                     ))?
                     .parse::<u64>()
-                    .map_err(|_| CommandParseError::Syntax("kid must be a number".into()))?;
+                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
                 let config_lines = match parts.next() {
                     Some(rest) => rest.split(',').map(|s| s.trim().to_string()).collect(),
                     None => vec![],
@@ -691,17 +734,17 @@ impl FromStr for OvpnCommand {
             "client-auth-nt" => {
                 let (cid_s, kid_s) =
                     args.split_once(char::is_whitespace)
-                        .ok_or(CommandParseError::Syntax(
-                            "usage: client-auth-nt <cid> <kid>".into(),
+                        .ok_or(CommandParseError::MissingArgs(
+                            "usage: client-auth-nt <cid> <kid>",
                         ))?;
                 Ok(Self::ClientAuthNt {
                     cid: cid_s
                         .parse()
-                        .map_err(|_| CommandParseError::Syntax("cid must be a number".into()))?,
+                        .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?,
                     kid: kid_s
                         .trim()
                         .parse()
-                        .map_err(|_| CommandParseError::Syntax("kid must be a number".into()))?,
+                        .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?,
                 })
             }
 
@@ -709,22 +752,22 @@ impl FromStr for OvpnCommand {
                 let mut parts = args.splitn(4, char::is_whitespace);
                 let cid = parts
                     .next()
-                    .ok_or(CommandParseError::Syntax(
-                        "usage: client-deny <cid> <kid> <reason> [client-reason]".into(),
+                    .ok_or(CommandParseError::MissingArgs(
+                        "usage: client-deny <cid> <kid> <reason> [client-reason]",
                     ))?
                     .parse::<u64>()
-                    .map_err(|_| CommandParseError::Syntax("cid must be a number".into()))?;
+                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
                 let kid = parts
                     .next()
-                    .ok_or(CommandParseError::Syntax(
-                        "usage: client-deny <cid> <kid> <reason> [client-reason]".into(),
+                    .ok_or(CommandParseError::MissingArgs(
+                        "usage: client-deny <cid> <kid> <reason> [client-reason]",
                     ))?
                     .parse::<u64>()
-                    .map_err(|_| CommandParseError::Syntax("kid must be a number".into()))?;
+                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
                 let reason = parts
                     .next()
-                    .ok_or(CommandParseError::Syntax(
-                        "usage: client-deny <cid> <kid> <reason> [client-reason]".into(),
+                    .ok_or(CommandParseError::MissingArgs(
+                        "usage: client-deny <cid> <kid> <reason> [client-reason]",
                     ))?
                     .to_string();
                 let client_reason = parts.next().map(|s| s.to_string());
@@ -742,9 +785,10 @@ impl FromStr for OvpnCommand {
                     None => (args, None),
                 };
                 let cid = cid_str.parse::<u64>().map_err(|_| {
-                    CommandParseError::Syntax(format!(
-                        "client-kill requires a CID number, got: {cid_str}"
-                    ))
+                    CommandParseError::InvalidNumber {
+                        field: "client-kill CID",
+                        input: cid_str.to_string(),
+                    }
                 })?;
                 Ok(Self::ClientKill { cid, message })
             }
@@ -757,7 +801,7 @@ impl FromStr for OvpnCommand {
                     host: host.to_string(),
                     port: port
                         .parse()
-                        .map_err(|_| CommandParseError::Syntax("port must be a number".into()))?,
+                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
                 })),
                 _ => cmd_err("usage: remote accept|skip|mod <host> <port>"),
             },
@@ -768,21 +812,21 @@ impl FromStr for OvpnCommand {
                     host: host.to_string(),
                     port: port
                         .parse()
-                        .map_err(|_| CommandParseError::Syntax("port must be a number".into()))?,
+                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
                     non_cleartext_only: false,
                 })),
                 ["http" | "HTTP", host, port, "nct"] => Ok(Self::Proxy(ProxyAction::Http {
                     host: host.to_string(),
                     port: port
                         .parse()
-                        .map_err(|_| CommandParseError::Syntax("port must be a number".into()))?,
+                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
                     non_cleartext_only: true,
                 })),
                 ["socks" | "SOCKS", host, port] => Ok(Self::Proxy(ProxyAction::Socks {
                     host: host.to_string(),
                     port: port
                         .parse()
-                        .map_err(|_| CommandParseError::Syntax("port must be a number".into()))?,
+                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
                 })),
                 _ => cmd_err("usage: proxy none|http <host> <port> [nct]|socks <host> <port>"),
             },
@@ -792,8 +836,9 @@ impl FromStr for OvpnCommand {
                 let level = if args.is_empty() {
                     0
                 } else {
-                    args.parse::<u32>().map_err(|_| {
-                        CommandParseError::Syntax(format!("invalid env-filter level: {args}"))
+                    args.parse::<u32>().map_err(|_| CommandParseError::InvalidNumber {
+                        field: "env-filter level",
+                        input: args.to_string(),
                     })?
                 };
                 Ok(Self::EnvFilter(level))
@@ -811,16 +856,18 @@ impl FromStr for OvpnCommand {
                 } else {
                     let mut parts = args.splitn(2, char::is_whitespace);
                     let from = parts.next().unwrap().parse::<u32>().map_err(|_| {
-                        CommandParseError::Syntax(format!(
-                            "remote-entry-get index must be a number or 'all', got: {args}"
-                        ))
+                        CommandParseError::InvalidNumber {
+                            field: "remote-entry-get index",
+                            input: args.to_string(),
+                        }
                     })?;
                     match parts.next() {
                         Some(to_str) => {
                             let to = to_str.trim().parse::<u32>().map_err(|_| {
-                                CommandParseError::Syntax(format!(
-                                    "remote-entry-get end index must be a number, got: {to_str}"
-                                ))
+                                CommandParseError::InvalidNumber {
+                                    field: "remote-entry-get end index",
+                                    input: to_str.to_string(),
+                                }
                             })?;
                             RemoteEntryRange::Range { from, to }
                         }
@@ -843,11 +890,11 @@ impl FromStr for OvpnCommand {
             "push-update-cid" => {
                 let (cid_str, options) =
                     args.split_once(char::is_whitespace)
-                        .ok_or(CommandParseError::Syntax(
-                            "usage: push-update-cid <cid> <options>".into(),
+                        .ok_or(CommandParseError::MissingArgs(
+                            "usage: push-update-cid <cid> <options>",
                         ))?;
                 let cid = cid_str.parse::<u64>().map_err(|_| {
-                    CommandParseError::Syntax("push-update-cid: cid must be a number".into())
+                    CommandParseError::MissingArgs("push-update-cid: cid must be a number")
                 })?;
                 Ok(Self::PushUpdateCid {
                     cid,
@@ -1180,11 +1227,11 @@ mod tests {
 
     #[test]
     fn parse_password() {
-        let cmd: OvpnCommand = "password PrivateKey s3cret".parse().unwrap();
+        let cmd: OvpnCommand = "password Auth s3cret".parse().unwrap();
         assert_eq!(
             cmd,
             OvpnCommand::Password {
-                auth_type: AuthType::PrivateKey,
+                auth_type: AuthType::Auth,
                 value: "s3cret".into(),
             }
         );
