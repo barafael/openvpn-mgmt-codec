@@ -504,18 +504,22 @@ impl Encoder<OvpnCommand> for OvpnCodec {
             OvpnCommand::LoadStats => write_line(dst, "load-stats"),
 
             // --- Extended client management ---
-            //
-            // TODO: warn when `extra` exceeds 245 characters — real-world
-            // limit discovered by jkroepke/openvpn-auth-oauth2
-            // (used for WEB_AUTH URLs).
-            // Not documented in management-notes.txt.
-            // Will address when adding tracing support.
             OvpnCommand::ClientPendingAuth {
                 cid,
                 kid,
                 ref extra,
                 timeout,
             } => {
+                // Real-world limit discovered by jkroepke/openvpn-auth-oauth2
+                // (used for WEB_AUTH URLs). Not documented in management-notes.txt.
+                if extra.len() > 245 {
+                    warn!(
+                        len = extra.len(),
+                        max = 245,
+                        "client-pending-auth extra exceeds 245-character limit; \
+                         OpenVPN may truncate or reject it"
+                    );
+                }
                 let extra = wire_safe(extra, "client-pending-auth extra", mode)?;
                 let pending_auth = format!("client-pending-auth {cid} {kid} {extra} {timeout}");
                 write_line(dst, &pending_auth)
@@ -1373,6 +1377,50 @@ mod tests {
             wire,
             "client-deny 5 0 \"cert revoked\" \"Your access has been revoked.\"\n"
         );
+    }
+
+    #[test]
+    fn encode_client_pending_auth() {
+        let wire = encode_to_string(OvpnCommand::ClientPendingAuth {
+            cid: 42,
+            kid: 1,
+            extra: "WEB_AUTH::https://example.com".to_string(),
+            timeout: 120,
+        });
+        assert_eq!(
+            wire,
+            "client-pending-auth 42 1 WEB_AUTH::https://example.com 120\n"
+        );
+    }
+
+    #[test]
+    #[traced_test]
+    fn encode_client_pending_auth_long_extra_warns() {
+        let long_extra = "W".repeat(246);
+        let wire = encode_to_string(OvpnCommand::ClientPendingAuth {
+            cid: 1,
+            kid: 0,
+            extra: long_extra.clone(),
+            timeout: 60,
+        });
+        assert_eq!(
+            wire,
+            format!("client-pending-auth 1 0 {long_extra} 60\n")
+        );
+        assert!(logs_contain("exceeds 245-character limit"));
+    }
+
+    #[test]
+    #[traced_test]
+    fn encode_client_pending_auth_at_limit_no_warning() {
+        let extra = "W".repeat(245);
+        encode_to_string(OvpnCommand::ClientPendingAuth {
+            cid: 1,
+            kid: 0,
+            extra,
+            timeout: 60,
+        });
+        assert!(!logs_contain("exceeds 245-character limit"));
     }
 
     #[test]
