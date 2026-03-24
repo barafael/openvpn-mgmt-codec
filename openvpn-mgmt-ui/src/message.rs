@@ -263,4 +263,8 @@ pub(crate) enum Message {
     // -- Theme --
     /// The user picked a new theme.
     ThemeSelected(iced::Theme),
+
+    // -- Animation --
+    /// Tick for the "Connecting..." dot animation.
+    ConnectingTick,
 }

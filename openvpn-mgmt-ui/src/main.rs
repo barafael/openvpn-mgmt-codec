@@ -151,6 +151,8 @@ pub(crate) struct App {
     pub(crate) ctrl_held: bool,
     /// The active iced theme.
     pub(crate) theme: Theme,
+    /// Dot animation counter for "Connecting" state (0..=2).
+    pub(crate) connecting_dots: u8,
 }
 
 // -------------------------------------------------------------------
@@ -240,6 +242,7 @@ impl App {
             active_tab: Tab::Dashboard,
             ctrl_held: false,
             theme: Theme::GruvboxDark,
+            connecting_dots: 0,
         };
 
         (app, event_task)
@@ -513,9 +516,10 @@ impl App {
                     });
                 }
                 Tab::Console if !self.command_history.is_empty() => {
-                    let max = self.command_history.len() - 1;
+                    // Displayed newest-first; index 0 = top. Up = lower index.
                     self.selected_console_entry = Some(match self.selected_console_entry {
-                        Some(idx) => (idx + 1).min(max),
+                        Some(idx) if idx > 0 => idx - 1,
+                        Some(_) => 0,
                         None => 0,
                     });
                 }
@@ -530,9 +534,9 @@ impl App {
                     });
                 }
                 Tab::Console if !self.command_history.is_empty() => {
+                    let max = self.command_history.len() - 1;
                     self.selected_console_entry = Some(match self.selected_console_entry {
-                        Some(idx) if idx > 0 => idx - 1,
-                        Some(_) => 0,
+                        Some(idx) => (idx + 1).min(max),
                         None => 0,
                     });
                 }
@@ -565,6 +569,11 @@ impl App {
             // -- Theme -----------------------------------------------------------
             Message::ThemeSelected(theme) => {
                 self.theme = theme;
+            }
+
+            // -- Animation -------------------------------------------------------
+            Message::ConnectingTick => {
+                self.connecting_dots = (self.connecting_dots + 1) % 4;
             }
         }
 
@@ -1267,7 +1276,7 @@ impl App {
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {
-        iced::event::listen_with(|event, _status, _window| match event {
+        let keyboard = iced::event::listen_with(|event, _status, _window| match event {
             iced::Event::Keyboard(iced::keyboard::Event::ModifiersChanged(modifiers)) => {
                 Some(Message::ModifiersChanged(modifiers))
             }
@@ -1285,7 +1294,17 @@ impl App {
                 ..
             }) => Some(Message::SelectionDown),
             _ => None,
-        })
+        });
+
+        if self.connection_state == ConnectionState::Connecting {
+            iced::Subscription::batch([
+                keyboard,
+                iced::time::every(std::time::Duration::from_millis(400))
+                    .map(|_| Message::ConnectingTick),
+            ])
+        } else {
+            keyboard
+        }
     }
 }
 

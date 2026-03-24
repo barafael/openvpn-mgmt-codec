@@ -81,8 +81,59 @@ pub(crate) fn text_warning(theme: &Theme) -> text::Style {
 // Container styles
 // -------------------------------------------------------------------
 
-/// Code-block container with a subtle theme-aware background.
-#[expect(dead_code, reason = "reserved for future response display")]
+/// Tooltip popup container — weak background with a thin border.
+pub(crate) fn tooltip_box() -> <Theme as container::Catalog>::Class<'static> {
+    Box::new(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        container::Style {
+            background: Some(palette.background.weak.color.into()),
+            border: Border {
+                color: palette.background.strong.color,
+                width: 1.0,
+                radius: 4.0.into(),
+            },
+            ..Default::default()
+        }
+    })
+}
+
+/// Subtle hover highlight for interactive rows.
+#[expect(dead_code, reason = "prepared for hover support")]
+pub(crate) fn row_hover() -> <Theme as container::Catalog>::Class<'static> {
+    Box::new(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        container::Style {
+            background: Some(
+                mix(
+                    palette.background.base.color,
+                    palette.background.base.text,
+                    0.05,
+                )
+                .into(),
+            ),
+            border: Border {
+                radius: 2.0.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    })
+}
+
+/// Status dot — small colored circle.
+pub(crate) fn status_dot(color: Color) -> <Theme as container::Catalog>::Class<'static> {
+    Box::new(move |_theme: &Theme| container::Style {
+        background: Some(color.into()),
+        border: Border {
+            radius: 4.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    })
+}
+
+/// Code-block container — distinct background for preformatted text.
+#[expect(dead_code, reason = "available for future use")]
 pub(crate) fn code_block() -> <Theme as container::Catalog>::Class<'static> {
     Box::new(|theme: &Theme| {
         let palette = theme.extended_palette();
@@ -174,7 +225,7 @@ pub(crate) fn card() -> <Theme as container::Catalog>::Class<'static> {
 // Helpers
 // -------------------------------------------------------------------
 
-fn foreground_background(theme: &Theme) -> (Color, Color) {
+pub(crate) fn foreground_background(theme: &Theme) -> (Color, Color) {
     let palette = theme.extended_palette();
     (palette.background.base.text, palette.background.base.color)
 }

@@ -14,7 +14,10 @@ use openvpn_mgmt_codec::LogLevel;
 
 use crate::App;
 use crate::message::{ConnectionState, Message, OpsMsg, StartupMsg, StartupStreamMode, Tab};
-use crate::style::{card, row_flash, row_selected, tab_style, text_label, text_muted, text_warning};
+use crate::style::{
+    card, row_flash, row_selected, status_dot, tab_style, text_label, text_muted, text_warning,
+    tooltip_box,
+};
 
 // -------------------------------------------------------------------
 // Constants
@@ -106,15 +109,31 @@ impl App {
         let is_connecting = self.connection_state == ConnectionState::Connecting;
 
         // Connection status indicator
-        let status_indicator: Element<'_, Message> = match self.connection_state {
+        let (dot_color, status_text) = match self.connection_state {
             ConnectionState::Disconnected => {
-                text("● Disconnected").style(text_muted).size(12).into()
+                let (fg, bg) = crate::style::foreground_background(&self.theme);
+                (crate::style::mix(fg, bg, 0.5), "Disconnected".to_string())
             }
             ConnectionState::Connecting => {
-                text("● Connecting…").style(text_warning).size(12).into()
+                let palette = self.theme.extended_palette();
+                let dots = ".".repeat(self.connecting_dots as usize);
+                (
+                    palette.primary.base.color,
+                    format!("Connecting{dots}"),
+                )
             }
-            ConnectionState::Connected => text("● Connected").style(text::success).size(12).into(),
+            ConnectionState::Connected => {
+                let palette = self.theme.extended_palette();
+                (palette.success.base.color, "Connected".to_string())
+            }
         };
+        let status_indicator: Element<'_, Message> = row![
+            container(Space::new().width(8).height(8)).class(status_dot(dot_color)),
+            text(status_text).size(12),
+        ]
+        .spacing(8)
+        .align_y(iced::Alignment::Center)
+        .into();
 
         // Connect / Disconnect / Reconnect buttons
         let connect_btn: Element<'_, Message> = if is_connected {
@@ -182,7 +201,7 @@ impl App {
                 Space::new().height(4),
                 with_tooltip(
                     button(
-                        row![lucide::icon_refresh_cw().size(12), text("Refresh").size(12),]
+                        row![lucide::icon_refresh_cw().size(14), text("Refresh").size(14),]
                             .spacing(6)
                             .align_y(iced::Alignment::Center),
                     )
@@ -241,17 +260,7 @@ impl App {
                     container(text(self.host.clone()).size(11))
                         .max_width(400)
                         .padding([6, 10])
-                        .style(|theme: &iced::Theme| container::Style {
-                            background: Some(
-                                theme.extended_palette().background.weak.color.into(),
-                            ),
-                            border: iced::Border {
-                                radius: 4.0.into(),
-                                width: 1.0,
-                                color: theme.extended_palette().background.strong.color,
-                            },
-                            ..Default::default()
-                        }),
+                        .class(tooltip_box()),
                     tooltip::Position::Top,
                 ),
             ]
@@ -316,7 +325,7 @@ impl App {
         }
 
         let controls = column![
-            section_heading("Streaming"),
+            section_heading("Data Feed"),
             stream_mode_row("State", startup.state, |mode| {
                 Message::Startup(StartupMsg::StateMode(mode))
             }),
@@ -365,38 +374,33 @@ impl App {
         if let Some(stats) = &self.load_stats {
             rows.push(Space::new().height(2).into());
             rows.push(key_value_row("Clients", stats.nclients.to_string()));
-            rows.push(key_value_row(
-                "Server Bytes In",
-                format_bytes(stats.bytesin),
-            ));
-            rows.push(key_value_row(
-                "Server Bytes Out",
-                format_bytes(stats.bytesout),
-            ));
+            rows.push(key_value_row("Server In", format_bytes(stats.bytesin)));
+            rows.push(key_value_row("Server Out", format_bytes(stats.bytesout)));
         }
 
         rows.push(Space::new().height(8).into());
         rows.push(section_heading("Throughput"));
+        let latest = self.throughput.samples().back().copied().unwrap_or_default();
         rows.push(
             row![
-                text("↓").size(10).style(text::success),
-                text("in").size(10).style(text_muted),
-                Space::new().width(12),
-                text("↑").size(10).style(text::primary),
-                text("out").size(10).style(text_muted),
+                text("↓").size(12).style(text::success),
+                text(crate::chart::format_rate_public(latest.in_bps))
+                    .size(12)
+                    .style(text::success),
+                Space::new().width(16),
+                text("↑").size(12).style(text::primary),
+                text(crate::chart::format_rate_public(latest.out_bps))
+                    .size(12)
+                    .style(text::primary),
             ]
             .spacing(4)
             .align_y(iced::Alignment::Center)
             .into(),
         );
-        rows.push(crate::chart::throughput_chart_sized(
-            &self.throughput,
-            200.0,
-        ));
+        rows.push(crate::chart::throughput_chart_sized(&self.throughput, 200.0));
 
         rows.push(Space::new().height(8).into());
         rows.push(section_heading("Version"));
-
         if let Some(ref lines) = self.version_lines {
             for line in lines {
                 rows.push(text(line.clone()).size(12).into());
@@ -436,8 +440,8 @@ impl App {
             .size(13),
             button(
                 row![
-                    lucide::icon_send_horizontal().size(13),
-                    text("Send").size(13),
+                    lucide::icon_send_horizontal().size(14),
+                    text("Send").size(14),
                 ]
                 .spacing(4)
                 .align_y(iced::Alignment::Center),
@@ -468,7 +472,7 @@ impl App {
                 top: 12.0,
                 left: 16.0,
                 right: 16.0,
-                bottom: 4.0,
+                bottom: 6.0,
             }),
             rule::horizontal(1),
             // Operations (scrollable, ~2/3)
@@ -783,7 +787,7 @@ impl App {
         // -- Controls bar (always visible) -------------------------------
         let controls = container(
             column![
-                section_heading("Streaming"),
+                section_heading("Log Controls"),
                 stream_mode_row("Log", startup.log, |mode| {
                     Message::Startup(StartupMsg::LogMode(mode))
                 }),
@@ -800,7 +804,7 @@ impl App {
                     text("Mute").size(12).style(text_label),
                     text_input("threshold", &form.mute_input)
                         .on_input(|value| Message::Ops(OpsMsg::MuteInputChanged(value)))
-                        .width(60)
+                        .width(90)
                         .size(12),
                     ops_btn("Get", OpsMsg::MuteGet, connected),
                     ops_btn("Set", OpsMsg::MuteSet, connected),
@@ -814,7 +818,7 @@ impl App {
             top: 12.0,
             left: 16.0,
             right: 16.0,
-            bottom: 8.0,
+            bottom: 6.0,
         });
 
         // -- Log entries (scrollable) ------------------------------------
@@ -1028,15 +1032,7 @@ fn help_icon<'a, M: 'static>(help_text: &'static str) -> Element<'a, M> {
         container(text(help_text).size(11))
             .max_width(280)
             .padding([6, 10])
-            .style(|theme: &iced::Theme| container::Style {
-                background: Some(theme.extended_palette().background.weak.color.into()),
-                border: iced::Border {
-                    radius: 4.0.into(),
-                    width: 1.0,
-                    color: theme.extended_palette().background.strong.color,
-                },
-                ..Default::default()
-            }),
+            .class(tooltip_box()),
         tooltip::Position::FollowCursor,
     )
     .into()
@@ -1051,15 +1047,7 @@ fn with_tooltip<'a, M: 'static>(
         container(text(help_text).size(11))
             .max_width(280)
             .padding([6, 10])
-            .style(|theme: &iced::Theme| container::Style {
-                background: Some(theme.extended_palette().background.weak.color.into()),
-                border: iced::Border {
-                    radius: 4.0.into(),
-                    width: 1.0,
-                    color: theme.extended_palette().background.strong.color,
-                },
-                ..Default::default()
-            }),
+            .class(tooltip_box()),
         tooltip::Position::Top,
     )
     .into()
@@ -1099,10 +1087,10 @@ fn centered_placeholder(msg: &str) -> Element<'_, Message> {
 
 fn tab_scrollable<'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
     scrollable(container(content).padding(Padding {
-        top: 24.0,
+        top: 12.0,
         left: 16.0,
         right: 16.0,
-        bottom: 8.0,
+        bottom: 12.0,
     }))
     .height(Length::Fill)
     .into()

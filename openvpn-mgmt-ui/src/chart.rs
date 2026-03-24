@@ -176,6 +176,11 @@ impl Chart<Message> for ThroughputChart<'_> {
     }
 }
 
+/// Format bytes/sec in a compact human-readable form (public variant).
+pub(crate) fn format_rate_public(bps: f64) -> String {
+    format_rate(bps)
+}
+
 /// Format bytes/sec in a compact human-readable form for axis labels.
 fn format_rate(bps: f64) -> String {
     const KIB: f64 = 1024.0;
