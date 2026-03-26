@@ -142,8 +142,10 @@ pub fn parse_load_stats(payload: &str) -> Result<LoadStats, ParseResponseError> 
 
 /// Parse the `SUCCESS:` payload from a `hold` query.
 ///
-/// Expects the format `hold=0` or `hold=1`. Returns `true` when hold is
-/// active.
+/// Expects the format `hold=0` or `hold=1`. Returns `true` when the hold
+/// flag is enabled (`--management-hold`). Note: this reflects the
+/// **configuration**, not whether the server is currently blocked — after
+/// `hold release` the flag stays on but the server is no longer waiting.
 ///
 /// ```
 /// use openvpn_mgmt_codec::parsed_response::parse_hold;
