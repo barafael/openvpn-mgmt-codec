@@ -13,11 +13,19 @@ or a Unix socket without hand-rolling string parsing.
 - **Stateful decoder** -- tracks which command was sent so it can
   disambiguate single-line replies, multi-line blocks, and real-time
   notifications (even when they arrive interleaved).
+- **Command pipelining** -- send multiple commands without waiting for each
+  response; the codec queues expected response types internally.
 - **Automatic escaping** -- backslashes and double-quotes are escaped
   following the OpenVPN config-file lexer rules.
 - **Full protocol coverage** -- 50 commands including auth, signals,
   client management, PKCS#11, external keys, proxy/remote overrides,
   and a `Raw` escape hatch for anything new.
+- **High-level client** -- `ManagementClient` separates command responses
+  from async notifications and returns parsed results directly.
+- **Stream classification** -- the `ClassifyExt` trait splits a raw
+  message stream into `Response` and `Notification` variants.
+- **Status & state parsing** -- typed parsers for `status`, `state`,
+  `version`, and `hold` responses.
 
 ## Quick start
 
@@ -76,6 +84,40 @@ The crate offers two ways to talk to OpenVPN:
 
 Both layers share the same `OvpnCommand` / `OvpnMessage` types.
 
+### High-level client
+
+`ManagementClient` handles command/response pairing and forwards
+notifications to a broadcast channel:
+
+```rust,no_run
+use tokio::net::TcpStream;
+use tokio::sync::broadcast;
+use tokio_util::codec::Framed;
+use openvpn_mgmt_codec::{
+    ManagementClient, Notification, OvpnCodec, StatusFormat,
+};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let stream = TcpStream::connect("127.0.0.1:7505").await?;
+    let framed = Framed::new(stream, OvpnCodec::new());
+
+    let (notification_tx, mut notification_rx) = broadcast::channel::<Notification>(256);
+    let mut client = ManagementClient::new(framed, notification_tx);
+
+    let version = client.version().await?;
+    println!("version: {:?}", version.openvpn_version_line());
+
+    let status = client.status(StatusFormat::V3).await?;
+    for c in &status.clients {
+        println!("{}: {}B in", c.common_name, c.bytes_in);
+    }
+
+    client.hold_release().await?;
+    Ok(())
+}
+```
+
 ### Startup helpers
 
 `connection_sequence` and `server_connection_sequence` return the
@@ -108,3 +150,8 @@ Real-time notifications (`>STATE:`, `>BYTECOUNT:`, `>CLIENT:`, etc.) are
 emitted as `OvpnMessage::Notification` and can arrive at any time,
 including in the middle of a multi-line response block. The codec handles
 this transparently.
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
+[MIT license](LICENSE-MIT) at your option.
