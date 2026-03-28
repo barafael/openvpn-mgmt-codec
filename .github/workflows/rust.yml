@@ -39,7 +39,7 @@ jobs:
     - name: Verify containers are running
       run: docker compose ps
     - name: Run remote/proxy conformance test
-      run: cargo test -p openvpn-mgmt-codec --features conformance-tests --test conformance_remote
+      run: cargo test -p openvpn-mgmt-codec --features conformance-tests --test conformance_remote -- --test-threads=1
     - name: Run server-mode conformance test
       run: cargo test -p openvpn-mgmt-codec --features conformance-tests --test conformance_server
     - name: Run password notification conformance test
