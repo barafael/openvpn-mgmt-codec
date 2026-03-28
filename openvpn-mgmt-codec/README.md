@@ -151,6 +151,15 @@ emitted as `OvpnMessage::Notification` and can arrive at any time,
 including in the middle of a multi-line response block. The codec handles
 this transparently.
 
+## Compatibility
+
+This crate is built against **tokio-util 0.7** and **tokio 1**. The
+public API exposes `tokio_util::codec::{Encoder, Decoder, Framed}` and
+`tokio::sync::broadcast` — upgrading those dependencies in a
+semver-incompatible way will require a major version bump of this crate.
+
+MSRV: **1.85** (Rust edition 2024).
+
 ## License
 
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or

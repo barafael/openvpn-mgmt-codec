@@ -3,7 +3,7 @@ use std::str::FromStr;
 /// Error returned when a string is not a recognized OpenVPN state.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized OpenVPN state: {0:?}")]
-pub struct ParseOpenVpnStateError(pub String);
+pub struct ParseOpenVpnStateError(String);
 
 /// OpenVPN connection state as reported in `>STATE:` notifications.
 #[derive(Debug, Clone, PartialEq, Eq, strum::Display)]

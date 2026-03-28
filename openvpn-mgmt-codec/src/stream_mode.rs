@@ -4,7 +4,7 @@ use std::str::FromStr;
 /// Error returned when a string is not a recognized stream mode.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized stream mode: {0:?}")]
-pub struct ParseStreamModeError(pub String);
+pub struct ParseStreamModeError(String);
 
 /// Mode selector for commands that share the on/off/all/on-all/N grammar.
 /// This is used by `log`, `state`, and `echo`, all of which support

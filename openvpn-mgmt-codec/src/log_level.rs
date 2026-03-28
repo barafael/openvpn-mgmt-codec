@@ -3,7 +3,7 @@ use std::str::FromStr;
 /// Error returned when a string is not a recognized log level.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized log level: {0:?}")]
-pub struct ParseLogLevelError(pub String);
+pub struct ParseLogLevelError(String);
 
 /// Log severity level from `>LOG:` notifications.
 #[derive(Debug, Clone, PartialEq, Eq, strum::Display)]

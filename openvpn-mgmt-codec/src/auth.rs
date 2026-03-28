@@ -3,12 +3,12 @@ use std::str::FromStr;
 /// Error returned when a string is not a recognized auth type.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized auth type: {0:?}")]
-pub struct ParseAuthTypeError(pub String);
+pub struct ParseAuthTypeError(String);
 
 /// Error returned when a string is not a recognized auth retry mode.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized auth retry mode: {0:?}")]
-pub struct ParseAuthRetryModeError(pub String);
+pub struct ParseAuthRetryModeError(String);
 
 /// Authentication credential type. OpenVPN identifies credential requests
 /// by a quoted type string — usually `"Auth"` or `"Private Key"`, but

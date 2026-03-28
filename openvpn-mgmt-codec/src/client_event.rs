@@ -3,7 +3,7 @@ use std::str::FromStr;
 /// Error returned when a string is not a recognized client event.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized client event: {0:?}")]
-pub struct ParseClientEventError(pub String);
+pub struct ParseClientEventError(String);
 
 /// The sub-type of a `>CLIENT:` notification.
 #[derive(Debug, Clone, PartialEq, Eq, strum::Display)]

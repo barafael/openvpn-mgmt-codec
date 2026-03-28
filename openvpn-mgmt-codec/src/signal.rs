@@ -3,7 +3,7 @@ use std::str::FromStr;
 /// Error returned when a string is not a recognized signal.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized signal: {0:?}")]
-pub struct ParseSignalError(pub String);
+pub struct ParseSignalError(String);
 
 /// Signals that can be sent to the OpenVPN daemon via the management
 /// interface. These are sent as string names, not actual Unix signals.

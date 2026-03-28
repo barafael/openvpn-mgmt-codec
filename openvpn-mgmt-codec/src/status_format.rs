@@ -3,7 +3,7 @@ use std::str::FromStr;
 /// Error returned when a string is not a recognized status format.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized status format: {0:?}")]
-pub struct ParseStatusFormatError(pub String);
+pub struct ParseStatusFormatError(String);
 
 /// Status output format version. Higher versions are more machine-parseable.
 ///

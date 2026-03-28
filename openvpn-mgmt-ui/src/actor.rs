@@ -9,8 +9,16 @@
 //!
 //! - **commands in** (`mpsc::Receiver<ActorCommand>`): the UI sends connect,
 //!   disconnect, and send-command messages.
-//! - **events out** (`mpsc::UnboundedSender<ActorEvent>`): the actor sends
+//! - **events out** (`mpsc::Sender<ActorEvent>`): the actor sends
 //!   connected, disconnected, and decoded-message events back to the UI.
+//!
+//! # Why raw `OvpnCodec` instead of `ManagementClient`?
+//!
+//! The actor's `select!` loop must simultaneously wait for UI commands and
+//! incoming OpenVPN messages. `ManagementClient` takes `&mut self` per
+//! command, which would block notification delivery while the actor waits
+//! for UI input. The raw `Framed` split into sink + stream gives the
+//! independent read/write halves that `select!` requires.
 
 use std::time::Duration;
 
@@ -243,7 +251,9 @@ async fn run_connection(
                     }
                     ActorCommand::Disconnect => {
                         tracing::info!("disconnecting (user request)");
-                        let _ = sink.send(OvpnCommand::Quit).await;
+                        if let Err(error) = sink.send(OvpnCommand::Quit).await {
+                            tracing::warn!(%error, "failed to send quit command");
+                        }
                         tx.send_event(ActorEvent::Disconnected(None)).await?;
                         return Ok(());
                     }

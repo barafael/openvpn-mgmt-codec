@@ -2,11 +2,45 @@
 
 use std::collections::VecDeque;
 
-use iced::{Element, Length};
+use iced::{Color as IcedColor, Element, Length, Theme};
 use plotters::prelude::*;
 use plotters_iced2::{Chart, ChartWidget};
 
 use crate::message::Message;
+use crate::style;
+
+/// Colours extracted from the active [`Theme`] for use in the plotters chart.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ChartPalette {
+    background: RGBColor,
+    fg_muted: RGBColor,
+    green: RGBColor,
+    blue: RGBColor,
+    grid: RGBColor,
+}
+
+impl ChartPalette {
+    pub(crate) fn from_theme(theme: &Theme) -> Self {
+        let (foreground, background) = style::foreground_background(theme);
+        let palette = theme.extended_palette();
+
+        Self {
+            background: to_rgb(background),
+            fg_muted: to_rgb(style::mix(foreground, background, 0.4)),
+            green: to_rgb(palette.success.base.color),
+            blue: to_rgb(palette.primary.base.color),
+            grid: to_rgb(style::mix(background, foreground, 0.08)),
+        }
+    }
+}
+
+fn to_rgb(c: IcedColor) -> RGBColor {
+    RGBColor(
+        (c.r * 255.0) as u8,
+        (c.g * 255.0) as u8,
+        (c.b * 255.0) as u8,
+    )
+}
 
 // -------------------------------------------------------------------
 // Throughput history
@@ -87,11 +121,12 @@ impl ThroughputHistory {
 /// Wrapper that implements `plotters_iced2::Chart` for the throughput data.
 pub(crate) struct ThroughputChart<'a> {
     history: &'a ThroughputHistory,
+    palette: ChartPalette,
 }
 
 impl<'a> ThroughputChart<'a> {
-    pub(crate) fn new(history: &'a ThroughputHistory) -> Self {
-        Self { history }
+    pub(crate) fn new(history: &'a ThroughputHistory, palette: ChartPalette) -> Self {
+        Self { history, palette }
     }
 }
 
@@ -107,13 +142,11 @@ impl Chart<Message> for ThroughputChart<'_> {
         _state: &Self::State,
         root: DrawingArea<DB, plotters::coord::Shift>,
     ) {
-        // Gruvbox colours
-        let background = RGBColor(40, 40, 40);
-        let fg_muted = RGBColor(146, 131, 116);
-        let green = RGBColor(184, 187, 38);
-        let blue = RGBColor(131, 165, 152);
+        let ChartPalette { background, fg_muted, green, blue, grid } = self.palette;
 
-        root.fill(&background).ok();
+        root.fill(&background)
+            .inspect_err(|error| tracing::warn!(%error, "chart: failed to fill background"))
+            .ok();
 
         let samples = self.history.samples();
         let count = samples.len();
@@ -144,8 +177,9 @@ impl Chart<Message> for ThroughputChart<'_> {
                 .y_label_formatter(&|rate| format_rate(*rate))
                 .label_style(TextStyle::from(("monospace", 10).into_font()).color(&fg_muted))
                 .axis_style(fg_muted)
-                .light_line_style(RGBColor(60, 56, 54))
+                .light_line_style(grid)
                 .draw()
+                .inspect_err(|error| tracing::warn!(%error, "chart: failed to draw mesh"))
                 .ok();
 
             // Offset so the latest sample is at the right edge.
@@ -160,6 +194,7 @@ impl Chart<Message> for ThroughputChart<'_> {
                         .map(|(i, s)| (i as f64 + offset, s.in_bps)),
                     green.stroke_width(2),
                 ))
+                .inspect_err(|error| tracing::warn!(%error, "chart: failed to draw download series"))
                 .ok();
 
             // Upload (out) — blue
@@ -171,6 +206,7 @@ impl Chart<Message> for ThroughputChart<'_> {
                         .map(|(i, s)| (i as f64 + offset, s.out_bps)),
                     blue.stroke_width(2),
                 ))
+                .inspect_err(|error| tracing::warn!(%error, "chart: failed to draw upload series"))
                 .ok();
         }
     }
@@ -199,8 +235,9 @@ fn format_rate(bps: f64) -> String {
 pub(crate) fn throughput_chart_sized(
     history: &ThroughputHistory,
     height: f32,
+    palette: ChartPalette,
 ) -> Element<'_, Message> {
-    ChartWidget::new(ThroughputChart::new(history))
+    ChartWidget::new(ThroughputChart::new(history, palette))
         .width(Length::Fill)
         .height(Length::Fixed(height))
         .into()

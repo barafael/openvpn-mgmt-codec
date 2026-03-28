@@ -399,9 +399,11 @@ impl App {
             .align_y(iced::Alignment::Center)
             .into(),
         );
+        let chart_palette = crate::chart::ChartPalette::from_theme(&self.theme);
         rows.push(crate::chart::throughput_chart_sized(
             &self.throughput,
             200.0,
+            chart_palette,
         ));
 
         #[cfg(debug_assertions)]

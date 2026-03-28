@@ -3,7 +3,7 @@ use std::str::FromStr;
 /// Error returned when a string is not a recognized transport protocol.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("unrecognized transport protocol: {0:?}")]
-pub struct ParseTransportProtocolError(pub String);
+pub struct ParseTransportProtocolError(String);
 
 /// Transport protocol as reported in `>REMOTE:` and `>PROXY:` notifications.
 #[derive(Debug, Clone, PartialEq, Eq, strum::Display)]
