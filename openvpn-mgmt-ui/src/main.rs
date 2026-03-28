@@ -690,18 +690,12 @@ impl App {
                 let log_line = format!("State → {name} — {description}");
                 self.vpn_state = Some(name);
                 self.vpn_state_description = Some(description.clone());
-                self.local_ip = if local_ip.is_empty() {
-                    None
-                } else {
-                    Some(local_ip)
-                };
-                self.remote_addr = if remote_ip.is_empty() {
-                    None
-                } else if let Some(port) = remote_port {
-                    Some(format!("{remote_ip}:{port}"))
-                } else {
-                    Some(remote_ip.clone())
-                };
+                self.local_ip = (!local_ip.is_empty()).then_some(local_ip);
+                self.remote_addr = (!remote_ip.is_empty()).then(|| {
+                    remote_port
+                        .map(|port| format!("{remote_ip}:{port}"))
+                        .unwrap_or(remote_ip)
+                });
                 self.add_log(LogLevel::Info, &format_timestamp(timestamp), &log_line);
             }
             Notification::ByteCount {
@@ -1371,105 +1365,4 @@ impl App {
     }
 }
 
-// -------------------------------------------------------------------
-// Timestamp formatting (matches openvpn-mgmt-cli)
-// -------------------------------------------------------------------
-
-fn format_timestamp(ts: u64) -> String {
-    if ts == 0 {
-        return String::new();
-    }
-    let secs = ts % 60;
-    let mins_total = ts / 60;
-    let mins = mins_total % 60;
-    let hours_total = mins_total / 60;
-    let hours = hours_total % 24;
-    let days_total = hours_total / 24;
-    let (year, month, day) = days_to_ymd(days_total);
-    format!("{year:04}-{month:02}-{day:02} {hours:02}:{mins:02}:{secs:02}")
-}
-
-fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
-    days += 719_468;
-    let era = days / 146_097;
-    let doe = days - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
-    let year = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let month_offset = (5 * doy + 2) / 153;
-    let day = doy - (153 * month_offset + 2) / 5 + 1;
-    let month = if month_offset < 10 {
-        month_offset + 3
-    } else {
-        month_offset - 9
-    };
-    let year = if month <= 2 { year + 1 } else { year };
-    (year, month, day)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // --- format_timestamp ---
-
-    #[test]
-    fn format_timestamp_zero_returns_empty() {
-        assert_eq!(format_timestamp(0), "");
-    }
-
-    #[test]
-    fn format_timestamp_unix_epoch() {
-        // 1970-01-01 00:00:01
-        assert_eq!(format_timestamp(1), "1970-01-01 00:00:01");
-    }
-
-    #[test]
-    fn format_timestamp_known_date() {
-        // 2024-03-21 14:30:00 UTC = 1711031400
-        assert_eq!(format_timestamp(1_711_031_400), "2024-03-21 14:30:00");
-    }
-
-    #[test]
-    fn format_timestamp_y2k() {
-        // 2000-01-01 00:00:00 UTC = 946684800
-        assert_eq!(format_timestamp(946_684_800), "2000-01-01 00:00:00");
-    }
-
-    #[test]
-    fn format_timestamp_leap_day() {
-        // 2024-02-29 12:00:00 UTC = 1709208000
-        assert_eq!(format_timestamp(1_709_208_000), "2024-02-29 12:00:00");
-    }
-
-    // --- days_to_ymd ---
-
-    #[test]
-    fn days_to_ymd_epoch() {
-        assert_eq!(days_to_ymd(0), (1970, 1, 1));
-    }
-
-    #[test]
-    fn days_to_ymd_known_date() {
-        // 2024-03-21 is day 19803 since epoch
-        assert_eq!(days_to_ymd(19803), (2024, 3, 21));
-    }
-
-    #[test]
-    fn days_to_ymd_leap_day() {
-        // 2024-02-29 is day 19782 since epoch
-        assert_eq!(days_to_ymd(19782), (2024, 2, 29));
-    }
-
-    #[test]
-    fn days_to_ymd_dec_31() {
-        // 2023-12-31 is day 19722 since epoch
-        assert_eq!(days_to_ymd(19722), (2023, 12, 31));
-    }
-
-    #[test]
-    fn days_to_ymd_jan_1_2000() {
-        // 2000-01-01 is day 10957 since epoch
-        assert_eq!(days_to_ymd(10957), (2000, 1, 1));
-    }
-}
+use openvpn_mgmt_codec::timestamp::format_local_style as format_timestamp;

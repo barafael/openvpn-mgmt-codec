@@ -1,12 +1,64 @@
-//! Shared helpers for conformance tests.
+#![allow(dead_code)]
+//! Shared helpers for conformance and unit tests.
 
 use std::time::Duration;
 
+use bytes::BytesMut;
 use futures::{SinkExt, StreamExt};
 use openvpn_mgmt_codec::*;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
-use tokio_util::codec::Framed;
+use tokio_util::codec::{Decoder, Encoder, Framed};
+
+// --- Synchronous codec helpers ---
+
+/// Decode all messages from wire bytes using a fresh codec.
+pub fn decode_all(input: &str) -> Vec<OvpnMessage> {
+    decode_all_with(&mut OvpnCodec::new(), input)
+}
+
+/// Decode all messages from wire bytes using a caller-provided codec.
+pub fn decode_all_with(codec: &mut OvpnCodec, input: &str) -> Vec<OvpnMessage> {
+    let mut buf = BytesMut::from(input);
+    let mut msgs = Vec::new();
+    while let Some(msg) = codec.decode(&mut buf).unwrap() {
+        msgs.push(msg);
+    }
+    msgs
+}
+
+/// Like [`decode_all_with`] but propagates decode errors.
+pub fn try_decode_all(
+    codec: &mut OvpnCodec,
+    input: &str,
+) -> Result<Vec<OvpnMessage>, std::io::Error> {
+    let mut buf = BytesMut::from(input);
+    let mut msgs = Vec::new();
+    loop {
+        match codec.decode(&mut buf)? {
+            Some(msg) => msgs.push(msg),
+            None => return Ok(msgs),
+        }
+    }
+}
+
+/// Encode a command with a fresh codec and return the wire string.
+pub fn encode_str(cmd: OvpnCommand) -> String {
+    let mut codec = OvpnCodec::new();
+    let mut buf = BytesMut::new();
+    codec.encode(cmd, &mut buf).unwrap();
+    String::from_utf8(buf.to_vec()).unwrap()
+}
+
+/// Encode a command, then decode a simulated response. Returns all decoded messages.
+pub fn encode_then_decode(cmd: OvpnCommand, response: &str) -> Vec<OvpnMessage> {
+    let mut codec = OvpnCodec::new();
+    let mut enc_buf = BytesMut::new();
+    codec.encode(cmd, &mut enc_buf).unwrap();
+    decode_all_with(&mut codec, response)
+}
+
+// --- Async conformance helpers ---
 
 pub const MGMT_PASSWORD: &str = "test-password";
 pub const MSG_TIMEOUT: Duration = Duration::from_secs(120);

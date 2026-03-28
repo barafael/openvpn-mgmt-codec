@@ -11,21 +11,18 @@
 //!
 //! [spec]: https://openvpn.net/community-docs/management-interface.html
 
+#[path = "../common/mod.rs"]
+mod common;
+
 mod real_world;
 
 use bytes::BytesMut;
 use openvpn_mgmt_codec::*;
 use tokio_util::codec::{Decoder, Encoder};
 
-// --- Helpers ---
+use common::encode_str as encode;
 
-/// Encode a command in the default (Sanitize) mode and return the wire bytes.
-fn encode(cmd: OvpnCommand) -> String {
-    let mut codec = OvpnCodec::new();
-    let mut buf = BytesMut::new();
-    codec.encode(cmd, &mut buf).unwrap();
-    String::from_utf8(buf.to_vec()).unwrap()
-}
+// --- Helpers ---
 
 /// Try to encode a command in Strict mode.
 fn try_encode_strict(cmd: OvpnCommand) -> Result<String, std::io::Error> {

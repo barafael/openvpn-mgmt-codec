@@ -44,6 +44,8 @@ pub mod status_format;
 pub mod stream;
 /// Stream mode selectors (on/off/all/recent).
 pub mod stream_mode;
+/// Lightweight UTC timestamp formatting.
+pub mod timestamp;
 /// Transport protocol (UDP, TCP) for remote/proxy notifications.
 pub mod transport_protocol;
 /// Error classification for unrecognized protocol lines.

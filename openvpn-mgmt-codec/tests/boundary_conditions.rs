@@ -1,34 +1,16 @@
 //! Boundary condition tests: accumulation limits, FromStr/Display edge
 //! cases, CRLF line endings, and classify exhaustiveness.
 
+mod common;
+
 use std::collections::BTreeMap;
 
 use bytes::BytesMut;
 use openvpn_mgmt_codec::stream::ManagementEvent;
 use openvpn_mgmt_codec::*;
-use tokio_util::codec::{Decoder, Encoder};
+use tokio_util::codec::Encoder;
 
-// --- Helpers ---
-
-fn decode_all(codec: &mut OvpnCodec, input: &str) -> Vec<OvpnMessage> {
-    let mut buf = BytesMut::from(input);
-    let mut msgs = Vec::new();
-    while let Some(msg) = codec.decode(&mut buf).unwrap() {
-        msgs.push(msg);
-    }
-    msgs
-}
-
-fn try_decode_all(codec: &mut OvpnCodec, input: &str) -> Result<Vec<OvpnMessage>, std::io::Error> {
-    let mut buf = BytesMut::from(input);
-    let mut msgs = Vec::new();
-    loop {
-        match codec.decode(&mut buf)? {
-            Some(msg) => msgs.push(msg),
-            None => return Ok(msgs),
-        }
-    }
-}
+use common::{decode_all_with as decode_all, try_decode_all};
 
 // ---  ---
 // Accumulation limit boundary conditions

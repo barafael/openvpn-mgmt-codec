@@ -9,29 +9,22 @@
 //! encoding edge cases that are *not* injection vectors: escaping,
 //! unicode, empty strings, long payloads, and self-decode behaviour.
 
+mod common;
+
 use bytes::BytesMut;
 use openvpn_mgmt_codec::*;
 use tokio_util::codec::{Decoder, Encoder};
 
-// --- Helpers ---
+use common::encode_str;
 
-fn encode_str(cmd: OvpnCommand) -> String {
-    let mut codec = OvpnCodec::new();
-    let mut buf = BytesMut::new();
-    codec.encode(cmd, &mut buf).unwrap();
-    String::from_utf8(buf.to_vec()).unwrap()
-}
+// --- Helpers ---
 
 /// Encode a command, simulate the server echoing SUCCESS for it, and
 /// verify decode produces exactly one message.
 fn encode_decode_single_success(cmd: OvpnCommand) -> OvpnMessage {
-    let mut codec = OvpnCodec::new();
-    let mut enc_buf = BytesMut::new();
-    codec.encode(cmd, &mut enc_buf).unwrap();
-    let mut dec_buf = BytesMut::from("SUCCESS: ok\n");
-    let msg = codec.decode(&mut dec_buf).unwrap().unwrap();
-    assert!(codec.decode(&mut dec_buf).unwrap().is_none());
-    msg
+    let msgs = common::encode_then_decode(cmd, "SUCCESS: ok\n");
+    assert_eq!(msgs.len(), 1, "expected 1 message, got {}", msgs.len());
+    msgs.into_iter().next().unwrap()
 }
 
 // ---  ---

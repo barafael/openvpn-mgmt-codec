@@ -8,6 +8,8 @@
 //! Long protocol payloads live in `tests/fixtures/*.txt` and are pulled in
 //! via `include_str!` so the test logic stays readable.
 
+mod common;
+
 use bytes::BytesMut;
 use openvpn_mgmt_codec::ClientEvent;
 use openvpn_mgmt_codec::OpenVpnState;
@@ -15,36 +17,7 @@ use openvpn_mgmt_codec::PasswordNotification;
 use openvpn_mgmt_codec::*;
 use tokio_util::codec::{Decoder, Encoder};
 
-// --- Helpers ---
-
-fn encode_to_string(cmd: OvpnCommand) -> String {
-    let mut codec = OvpnCodec::new();
-    let mut buf = BytesMut::new();
-    codec.encode(cmd, &mut buf).unwrap();
-    String::from_utf8(buf.to_vec()).unwrap()
-}
-
-fn decode_all(input: &str) -> Vec<OvpnMessage> {
-    let mut codec = OvpnCodec::new();
-    let mut buf = BytesMut::from(input);
-    let mut msgs = Vec::new();
-    while let Some(msg) = codec.decode(&mut buf).unwrap() {
-        msgs.push(msg);
-    }
-    msgs
-}
-
-fn encode_then_decode(cmd: OvpnCommand, response: &str) -> Vec<OvpnMessage> {
-    let mut codec = OvpnCodec::new();
-    let mut enc_buf = BytesMut::new();
-    codec.encode(cmd, &mut enc_buf).unwrap();
-    let mut dec_buf = BytesMut::from(response);
-    let mut msgs = Vec::new();
-    while let Some(msg) = codec.decode(&mut dec_buf).unwrap() {
-        msgs.push(msg);
-    }
-    msgs
-}
+use common::{decode_all, encode_str as encode_to_string, encode_then_decode};
 
 // ---  ---
 // Connection lifecycle
@@ -849,7 +822,7 @@ fn encode_all_stream_modes() {
         (StreamMode::Recent(20), "20"),
     ] {
         assert_eq!(
-            encode_to_string(OvpnCommand::Log(mode.clone())),
+            encode_to_string(OvpnCommand::Log(mode)),
             format!("log {expected}\n")
         );
     }

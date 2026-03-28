@@ -76,40 +76,7 @@ struct Cli {
     address: String,
 }
 
-/// Format a Unix timestamp as a local datetime string.
-fn format_timestamp(ts: u64) -> String {
-    // Manual conversion: ts is seconds since Unix epoch.
-    // We format as UTC since we don't have a timezone library.
-    let secs = ts % 60;
-    let mins_total = ts / 60;
-    let mins = mins_total % 60;
-    let hours_total = mins_total / 60;
-    let hours = hours_total % 24;
-    let days_total = hours_total / 24;
-
-    // Days since epoch to Y-M-D (simplified Gregorian).
-    let (year, month, day) = days_to_ymd(days_total);
-    format!("{year:04}-{month:02}-{day:02}T{hours:02}:{mins:02}:{secs:02}Z")
-}
-
-fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
-    // Algorithm from http://howardhinnant.github.io/date_algorithms.html
-    days += 719_468;
-    let era = days / 146_097;
-    let doe = days - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
-    let year = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let month_offset = (5 * doy + 2) / 153;
-    let day = doy - (153 * month_offset + 2) / 5 + 1;
-    let month = if month_offset < 10 {
-        month_offset + 3
-    } else {
-        month_offset - 9
-    };
-    let year = if month <= 2 { year + 1 } else { year };
-    (year, month, day)
-}
+use openvpn_mgmt_codec::timestamp::format_utc as format_timestamp;
 
 /// Pretty-print a decoded message.
 fn print_message(msg: &OvpnMessage) {

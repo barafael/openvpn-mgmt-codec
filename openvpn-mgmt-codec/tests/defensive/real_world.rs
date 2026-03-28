@@ -10,24 +10,9 @@ use bytes::BytesMut;
 use openvpn_mgmt_codec::*;
 use tokio_util::codec::{Decoder, Encoder};
 
+use super::common::{decode_all, encode_str as encode};
+
 // --- Helpers ---
-
-fn decode_all(input: &str) -> Vec<OvpnMessage> {
-    let mut codec = OvpnCodec::new();
-    let mut buf = BytesMut::from(input);
-    let mut msgs = Vec::new();
-    while let Some(msg) = codec.decode(&mut buf).unwrap() {
-        msgs.push(msg);
-    }
-    msgs
-}
-
-fn encode(cmd: OvpnCommand) -> String {
-    let mut codec = OvpnCodec::new();
-    let mut buf = BytesMut::new();
-    codec.encode(cmd, &mut buf).unwrap();
-    String::from_utf8(buf.to_vec()).unwrap()
-}
 
 fn try_encode_strict(cmd: OvpnCommand) -> Result<String, std::io::Error> {
     let mut codec = OvpnCodec::new().with_encoder_mode(EncoderMode::Strict);

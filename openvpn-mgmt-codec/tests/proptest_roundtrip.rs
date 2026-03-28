@@ -5,10 +5,14 @@
 //! independence, interleaving safety, partial-input equivalence, and
 //! structural integrity of multi-line messages.
 
+mod common;
+
 use bytes::BytesMut;
 use openvpn_mgmt_codec::*;
 use proptest::prelude::*;
 use tokio_util::codec::{Decoder, Encoder};
+
+use common::{decode_all, encode_then_decode as decode_with_command};
 
 // --- String strategies ---
 //
@@ -252,32 +256,6 @@ fn notification_to_wire(notification: &Notification) -> String {
         Notification::NeedCertificate { hint } => format!(">NEED-CERTIFICATE:{hint}\n"),
         Notification::Simple { kind, payload } => format!(">{kind}:{payload}\n"),
     }
-}
-
-// --- Decode helpers ---
-
-/// Decode all messages from wire bytes using a fresh codec.
-fn decode_all(wire: &str) -> Vec<OvpnMessage> {
-    let mut codec = OvpnCodec::new();
-    let mut buf = BytesMut::from(wire);
-    let mut msgs = Vec::new();
-    while let Some(msg) = codec.decode(&mut buf).unwrap() {
-        msgs.push(msg);
-    }
-    msgs
-}
-
-/// Decode after encoding a command to set the codec's expected-response state.
-fn decode_with_command(cmd: OvpnCommand, wire: &str) -> Vec<OvpnMessage> {
-    let mut codec = OvpnCodec::new();
-    let mut enc_buf = BytesMut::new();
-    codec.encode(cmd, &mut enc_buf).unwrap();
-    let mut buf = BytesMut::from(wire);
-    let mut msgs = Vec::new();
-    while let Some(msg) = codec.decode(&mut buf).unwrap() {
-        msgs.push(msg);
-    }
-    msgs
 }
 
 // --- Roundtrip tests ---

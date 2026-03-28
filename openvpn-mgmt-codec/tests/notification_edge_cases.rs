@@ -3,21 +3,13 @@
 //! These test the decoder's notification parsers with malformed, truncated,
 //! or unusual payloads to verify graceful degradation to `Notification::Simple`.
 
-use bytes::BytesMut;
+mod common;
+
 use openvpn_mgmt_codec::*;
-use tokio_util::codec::Decoder;
+
+use common::decode_all;
 
 // --- Helpers ---
-
-fn decode_all(input: &str) -> Vec<OvpnMessage> {
-    let mut codec = OvpnCodec::new();
-    let mut buf = BytesMut::from(input);
-    let mut msgs = Vec::new();
-    while let Some(msg) = codec.decode(&mut buf).unwrap() {
-        msgs.push(msg);
-    }
-    msgs
-}
 
 fn decode_single(input: &str) -> OvpnMessage {
     let msgs = decode_all(input);
