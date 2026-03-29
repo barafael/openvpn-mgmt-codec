@@ -305,7 +305,12 @@ pub fn parse_status(lines: &[String]) -> Result<StatusResponse, ParseStatusError
 fn apply_global_stat(stats: &mut GlobalStats, key: &str, value: &str) {
     match key {
         "Max bcast/mcast queue length" => {
-            stats.max_bcast_mcast_queue_length = value.parse().ok();
+            stats.max_bcast_mcast_queue_length = value
+                .parse()
+                .inspect_err(|error| {
+                    tracing::warn!(%error, value, "failed to parse max_bcast_mcast_queue_length");
+                })
+                .ok();
         }
         "dco_enabled" => {
             stats.dco_enabled = match value {

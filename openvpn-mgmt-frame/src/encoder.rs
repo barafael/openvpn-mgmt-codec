@@ -14,6 +14,7 @@ pub const WIRE_UNSAFE: &[char] = &['\n', '\r', '\0'];
 
 /// Controls how the encoder handles characters that are unsafe for the
 /// line-oriented management protocol (`\n`, `\r`, `\0`).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EncoderMode {
     /// Silently strip unsafe characters (default, defensive).
@@ -134,6 +135,7 @@ pub fn write_block(
 
 /// Controls how many items the decoder will accumulate before returning
 /// an error.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AccumulationLimit {
     /// No limit.

@@ -11,7 +11,7 @@
 //! use tokio::net::TcpStream;
 //! use tokio_util::codec::Framed;
 //! use openvpn_mgmt_codec::{OvpnCodec, StatusFormat};
-//! use openvpn_mgmt_codec::client::ManagementSession;
+//! use openvpn_mgmt_codec::session::ManagementSession;
 //!
 //! # async fn example() -> anyhow::Result<()> {
 //! let stream = TcpStream::connect("127.0.0.1:7505").await?;
@@ -43,23 +43,25 @@ use std::io;
 
 use tokio_util::codec::Framed;
 
-use crate::auth::{AuthRetryMode, AuthType};
-use crate::client_deny::ClientDeny;
-use crate::codec::OvpnCodec;
-use crate::command::{OvpnCommand, RemoteEntryRange};
-use crate::kill_target::KillTarget;
-use crate::message::{Notification, OvpnMessage};
-use crate::need_ok::NeedOkResponse;
-use crate::parsed_response::{self, LoadStats, StateEntry};
-use crate::proxy_action::ProxyAction;
-use crate::redacted::Redacted;
-use crate::remote_action::RemoteAction;
-use crate::signal::Signal;
-use crate::split::{CommandSink, EventStream, ManagementSink, management_split};
-use crate::status::{self, ClientStatistics, StatusResponse};
-use crate::status_format::StatusFormat;
-use crate::stream_mode::StreamMode;
-use crate::version_info::VersionInfo;
+use crate::{
+    auth::{AuthRetryMode, AuthType},
+    client_deny::ClientDeny,
+    codec::OvpnCodec,
+    command::{OvpnCommand, RemoteEntryRange},
+    kill_target::KillTarget,
+    message::{Notification, OvpnMessage},
+    need_ok::NeedOkResponse,
+    parsed_response::{self, LoadStats, StateEntry},
+    proxy_action::ProxyAction,
+    redacted::Redacted,
+    remote_action::RemoteAction,
+    signal::Signal,
+    split::{CommandSink, EventStream, ManagementSink, management_split},
+    status::{self, ClientStatistics, StatusResponse},
+    status_format::StatusFormat,
+    stream_mode::StreamMode,
+    version_info::VersionInfo,
+};
 
 /// Errors returned by [`ManagementSession`] command methods.
 #[derive(Debug, thiserror::Error)]
@@ -87,10 +89,6 @@ pub enum SessionError {
     /// A `status` response could not be parsed.
     #[error("status parse error: {0}")]
     ParseStatus(#[from] status::ParseStatusError),
-
-    /// A `version` response could not be parsed.
-    #[error("version parse error: {0}")]
-    ParseVersion(#[from] crate::version_info::ParseVersionError),
 }
 
 /// A high-level client for the OpenVPN management interface.
@@ -122,38 +120,27 @@ where
     /// Drain any notifications that were stashed while waiting for
     /// command responses.
     pub fn drain_notifications(&mut self) -> impl Iterator<Item = Notification> + '_ {
-        self.events.stash.drain(..)
+        self.events.drain_notifications()
     }
 
     // --- Internal helpers ---
 
-    async fn send_and_recv(&mut self, cmd: OvpnCommand) -> Result<OvpnMessage, SessionError> {
-        self.sink.send_command(cmd).await?;
-        self.events.recv_response().await
-    }
-
     async fn send_expect_success(&mut self, cmd: OvpnCommand) -> Result<String, SessionError> {
-        match self.send_and_recv(cmd).await? {
-            OvpnMessage::Success(payload) => Ok(payload),
-            OvpnMessage::Error(msg) => Err(SessionError::ServerError(msg)),
-            other => Err(SessionError::UnexpectedResponse(other)),
-        }
+        self.sink.send_command(cmd).await?;
+        self.events.recv_success().await
     }
 
     async fn send_expect_multi_line(
         &mut self,
         cmd: OvpnCommand,
     ) -> Result<Vec<String>, SessionError> {
-        match self.send_and_recv(cmd).await? {
-            OvpnMessage::MultiLine(lines) => Ok(lines),
-            OvpnMessage::Error(msg) => Err(SessionError::ServerError(msg)),
-            other => Err(SessionError::UnexpectedResponse(other)),
-        }
+        self.sink.send_command(cmd).await?;
+        self.events.recv_multi_line().await
     }
 
     async fn send_expect_ok(&mut self, cmd: OvpnCommand) -> Result<(), SessionError> {
-        self.send_expect_success(cmd).await?;
-        Ok(())
+        self.sink.send_command(cmd).await?;
+        self.events.recv_ok().await
     }
 
     async fn send_stream_command(

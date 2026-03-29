@@ -4,8 +4,6 @@
 
 /// Authentication credential types and retry strategies.
 pub mod auth;
-/// High-level management client with notification dispatch.
-pub mod client;
 /// Typed client-deny command with builder support.
 pub mod client_deny;
 /// Client notification event types (CONNECT, REAUTH, etc.).
@@ -34,6 +32,8 @@ pub mod proxy_action;
 pub mod redacted;
 /// Remote-override actions for `>REMOTE:` responses.
 pub mod remote_action;
+/// High-level sequential management session.
+pub mod session;
 /// Daemon signals (HUP, TERM, USR1, USR2).
 pub mod signal;
 /// Split-based management interface for concurrent command/notification handling.
@@ -75,12 +75,12 @@ pub use stream_mode::{ParseStreamModeError, StreamMode};
 pub use timestamp::UtcTimestamp;
 pub use transport_protocol::{ParseTransportProtocolError, TransportProtocol};
 pub use unrecognized::UnrecognizedKind;
-pub use version_info::{ParseVersionError, VersionInfo};
+pub use version_info::VersionInfo;
 
 // Re-export key items from sub-modules for convenience.
-pub use client::{ManagementSession, SessionError};
 pub use command::{connection_sequence, server_connection_sequence};
 pub use parsed_response::{LoadStats, ParseResponseError, StateEntry};
+pub use session::{ManagementSession, SessionError};
 pub use split::{EventStream, ManagementSink, management_split};
 pub use status::{
     ClientStatistics, ConnectedClient, GlobalStats, ParseStatusError, RoutingEntry, StatusResponse,

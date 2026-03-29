@@ -84,7 +84,6 @@ use futures_util::{SinkExt, StreamExt as _};
 use tokio_util::codec::Framed;
 
 use crate::auth::{AuthRetryMode, AuthType};
-use crate::client::SessionError;
 use crate::client_deny::ClientDeny;
 use crate::codec::OvpnCodec;
 use crate::command::{OvpnCommand, RemoteEntryRange};
@@ -94,6 +93,7 @@ use crate::need_ok::NeedOkResponse;
 use crate::proxy_action::ProxyAction;
 use crate::redacted::Redacted;
 use crate::remote_action::RemoteAction;
+use crate::session::SessionError;
 use crate::signal::Signal;
 use crate::status_format::StatusFormat;
 use crate::stream::ManagementEvent;
@@ -125,7 +125,16 @@ where
 /// and come out on subsequent [`.next()`](Stream::poll_next) calls.
 pub struct EventStream<T: tokio::io::AsyncRead + tokio::io::AsyncWrite> {
     inner: futures_util::stream::SplitStream<Framed<T, OvpnCodec>>,
-    pub(crate) stash: VecDeque<Notification>,
+    stash: VecDeque<Notification>,
+}
+
+impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite> EventStream<T> {
+    /// Drain any notifications that were stashed while
+    /// [`recv_response()`](Self::recv_response) was scanning for a
+    /// command response.
+    pub fn drain_notifications(&mut self) -> impl Iterator<Item = Notification> + '_ {
+        self.stash.drain(..)
+    }
 }
 
 impl<T> Stream for EventStream<T>

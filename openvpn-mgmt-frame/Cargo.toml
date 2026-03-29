@@ -11,6 +11,10 @@ categories = ["network-programming", "encoding"]
 
 [dependencies]
 bytes = "1"
+serde = { version = "1", features = ["derive"], optional = true }
 thiserror = "2"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = "0.1"
+
+[features]
+serde = ["dep:serde"]

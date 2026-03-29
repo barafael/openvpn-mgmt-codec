@@ -1,10 +1,4 @@
-/// Error returned when a `version` response cannot be parsed.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum ParseVersionError {
-    /// The management version line was found but contained a non-numeric value.
-    #[error("non-numeric management version: {0:?}")]
-    InvalidManagementVersion(String),
-}
+use crate::ParseResponseError;
 
 /// Parsed output from the `version` command's multi-line response.
 ///
@@ -50,11 +44,11 @@ pub struct VersionInfo {
 impl VersionInfo {
     /// Parse a `version` command's multi-line response into structured data.
     ///
-    /// Returns [`ParseVersionError::InvalidManagementVersion`] if a
-    /// management version line is found but its value is not a valid `u32`.
-    /// Missing lines are not an error — the corresponding accessor returns
-    /// `None`.
-    pub fn parse(lines: &[String]) -> Result<Self, ParseVersionError> {
+    /// Returns [`ParseResponseError::InvalidManagementVersion`](crate::ParseResponseError::InvalidManagementVersion)
+    /// if a management version line is found but its value is not a valid
+    /// `u32`. Missing lines are not an error — the corresponding accessor
+    /// returns `None`.
+    pub fn parse(lines: &[String]) -> Result<Self, ParseResponseError> {
         let mut management_version = None;
         let mut openvpn_version_line = None;
 
@@ -77,7 +71,7 @@ impl VersionInfo {
 
                 management_version = match trailing {
                     Some(part) => Some(Some(part.parse::<u32>().map_err(|_| {
-                        ParseVersionError::InvalidManagementVersion(part.to_string())
+                        ParseResponseError::InvalidManagementVersion(part.to_string())
                     })?)),
                     None => Some(None),
                 };
@@ -181,7 +175,7 @@ mod tests {
         let err = VersionInfo::parse(&lines).unwrap_err();
         assert!(matches!(
             err,
-            ParseVersionError::InvalidManagementVersion(_)
+            ParseResponseError::InvalidManagementVersion(_)
         ));
     }
 }

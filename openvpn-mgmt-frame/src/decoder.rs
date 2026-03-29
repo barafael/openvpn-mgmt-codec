@@ -10,8 +10,6 @@ use tracing::warn;
 use crate::encoder::AccumulationLimit;
 use crate::frame::Frame;
 
-/// The password prompt.
-///
 /// May arrive without a trailing newline (OpenVPN >= 2.6 sends it as an
 /// interactive prompt).
 const PW_PROMPT: &[u8] = b"ENTER PASSWORD:";

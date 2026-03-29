@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 /// map 1:1 to a wire line; [`ClientEnv`](Frame::ClientEnv) is the
 /// exception — it accumulates the full `>CLIENT:` header + ENV block
 /// before being emitted.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Frame {
     /// `SUCCESS: [text]` — a command completed successfully.

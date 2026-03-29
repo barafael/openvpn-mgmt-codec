@@ -77,6 +77,10 @@ pub enum ParseResponseError {
     /// The state history was empty when a current state was requested.
     #[error("state history is empty")]
     EmptyStateHistory,
+
+    /// The management version line contained a non-numeric value.
+    #[error("non-numeric management version: {0:?}")]
+    InvalidManagementVersion(String),
 }
 
 /// Parse the `SUCCESS:` payload from a `pid` command.
@@ -178,9 +182,7 @@ pub fn parse_hold(payload: &str) -> Result<bool, ParseResponseError> {
 /// let info = parse_version(&lines).unwrap();
 /// assert_eq!(info.management_version(), Some(5));
 /// ```
-pub fn parse_version(
-    lines: &[String],
-) -> Result<VersionInfo, crate::version_info::ParseVersionError> {
+pub fn parse_version(lines: &[String]) -> Result<VersionInfo, ParseResponseError> {
     VersionInfo::parse(lines)
 }
 

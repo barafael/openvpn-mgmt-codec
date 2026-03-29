@@ -2698,6 +2698,7 @@ name = "openvpn-mgmt-frame"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "serde",
  "thiserror 2.0.18",
  "tokio-util",
  "tracing",

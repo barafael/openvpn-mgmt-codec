@@ -8,7 +8,7 @@ pub use openvpn_mgmt_frame::{AccumulationLimit, EncodeError, EncoderMode};
 use openvpn_mgmt_frame::{Frame, FrameDecoder, escape, quote, wire_safe, write_block, write_line};
 
 use crate::{
-    UtcTimestamp,
+    StateEntry, UtcTimestamp,
     auth::AuthType,
     client_event::ClientEvent,
     command::{OvpnCommand, ResponseKind},
@@ -633,10 +633,7 @@ impl OvpnCodec {
         // >CLIENT:ADDRESS — the FrameDecoder emits this as a Notification
         // (single-line, no ENV block).
         if kind == "CLIENT" {
-            let (event, args) = payload
-                .split_once(',')
-                .map(|(e, a)| (e.to_string(), a.to_string()))
-                .unwrap_or_else(|| (payload.to_string(), String::new()));
+            let (event, args) = payload.split_once(',').unwrap_or((payload, ""));
 
             if event == "ADDRESS" {
                 let mut parts = args.splitn(3, ',');
@@ -808,7 +805,7 @@ fn parse_state(payload: &str) -> Option<Notification> {
     let local_addr = parts.next().unwrap_or("").to_string();
     let local_port = parse_optional_port(parts.next().unwrap_or(""));
     let local_ipv6 = parts.next().unwrap_or("").to_string();
-    Some(Notification::State(crate::parsed_response::StateEntry {
+    Some(Notification::State(StateEntry {
         timestamp,
         name,
         description,
