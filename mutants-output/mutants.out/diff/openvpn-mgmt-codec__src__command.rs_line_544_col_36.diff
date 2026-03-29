@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace match guard *n < 4 with true in OvpnCommand::expected_response
+@@ -536,17 +536,17 @@
+ 
+             // Raw multi-line expects END-terminated response.
+             Self::RawMultiLine(_) => ResponseKind::MultiLine,
+ 
+             // exit/quit close the connection.
+             Self::Exit | Self::Quit => ResponseKind::NoResponse,
+ 
+             // `version N` for N < 4 produces no response; N >= 4 returns SUCCESS:.
+-            Self::SetVersion(n) if *n < 4 => ResponseKind::NoResponse,
++            Self::SetVersion(n) if true /* ~ changed by cargo-mutants ~ */ => ResponseKind::NoResponse,
+ 
+             // Everything else (including Raw) produces SUCCESS: or ERROR:.
+             _ => ResponseKind::SuccessOrError,
+         }
+     }
+ }
+ 
+ impl FromStr for OvpnCommand {

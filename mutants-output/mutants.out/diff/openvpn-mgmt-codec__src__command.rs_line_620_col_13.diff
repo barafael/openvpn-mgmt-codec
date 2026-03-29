@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "log" in <impl FromStr for OvpnCommand>::from_str
+@@ -612,17 +612,17 @@
+                 }),
+             },
+ 
+             "state" => match args {
+                 "" => Ok(Self::State),
+                 other => Ok(Self::StateStream(other.parse::<StreamMode>()?)),
+             },
+ 
+-            "log" => Ok(Self::Log(args.parse::<StreamMode>()?)),
++             /* ~ changed by cargo-mutants ~ */
+             "echo" => Ok(Self::Echo(args.parse::<StreamMode>()?)),
+ 
+             "verb" => {
+                 if args.is_empty() {
+                     Ok(Self::Verb(None))
+                 } else {
+                     args.parse::<u8>()
+                         .map(|level| Self::Verb(Some(level)))

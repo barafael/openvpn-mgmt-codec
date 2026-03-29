@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/redacted.rs
++++ replace Redacted::expose -> &str with ""
+@@ -32,17 +32,17 @@
+     }
+ 
+     /// Access the inner value.
+     ///
+     /// Use this when you genuinely need the raw string, for instance when
+     /// encoding it onto the wire. Avoid passing the result to logging or
+     /// display formatting.
+     pub fn expose(&self) -> &str {
+-        &self.0
++        "" /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Consume the wrapper and return the inner string.
+     pub fn into_inner(self) -> String {
+         self.0
+     }
+ }
+ 

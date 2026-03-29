@@ -1,0 +1,21 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ delete field rate_in from struct DemoState expression in App::update
+@@ -596,17 +596,17 @@
+             }
+ 
+             // -- Debug -----------------------------------------------------------
+             #[cfg(debug_assertions)]
+             Message::ToggleDemoChart => {
+                 self.demo_chart = !self.demo_chart;
+                 if self.demo_chart {
+                     self.demo_state = DemoState {
+-                        rate_in: 200_000.0,
++                         /* ~ changed by cargo-mutants ~ */
+                         rate_out: 80_000.0,
+                         ..DemoState::default()
+                     };
+                     self.throughput.reset();
+                 }
+             }
+             #[cfg(debug_assertions)]
+             Message::DemoChartTick => {

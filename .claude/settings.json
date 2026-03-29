@@ -22,7 +22,15 @@
       "Bash(cargo fmt:*)",
       "Bash(cargo doc:*)",
       "Bash(for file:*)",
-      "Bash(do test:*)"
+      "Bash(do test:*)",
+      "Bash(grep \"^//.*Source:\\\\|^//.*---\" /c/workspace/sources/ovpn-mgmt-codec/openvpn-mgmt-codec/tests/defensive/real_world.rs)",
+      "Bash(grep -B 1 \"^\\\\s*//[^/]\")",
+      "Bash(grep -v \"    //\")",
+      "WebFetch(domain:proptest-rs.github.io)",
+      "Bash(grep -E \"\\\\.\\(rs|py|sh\\)$\")",
+      "WebFetch(domain:tzemanovic.gitlab.io)",
+      "Bash(cargo info:*)",
+      "Bash(tasklist)"
     ]
   }
 }

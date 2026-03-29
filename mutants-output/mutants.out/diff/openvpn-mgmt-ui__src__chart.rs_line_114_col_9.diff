@@ -1,0 +1,21 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace ThroughputHistory::reset with ()
+@@ -106,17 +106,17 @@
+         self.samples.push_back(sample);
+     }
+ 
+     pub(crate) fn samples(&self) -> &VecDeque<Sample> {
+         &self.samples
+     }
+ 
+     pub(crate) fn reset(&mut self) {
+-        *self = Self::default();
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ // -------------------------------------------------------------------
+ // Chart implementation
+ // -------------------------------------------------------------------
+ 
+ /// Wrapper that implements `plotters_iced2::Chart` for the throughput data.

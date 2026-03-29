@@ -1,0 +1,22 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::send_actor -> Result<(), ActorGone> with Ok(())
+@@ -1197,18 +1197,17 @@
+         });
+         if self.log_entries.len() > MAX_LOG_ENTRIES {
+             self.log_entries
+                 .drain(0..self.log_entries.len() - MAX_LOG_ENTRIES);
+         }
+     }
+ 
+     fn send_actor(&self, command: ActorCommand) -> Result<(), ActorGone> {
+-        let sender = self.actor_tx.as_ref().ok_or(ActorGone)?;
+-        sender.try_send(command).map_err(|_| ActorGone)
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Send a command (with console recording) only if currently connected.
+     /// Returns `Ok(())` silently when disconnected.
+     fn send_if_connected(&mut self, label: &str, command: OvpnCommand) -> Result<(), ActorGone> {
+         if self.connection_state == ConnectionState::Connected {
+             self.send_and_record(label, command)?;
+         }

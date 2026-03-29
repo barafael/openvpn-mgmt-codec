@@ -6,7 +6,7 @@ use std::str::FromStr;
 pub struct ParseOpenVpnStateError(String);
 
 /// OpenVPN connection state as reported in `>STATE:` notifications.
-#[derive(Debug, Clone, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum::Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum OpenVpnState {
     /// Initial connection in progress.

@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete match arm "ECHO" in OvpnCodec::parse_notification
+@@ -933,17 +933,17 @@
+         }
+ 
+         // Dispatch to typed parsers. On parse failure, fall back to Simple.
+         let notification = match kind {
+             "STATE" => parse_state(payload),
+             "BYTECOUNT" => parse_bytecount(payload),
+             "BYTECOUNT_CLI" => parse_bytecount_cli(payload),
+             "LOG" => parse_log(payload),
+-            "ECHO" => parse_echo(payload),
++             /* ~ changed by cargo-mutants ~ */
+             "HOLD" => Some(Notification::Hold {
+                 text: payload.to_string(),
+             }),
+             "FATAL" => Some(Notification::Fatal {
+                 message: payload.to_string(),
+             }),
+             "PKCS11ID-COUNT" => parse_pkcs11id_count(payload),
+             "NEED-OK" => parse_need_ok(payload),

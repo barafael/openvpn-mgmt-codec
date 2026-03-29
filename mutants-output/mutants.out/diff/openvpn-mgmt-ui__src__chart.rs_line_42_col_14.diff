@@ -1,0 +1,21 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace * with + in to_rgb
+@@ -34,17 +34,17 @@
+         }
+     }
+ }
+ 
+ fn to_rgb(c: Color) -> RGBColor {
+     RGBColor(
+         (c.r * 255.0) as u8,
+         (c.g * 255.0) as u8,
+-        (c.b * 255.0) as u8,
++        (c.b + /* ~ changed by cargo-mutants ~ */ 255.0) as u8,
+     )
+ }
+ 
+ // -------------------------------------------------------------------
+ // Throughput history
+ // -------------------------------------------------------------------
+ 
+ /// A single throughput sample (bytes per second in each direction).

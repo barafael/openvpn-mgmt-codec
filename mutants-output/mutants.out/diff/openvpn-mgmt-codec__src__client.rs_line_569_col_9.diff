@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::proxy -> Result<(), ClientError> with Ok(())
+@@ -561,17 +561,17 @@
+ 
+     /// Respond to a `>REMOTE:` notification.
+     pub async fn remote(&mut self, action: RemoteAction) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::Remote(action)).await
+     }
+ 
+     /// Respond to a `>PROXY:` notification.
+     pub async fn proxy(&mut self, action: ProxyAction) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::Proxy(action)).await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Server statistics --
+ 
+     /// Request aggregated server stats.
+     pub async fn load_stats(&mut self) -> Result<LoadStats, ClientError> {
+         let payload = self.send_expect_success(OvpnCommand::LoadStats).await?;
+         Ok(parsed_response::parse_load_stats(&payload)?)

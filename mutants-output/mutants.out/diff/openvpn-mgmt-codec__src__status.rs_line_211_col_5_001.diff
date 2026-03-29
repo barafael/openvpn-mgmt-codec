@@ -1,0 +1,29 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace parse_optional_u64 -> Option<u64> with Some(0)
+@@ -203,25 +203,17 @@
+ fn parse_u64(s: &str, field: &'static str) -> Result<u64, ParseStatusError> {
+     s.parse().map_err(|_| ParseStatusError::InvalidInteger {
+         field,
+         value: s.to_string(),
+     })
+ }
+ 
+ fn parse_optional_u64(s: &str) -> Option<u64> {
+-    if s.is_empty() || s == "UNDEF" {
+-        None
+-    } else {
+-        s.parse()
+-            .inspect_err(|error| {
+-                tracing::warn!(%error, value = s, "non-numeric optional u64 in status response")
+-            })
+-            .ok()
+-    }
++    Some(0) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse a server-mode status response into typed structs.
+ ///
+ /// Accepts V1 (comma-separated), V2 (comma with prefix lines), and V3
+ /// (tab-delimited) formats. The format is auto-detected.
+ ///
+ /// V1 format starts with `"OpenVPN CLIENT LIST"` and has a fixed column

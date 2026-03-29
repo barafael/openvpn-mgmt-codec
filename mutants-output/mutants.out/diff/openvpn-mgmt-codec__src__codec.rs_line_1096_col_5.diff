@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_pkcs11id_count -> Option<Notification> with None
+@@ -1088,18 +1088,17 @@
+     let timestamp = parse_field(ts_str, "echo timestamp")?;
+     Some(Notification::Echo {
+         timestamp,
+         param: param.to_string(),
+     })
+ }
+ 
+ fn parse_pkcs11id_count(payload: &str) -> Option<Notification> {
+-    let count = parse_field(payload.trim(), "pkcs11id_count")?;
+-    Some(Notification::Pkcs11IdCount { count })
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse `>PKCS11ID-ENTRY:'idx', ID:'id', BLOB:'blob'` from the notification
+ /// payload (after the kind and colon have been stripped).
+ fn parse_pkcs11id_entry_notif(payload: &str) -> Option<OvpnMessage> {
+     let rest = payload.strip_prefix('\'')?;
+     let (index, rest) = rest.split_once("', ID:'")?;
+     let (id, rest) = rest.split_once("', BLOB:'")?;

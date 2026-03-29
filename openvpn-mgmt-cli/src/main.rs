@@ -104,17 +104,11 @@ fn print_message(msg: &OvpnMessage) {
 
 fn print_notification(notification: &Notification) {
     match notification {
-        Notification::State {
-            timestamp,
-            name,
-            description,
-            local_ip,
-            remote_ip,
-            ..
-        } => {
-            let formatted_timestamp = format_timestamp(*timestamp);
+        Notification::State(state) => {
+            let formatted_timestamp = format_timestamp(state.timestamp.0);
             println!(
-                "[STATE] {name} — {description} (local={local_ip}, remote={remote_ip}, {formatted_timestamp})"
+                "[STATE] {} — {} (local={}, remote={}, {formatted_timestamp})",
+                state.name, state.description, state.local_ip, state.remote_ip
             );
         }
         Notification::ByteCount {
@@ -135,11 +129,11 @@ fn print_notification(notification: &Notification) {
             level,
             message,
         } => {
-            let formatted_timestamp = format_timestamp(*timestamp);
+            let formatted_timestamp = format_timestamp(timestamp.0);
             println!("[LOG {level}] {message} ({formatted_timestamp})");
         }
         Notification::Echo { timestamp, param } => {
-            let formatted_timestamp = format_timestamp(*timestamp);
+            let formatted_timestamp = format_timestamp(timestamp.0);
             println!("[ECHO] {param} ({formatted_timestamp})");
         }
         Notification::Hold { text } => {

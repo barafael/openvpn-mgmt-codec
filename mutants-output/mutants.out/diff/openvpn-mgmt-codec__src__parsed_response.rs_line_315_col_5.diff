@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ replace parse_current_state -> Result<StateEntry, ParseResponseError> with Ok(Default::default())
+@@ -307,20 +307,17 @@
+ /// let lines = vec![
+ ///     "1711234560,CONNECTING,,,,,,,".to_string(),
+ ///     "1711234567,CONNECTED,SUCCESS,10.8.0.6,,,".to_string(),
+ /// ];
+ /// let current = parse_current_state(&lines).unwrap();
+ /// assert_eq!(current.name.to_string(), "CONNECTED");
+ /// ```
+ pub fn parse_current_state(lines: &[String]) -> Result<StateEntry, ParseResponseError> {
+-    parse_state_history(lines)?
+-        .into_iter()
+-        .last()
+-        .ok_or(ParseResponseError::EmptyStateHistory)
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     // --- parse_pid ---
+ 

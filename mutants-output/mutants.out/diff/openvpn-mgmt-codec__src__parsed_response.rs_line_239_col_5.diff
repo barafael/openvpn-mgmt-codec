@@ -1,0 +1,57 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ replace parse_state_entry -> Result<StateEntry, ParseResponseError> with Ok(Default::default())
+@@ -231,53 +231,17 @@
+ /// let entry = parse_state_entry("1711234567,CONNECTED").unwrap();
+ /// assert_eq!(entry.name.to_string(), "CONNECTED");
+ /// assert!(entry.description.is_empty());
+ ///
+ /// // Invalid state name:
+ /// assert!(parse_state_entry("1711234567,BOGUS").is_err());
+ /// ```
+ pub fn parse_state_entry(line: &str) -> Result<StateEntry, ParseResponseError> {
+-    let fields: Vec<&str> = line.splitn(9, ',').collect();
+-    if fields.len() < 2 {
+-        return Err(ParseResponseError::StateTooFewFields(fields.len()));
+-    }
+-
+-    let timestamp = fields[0]
+-        .parse::<u64>()
+-        .map_err(|_| ParseResponseError::InvalidTimestamp(fields[0].to_string()))?;
+-    let name = fields[1].parse::<OpenVpnState>()?;
+-
+-    let get = |idx: usize| fields.get(idx).copied().unwrap_or("").to_string();
+-    let get_port = |idx: usize| {
+-        fields.get(idx).and_then(|field| {
+-            if field.is_empty() {
+-                None
+-            } else {
+-                field
+-                    .parse::<u16>()
+-                    .inspect_err(
+-                        |error| tracing::warn!(%error, field, "non-numeric port in state entry"),
+-                    )
+-                    .ok()
+-            }
+-        })
+-    };
+-
+-    Ok(StateEntry {
+-        timestamp,
+-        name,
+-        description: get(2),
+-        local_ip: get(3),
+-        remote_ip: get(4),
+-        remote_port: get_port(5),
+-        local_addr: get(6),
+-        local_port: get_port(7),
+-        local_ipv6: get(8),
+-    })
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse the full multi-line response from a `state` command.
+ ///
+ /// Each line is parsed as a [`StateEntry`]. Lines that fail to parse are
+ /// returned as errors immediately.
+ ///
+ /// ```

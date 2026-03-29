@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::env_filter -> Result<(), ClientError> with Ok(())
+@@ -576,17 +576,17 @@
+         let payload = self.send_expect_success(OvpnCommand::LoadStats).await?;
+         Ok(parsed_response::parse_load_stats(&payload)?)
+     }
+ 
+     // -- ENV filter --
+ 
+     /// Set the env-var filter level for `>CLIENT:ENV` blocks.
+     pub async fn env_filter(&mut self, level: u32) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::EnvFilter(level)).await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Remote entry queries --
+ 
+     /// Query the number of `--remote` entries.
+     pub async fn remote_entry_count(&mut self) -> Result<Vec<String>, ClientError> {
+         self.send_expect_multi_line(OvpnCommand::RemoteEntryCount)
+             .await

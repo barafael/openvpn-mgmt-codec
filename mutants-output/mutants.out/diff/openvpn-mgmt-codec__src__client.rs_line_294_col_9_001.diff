@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::pid -> Result<u32, ClientError> with Ok(1)
+@@ -286,18 +286,17 @@
+             Ok(())
+         } else {
+             self.send_expect_ok(cmd).await
+         }
+     }
+ 
+     /// Query the PID of the OpenVPN process.
+     pub async fn pid(&mut self) -> Result<u32, ClientError> {
+-        let payload = self.send_expect_success(OvpnCommand::Pid).await?;
+-        Ok(parsed_response::parse_pid(&payload)?)
++        Ok(1) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// List available management commands.
+     pub async fn help(&mut self) -> Result<Vec<String>, ClientError> {
+         self.send_expect_multi_line(OvpnCommand::Help).await
+     }
+ 
+     /// Query or set the log verbosity level.

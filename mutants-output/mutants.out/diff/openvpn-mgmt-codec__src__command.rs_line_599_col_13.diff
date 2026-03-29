@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "pid" in <impl FromStr for OvpnCommand>::from_str
+@@ -591,17 +591,17 @@
+             "version" if args.is_empty() => Ok(Self::Version),
+             "version" => Ok(Self::SetVersion(args.parse().map_err(|_| {
+                 CommandParseError::InvalidChoice {
+                     field: "version number",
+                     input: args.to_string(),
+                     hint: "expected a positive integer (e.g. version 2)",
+                 }
+             })?)),
+-            "pid" => Ok(Self::Pid),
++             /* ~ changed by cargo-mutants ~ */
+             "help" => Ok(Self::Help),
+             "net" => Ok(Self::Net),
+             "load-stats" => Ok(Self::LoadStats),
+ 
+             "status" => match args {
+                 "" | "1" => Ok(Self::Status(StatusFormat::V1)),
+                 "2" => Ok(Self::Status(StatusFormat::V2)),
+                 "3" => Ok(Self::Status(StatusFormat::V3)),

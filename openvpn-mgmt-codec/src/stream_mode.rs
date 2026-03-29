@@ -9,7 +9,7 @@ pub struct ParseStreamModeError(String);
 /// Mode selector for commands that share the on/off/all/on-all/N grammar.
 /// This is used by `log`, `state`, and `echo`, all of which support
 /// identical sub-commands.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StreamMode {
     /// Enable real-time notifications.
     On,

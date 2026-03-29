@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::management_password -> Result<(), ClientError> with Ok(())
+@@ -629,20 +629,17 @@
+ 
+     // -- Management interface auth --
+ 
+     /// Authenticate to the management interface.
+     pub async fn management_password(
+         &mut self,
+         password: impl Into<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::ManagementPassword(Redacted::new(
+-            password.into(),
+-        )))
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Session lifecycle --
+ 
+     /// Close the management session. Consumes the client since the
+     /// connection is no longer usable.
+     pub async fn exit(mut self) -> Result<(), ClientError> {
+         self.framed.send(OvpnCommand::Exit).await?;

@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::current_state -> Result<StateEntry, ClientError> with Ok(Default::default())
+@@ -243,18 +243,17 @@
+     /// Query the current state as a multi-line history.
+     pub async fn state(&mut self) -> Result<Vec<StateEntry>, ClientError> {
+         let lines = self.send_expect_multi_line(OvpnCommand::State).await?;
+         Ok(parsed_response::parse_state_history(&lines)?)
+     }
+ 
+     /// Query the most recent state entry.
+     pub async fn current_state(&mut self) -> Result<StateEntry, ClientError> {
+-        let lines = self.send_expect_multi_line(OvpnCommand::State).await?;
+-        Ok(parsed_response::parse_current_state(&lines)?)
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Control real-time state notifications.
+     ///
+     /// Streaming modes (`All`, `OnAll`, `Recent`) return accumulated history
+     /// lines. `On`/`Off` return `Ok(None)`.
+     pub async fn state_stream(
+         &mut self,

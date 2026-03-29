@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/timestamp.rs
++++ replace == with != in <impl fmt::Display for UtcTimestamp>::fmt
+@@ -76,17 +76,17 @@
+ 
+ /// A Unix timestamp that implements [`Display`](fmt::Display) using
+ /// [`format_utc`].
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct UtcTimestamp(pub u64);
+ 
+ impl fmt::Display for UtcTimestamp {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        if self.0 == 0 {
++        if self.0 != /* ~ changed by cargo-mutants ~ */ 0 {
+             return Ok(());
+         }
+         let (year, month, day, hours, mins, secs) = decompose(self.0);
+         write!(
+             f,
+             "{year:04}-{month:02}-{day:02}T{hours:02}:{mins:02}:{secs:02}Z"
+         )
+     }

@@ -1,0 +1,58 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::ingest_multiline with ()
+@@ -1110,54 +1110,17 @@
+         if let Some(rest) = payload.strip_prefix("mute=") {
+             self.ops.mute_input = rest.to_string();
+         }
+     }
+ 
+     /// Try to extract structured data from a multi-line response.
+     fn ingest_multiline(&mut self, lines: &[String]) {
+         // Version info: lines contain "OpenVPN Version:" and "Management Version:"
+-        if lines
+-            .iter()
+-            .any(|line| line.contains("OpenVPN Version:") || line.contains("Management Version:"))
+-        {
+-            self.version_lines = Some(lines.to_vec());
+-        }
+-
+-        // Help output: lines like "auth-retry t           : ...", "bytecount n : ..."
+-        if lines
+-            .iter()
+-            .any(|line| line.starts_with("help") && line.contains(':'))
+-        {
+-            self.help_lines = Some(lines.to_vec());
+-        }
+-
+-        // State history: lines like "1711234567,CONNECTED,SUCCESS,10.8.0.2,1.2.3.4,..."
+-        // Take the last (most recent) line that parses as a state.
+-        for line in lines.iter().rev() {
+-            let fields: Vec<&str> = line.splitn(9, ',').collect();
+-            if fields.len() >= 3
+-                && let Ok(state) = fields[1].parse::<OpenVpnState>()
+-            {
+-                self.vpn_state = Some(state);
+-                self.vpn_state_description = Some(fields[2].to_string());
+-                if fields.len() > 3 && !fields[3].is_empty() {
+-                    self.local_ip = Some(fields[3].to_string());
+-                }
+-                if fields.len() > 4 && !fields[4].is_empty() {
+-                    let remote = if fields.len() > 5 && !fields[5].is_empty() {
+-                        format!("{}:{}", fields[4], fields[5])
+-                    } else {
+-                        fields[4].to_string()
+-                    };
+-                    self.remote_addr = Some(remote);
+-                }
+-                break;
+-            }
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Return the full text of a console entry by reverse index.
+     ///
+     /// Joins the command line and all response lines into a single string.
+     fn console_entry_text(&self, rev_index: usize) -> Option<String> {
+         let entry = self.command_history.iter().rev().nth(rev_index)?;
+         let mut text = format!("❯ {}", entry.command);

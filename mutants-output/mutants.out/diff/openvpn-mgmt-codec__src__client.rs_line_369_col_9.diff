@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::hold_release -> Result<(), ClientError> with Ok(())
+@@ -361,17 +361,17 @@
+ 
+     /// Clear the hold flag.
+     pub async fn hold_off(&mut self) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::HoldOff).await
+     }
+ 
+     /// Release from hold state and start OpenVPN.
+     pub async fn hold_release(&mut self) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::HoldRelease).await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Authentication --
+ 
+     /// Supply a username for the given auth type.
+     pub async fn username(
+         &mut self,
+         auth_type: AuthType,

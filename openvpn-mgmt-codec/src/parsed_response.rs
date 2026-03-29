@@ -17,6 +17,7 @@
 //! ```
 
 use crate::openvpn_state::OpenVpnState;
+use crate::timestamp::UtcTimestamp;
 use crate::version_info::VersionInfo;
 
 /// Aggregated server statistics from `load-stats`.
@@ -59,10 +60,6 @@ pub enum ParseResponseError {
     /// A required field was missing from the `load-stats` payload.
     #[error("missing field {0:?} in load-stats payload")]
     MissingField(&'static str),
-
-    /// An unrecognized key appeared in the `load-stats` payload.
-    #[error("unexpected field {0:?} in load-stats payload")]
-    UnexpectedField(String),
 
     /// A state history line had too few fields.
     #[error("state entry has too few fields (need >= 2, got {0})")]
@@ -128,7 +125,9 @@ pub fn parse_load_stats(payload: &str) -> Result<LoadStats, ParseResponseError> 
                 "nclients" => nclients = Some(parsed("nclients")?),
                 "bytesin" => bytesin = Some(parsed("bytesin")?),
                 "bytesout" => bytesout = Some(parsed("bytesout")?),
-                other => return Err(ParseResponseError::UnexpectedField(other.to_string())),
+                other => {
+                    tracing::debug!(field = other, "ignoring unknown load-stats field");
+                }
             }
         }
     }
@@ -175,10 +174,12 @@ pub fn parse_hold(payload: &str) -> Result<bool, ParseResponseError> {
 ///     "OpenVPN Version: OpenVPN 2.6.9 x86_64-pc-linux-gnu".to_string(),
 ///     "Management Interface Version: 5".to_string(),
 /// ];
-/// let info = parse_version(&lines);
+/// let info = parse_version(&lines).unwrap();
 /// assert_eq!(info.management_version(), Some(5));
 /// ```
-pub fn parse_version(lines: &[String]) -> VersionInfo {
+pub fn parse_version(
+    lines: &[String],
+) -> Result<VersionInfo, crate::version_info::ParseVersionError> {
     VersionInfo::parse(lines)
 }
 
@@ -190,17 +191,18 @@ pub fn parse_version(lines: &[String]) -> VersionInfo {
 ///
 /// ```
 /// use openvpn_mgmt_codec::parsed_response::parse_state_entry;
+/// use openvpn_mgmt_codec::UtcTimestamp;
 ///
 /// let entry = parse_state_entry("1711234567,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,,").unwrap();
-/// assert_eq!(entry.timestamp, 1711234567);
+/// assert_eq!(entry.timestamp, UtcTimestamp(1711234567));
 /// assert_eq!(entry.name.to_string(), "CONNECTED");
 /// assert_eq!(entry.remote_ip, "198.51.100.1");
 /// assert_eq!(entry.remote_port, Some(1194));
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StateEntry {
-    /// Unix timestamp of the state change.
-    pub timestamp: u64,
+    /// Timestamp of the state change.
+    pub timestamp: UtcTimestamp,
     /// State name (e.g. `Connected`, `Reconnecting`).
     pub name: OpenVpnState,
     /// Verbose description (mostly for RECONNECTING/EXITING).
@@ -243,6 +245,7 @@ pub fn parse_state_entry(line: &str) -> Result<StateEntry, ParseResponseError> {
 
     let timestamp = fields[0]
         .parse::<u64>()
+        .map(UtcTimestamp)
         .map_err(|_| ParseResponseError::InvalidTimestamp(fields[0].to_string()))?;
     let name = fields[1].parse::<OpenVpnState>()?;
 
@@ -381,9 +384,11 @@ mod tests {
     }
 
     #[test]
-    fn load_stats_unexpected_field() {
-        let err = parse_load_stats("nclients=1,bytesin=2,bytesout=3,extra=99").unwrap_err();
-        assert!(matches!(err, ParseResponseError::UnexpectedField(f) if f == "extra"));
+    fn load_stats_unknown_field_tolerated() {
+        let stats = parse_load_stats("nclients=1,bytesin=2,bytesout=3,extra=99").unwrap();
+        assert_eq!(stats.nclients, 1);
+        assert_eq!(stats.bytesin, 2);
+        assert_eq!(stats.bytesout, 3);
     }
 
     // --- parse_hold ---
@@ -415,7 +420,7 @@ mod tests {
         let entry =
             parse_state_entry("1711234567,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,0.0.0.0,0")
                 .unwrap();
-        assert_eq!(entry.timestamp, 1711234567);
+        assert_eq!(entry.timestamp, UtcTimestamp(1711234567));
         assert_eq!(entry.name.to_string(), "CONNECTED");
         assert_eq!(entry.description, "SUCCESS");
         assert_eq!(entry.local_ip, "10.8.0.6");
@@ -428,7 +433,7 @@ mod tests {
     #[test]
     fn state_entry_minimal() {
         let entry = parse_state_entry("0,CONNECTING").unwrap();
-        assert_eq!(entry.timestamp, 0);
+        assert_eq!(entry.timestamp, UtcTimestamp(0));
         assert!(entry.description.is_empty());
         assert!(entry.remote_port.is_none());
     }
@@ -484,7 +489,7 @@ mod tests {
             "200,CONNECTED,SUCCESS,,,,,".to_string(),
         ];
         let current = parse_current_state(&lines).unwrap();
-        assert_eq!(current.timestamp, 200);
+        assert_eq!(current.timestamp, UtcTimestamp(200));
     }
 
     #[test]
@@ -496,6 +501,15 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn state_entry_non_numeric_port_degrades_to_none() {
+        // A non-numeric port field should be silently ignored (returns None),
+        // not cause a parse error.
+        let entry =
+            parse_state_entry("1700000000,CONNECTED,SUCCESS,10.0.0.1,1.2.3.4,abc,,,").unwrap();
+        assert_eq!(entry.remote_port, None);
+    }
+
     // --- parse_version ---
 
     #[test]
@@ -504,7 +518,7 @@ mod tests {
             "OpenVPN Version: OpenVPN 2.5.0".to_string(),
             "Management Interface Version: 4".to_string(),
         ];
-        let info = parse_version(&lines);
+        let info = parse_version(&lines).unwrap();
         assert_eq!(info.management_version(), Some(4));
     }
 }

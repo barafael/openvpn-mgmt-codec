@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::send_and_recv -> Result<OvpnMessage, ClientError> with Ok(Default::default())
+@@ -159,18 +159,17 @@
+                 other => return Ok(other),
+             }
+         }
+     }
+ 
+     /// Send a command and read frames until a non-notification response
+     /// arrives.
+     async fn send_and_recv(&mut self, cmd: OvpnCommand) -> Result<OvpnMessage, ClientError> {
+-        self.framed.send(cmd).await?;
+-        self.recv_response().await
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Send a command that expects `SUCCESS:` and return the payload string.
+     async fn send_expect_success(&mut self, cmd: OvpnCommand) -> Result<String, ClientError> {
+         match self.send_and_recv(cmd).await? {
+             OvpnMessage::Success(payload) => Ok(payload),
+             OvpnMessage::Error(msg) => Err(ClientError::ServerError(msg)),
+             other => Err(ClientError::UnexpectedResponse(other)),

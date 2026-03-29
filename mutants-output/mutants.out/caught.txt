@@ -1,0 +1,472 @@
+openvpn-mgmt-codec/src/client.rs:185:9: replace ManagementClient<T>::send_expect_multi_line -> Result<Vec<String>, ClientError> with Ok(vec![])
+openvpn-mgmt-codec/src/client.rs:173:9: replace ManagementClient<T>::send_expect_success -> Result<String, ClientError> with Ok(String::new())
+openvpn-mgmt-codec/src/client.rs:173:9: replace ManagementClient<T>::send_expect_success -> Result<String, ClientError> with Ok("xyzzy".into())
+openvpn-mgmt-codec/src/client.rs:185:9: replace ManagementClient<T>::send_expect_multi_line -> Result<Vec<String>, ClientError> with Ok(vec![String::new()])
+openvpn-mgmt-codec/src/client.rs:185:9: replace ManagementClient<T>::send_expect_multi_line -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+openvpn-mgmt-codec/src/client.rs:207:9: replace ManagementClient<T>::send_stream_command -> Result<Option<Vec<String>>, ClientError> with Ok(None)
+openvpn-mgmt-codec/src/client.rs:194:9: replace ManagementClient<T>::send_expect_ok -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:207:9: replace ManagementClient<T>::send_stream_command -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![]))
+openvpn-mgmt-codec/src/client.rs:207:9: replace ManagementClient<T>::send_stream_command -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![String::new()]))
+openvpn-mgmt-codec/src/client.rs:207:9: replace ManagementClient<T>::send_stream_command -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec!["xyzzy".into()]))
+openvpn-mgmt-codec/src/client.rs:224:9: replace ManagementClient<T>::status_raw -> Result<Vec<String>, ClientError> with Ok(vec![])
+openvpn-mgmt-codec/src/client.rs:224:9: replace ManagementClient<T>::status_raw -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+openvpn-mgmt-codec/src/client.rs:224:9: replace ManagementClient<T>::status_raw -> Result<Vec<String>, ClientError> with Ok(vec![String::new()])
+openvpn-mgmt-codec/src/client.rs:245:9: replace ManagementClient<T>::state -> Result<Vec<StateEntry>, ClientError> with Ok(vec![])
+openvpn-mgmt-codec/src/client.rs:263:9: replace ManagementClient<T>::state_stream -> Result<Option<Vec<StateEntry>>, ClientError> with Ok(None)
+openvpn-mgmt-codec/src/client.rs:263:9: replace ManagementClient<T>::state_stream -> Result<Option<Vec<StateEntry>>, ClientError> with Ok(Some(vec![]))
+openvpn-mgmt-codec/src/client.rs:294:9: replace ManagementClient<T>::pid -> Result<u32, ClientError> with Ok(0)
+openvpn-mgmt-codec/src/client.rs:294:9: replace ManagementClient<T>::pid -> Result<u32, ClientError> with Ok(1)
+openvpn-mgmt-codec/src/client.rs:300:9: replace ManagementClient<T>::help -> Result<Vec<String>, ClientError> with Ok(vec![])
+openvpn-mgmt-codec/src/client.rs:300:9: replace ManagementClient<T>::help -> Result<Vec<String>, ClientError> with Ok(vec![String::new()])
+openvpn-mgmt-codec/src/client.rs:300:9: replace ManagementClient<T>::help -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+openvpn-mgmt-codec/src/client.rs:305:9: replace ManagementClient<T>::verb -> Result<String, ClientError> with Ok(String::new())
+openvpn-mgmt-codec/src/client.rs:305:9: replace ManagementClient<T>::verb -> Result<String, ClientError> with Ok("xyzzy".into())
+openvpn-mgmt-codec/src/client.rs:310:9: replace ManagementClient<T>::mute -> Result<String, ClientError> with Ok(String::new())
+openvpn-mgmt-codec/src/client.rs:310:9: replace ManagementClient<T>::mute -> Result<String, ClientError> with Ok("xyzzy".into())
+openvpn-mgmt-codec/src/client.rs:315:9: replace ManagementClient<T>::net -> Result<Vec<String>, ClientError> with Ok(vec![])
+openvpn-mgmt-codec/src/client.rs:315:9: replace ManagementClient<T>::net -> Result<Vec<String>, ClientError> with Ok(vec![String::new()])
+openvpn-mgmt-codec/src/client.rs:315:9: replace ManagementClient<T>::net -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+openvpn-mgmt-codec/src/client.rs:324:9: replace ManagementClient<T>::log -> Result<Option<Vec<String>>, ClientError> with Ok(None)
+openvpn-mgmt-codec/src/client.rs:324:9: replace ManagementClient<T>::log -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![]))
+openvpn-mgmt-codec/src/client.rs:324:9: replace ManagementClient<T>::log -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![String::new()]))
+openvpn-mgmt-codec/src/client.rs:324:9: replace ManagementClient<T>::log -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec!["xyzzy".into()]))
+openvpn-mgmt-codec/src/client.rs:329:9: replace ManagementClient<T>::echo -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![]))
+openvpn-mgmt-codec/src/client.rs:329:9: replace ManagementClient<T>::echo -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![String::new()]))
+openvpn-mgmt-codec/src/client.rs:329:9: replace ManagementClient<T>::echo -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec!["xyzzy".into()]))
+openvpn-mgmt-codec/src/client.rs:353:9: replace ManagementClient<T>::hold_query -> Result<bool, ClientError> with Ok(true)
+openvpn-mgmt-codec/src/client.rs:353:9: replace ManagementClient<T>::hold_query -> Result<bool, ClientError> with Ok(false)
+openvpn-mgmt-codec/src/client.rs:369:9: replace ManagementClient<T>::hold_release -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:476:9: replace ManagementClient<T>::pkcs11_id_count -> Result<String, ClientError> with Ok(String::new())
+openvpn-mgmt-codec/src/client.rs:476:9: replace ManagementClient<T>::pkcs11_id_count -> Result<String, ClientError> with Ok("xyzzy".into())
+openvpn-mgmt-codec/src/client.rs:481:9: replace ManagementClient<T>::pkcs11_id_get -> Result<String, ClientError> with Ok(String::new())
+openvpn-mgmt-codec/src/client.rs:481:9: replace ManagementClient<T>::pkcs11_id_get -> Result<String, ClientError> with Ok("xyzzy".into())
+openvpn-mgmt-codec/src/client.rs:591:9: replace ManagementClient<T>::remote_entry_count -> Result<Vec<String>, ClientError> with Ok(vec![])
+openvpn-mgmt-codec/src/client.rs:591:9: replace ManagementClient<T>::remote_entry_count -> Result<Vec<String>, ClientError> with Ok(vec![String::new()])
+openvpn-mgmt-codec/src/client.rs:591:9: replace ManagementClient<T>::remote_entry_count -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+openvpn-mgmt-codec/src/client.rs:600:9: replace ManagementClient<T>::remote_entry_get -> Result<Vec<String>, ClientError> with Ok(vec![])
+openvpn-mgmt-codec/src/client.rs:600:9: replace ManagementClient<T>::remote_entry_get -> Result<Vec<String>, ClientError> with Ok(vec![String::new()])
+openvpn-mgmt-codec/src/client.rs:600:9: replace ManagementClient<T>::remote_entry_get -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+openvpn-mgmt-codec/src/client.rs:656:9: replace ManagementClient<T>::raw -> Result<String, ClientError> with Ok(String::new())
+openvpn-mgmt-codec/src/client.rs:656:9: replace ManagementClient<T>::raw -> Result<String, ClientError> with Ok("xyzzy".into())
+openvpn-mgmt-codec/src/client.rs:665:9: replace ManagementClient<T>::raw_multi_line -> Result<Vec<String>, ClientError> with Ok(vec![])
+openvpn-mgmt-codec/src/client.rs:665:9: replace ManagementClient<T>::raw_multi_line -> Result<Vec<String>, ClientError> with Ok(vec![String::new()])
+openvpn-mgmt-codec/src/client.rs:665:9: replace ManagementClient<T>::raw_multi_line -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+openvpn-mgmt-codec/src/codec.rs:74:5: replace wire_safe -> Result<Cow<'a, str>, io::Error> with Ok(Cow::Borrowed(""))
+openvpn-mgmt-codec/src/codec.rs:74:5: replace wire_safe -> Result<Cow<'a, str>, io::Error> with Ok(Cow::Owned("".to_owned()))
+openvpn-mgmt-codec/src/codec.rs:74:5: replace wire_safe -> Result<Cow<'a, str>, io::Error> with Ok(Cow::Borrowed("xyzzy"))
+openvpn-mgmt-codec/src/codec.rs:74:5: replace wire_safe -> Result<Cow<'a, str>, io::Error> with Ok(Cow::Owned("xyzzy".to_owned()))
+openvpn-mgmt-codec/src/codec.rs:74:8: delete ! in wire_safe
+openvpn-mgmt-codec/src/codec.rs:79:36: delete ! in wire_safe
+openvpn-mgmt-codec/src/codec.rs:93:5: replace escape -> String with String::new()
+openvpn-mgmt-codec/src/codec.rs:93:5: replace escape -> String with "xyzzy".into()
+openvpn-mgmt-codec/src/codec.rs:96:13: delete match arm '\\' in escape
+openvpn-mgmt-codec/src/codec.rs:97:13: delete match arm '"' in escape
+openvpn-mgmt-codec/src/codec.rs:110:5: replace quote -> String with String::new()
+openvpn-mgmt-codec/src/codec.rs:110:5: replace quote -> String with "xyzzy".into()
+openvpn-mgmt-codec/src/codec.rs:224:9: replace OvpnCodec::with_max_multi_line_lines -> Self with Default::default()
+openvpn-mgmt-codec/src/codec.rs:231:9: replace OvpnCodec::with_max_client_env_entries -> Self with Default::default()
+openvpn-mgmt-codec/src/codec.rs:242:9: replace OvpnCodec::with_encoder_mode -> Self with Default::default()
+openvpn-mgmt-codec/src/codec.rs:259:9: replace OvpnCodec::consume_expected with ()
+openvpn-mgmt-codec/src/codec.rs:276:5: replace check_accumulation_limit -> Result<(), io::Error> with Ok(())
+openvpn-mgmt-codec/src/codec.rs:277:24: replace >= with < in check_accumulation_limit
+openvpn-mgmt-codec/src/codec.rs:290:42: replace || with && in <impl Encoder<OvpnCommand> for OvpnCodec>::encode
+openvpn-mgmt-codec/src/codec.rs:290:9: replace <impl Encoder<OvpnCommand> for OvpnCodec>::encode -> Result<(), Self::Error> with Ok(())
+openvpn-mgmt-codec/src/codec.rs:529:32: replace > with == in <impl Encoder<OvpnCommand> for OvpnCodec>::encode
+openvpn-mgmt-codec/src/codec.rs:529:32: replace > with < in <impl Encoder<OvpnCommand> for OvpnCodec>::encode
+openvpn-mgmt-codec/src/codec.rs:529:32: replace > with >= in <impl Encoder<OvpnCommand> for OvpnCodec>::encode
+openvpn-mgmt-codec/src/codec.rs:626:5: replace write_block -> Result<(), io::Error> with Ok(())
+openvpn-mgmt-codec/src/codec.rs:600:5: replace write_line with ()
+openvpn-mgmt-codec/src/codec.rs:633:19: replace == with != in write_block
+openvpn-mgmt-codec/src/codec.rs:680:41: replace == with != in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:681:33: replace += with -= in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:681:33: replace += with *= in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:688:35: replace - with / in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:719:20: delete ! in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:735:25: replace == with != in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:810:21: replace == with != in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:830:29: replace == with != in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:870:17: replace == with != in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:871:16: delete ! in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:881:17: replace == with != in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:888:22: replace == with != in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:895:44: replace == with != in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:915:41: replace == with != in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:937:13: delete match arm "STATE" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:938:13: delete match arm "BYTECOUNT" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:939:13: delete match arm "BYTECOUNT_CLI" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:940:13: delete match arm "LOG" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:942:13: delete match arm "HOLD" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:949:13: delete match arm "NEED-OK" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:941:13: delete match arm "ECHO" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:945:13: delete match arm "FATAL" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:948:13: delete match arm "PKCS11ID-COUNT" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:950:13: delete match arm "NEED-STR" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:951:13: delete match arm "RSA_SIGN" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:954:13: delete match arm "PK_SIGN" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:955:13: delete match arm "INFOMSG" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:961:13: delete match arm "REMOTE" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:963:13: delete match arm "PASSWORD" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:962:13: delete match arm "PROXY" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:958:13: delete match arm "NEED-CERTIFICATE" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:964:13: delete match arm "PKCS11ID-ENTRY" in OvpnCodec::parse_notification
+openvpn-mgmt-codec/src/codec.rs:995:5: replace parse_optional_port -> Option<u16> with None
+openvpn-mgmt-codec/src/codec.rs:995:5: replace parse_optional_port -> Option<u16> with Some(0)
+openvpn-mgmt-codec/src/codec.rs:1015:5: replace parse_field -> Option<T> with None
+openvpn-mgmt-codec/src/codec.rs:1025:5: replace parse_state -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:995:5: replace parse_optional_port -> Option<u16> with Some(1)
+openvpn-mgmt-codec/src/codec.rs:1053:5: replace parse_bytecount -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1061:5: replace parse_bytecount_cli -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1073:5: replace parse_log -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1087:5: replace parse_echo -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1096:5: replace parse_pkcs11id_count -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1117:5: replace parse_need_ok -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1103:5: replace parse_pkcs11id_entry_notif -> Option<OvpnMessage> with None
+openvpn-mgmt-codec/src/codec.rs:1128:5: replace parse_need_str -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1145:5: replace parse_pk_sign -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1198:5: replace parse_password -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1173:5: replace parse_proxy -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1156:5: replace parse_remote -> Option<Notification> with None
+openvpn-mgmt-codec/src/codec.rs:1250:37: replace != with == in parse_password
+openvpn-mgmt-codec/src/codec.rs:1250:33: replace & with | in parse_password
+openvpn-mgmt-codec/src/codec.rs:1251:48: replace != with == in parse_password
+openvpn-mgmt-codec/src/codec.rs:1250:33: replace & with ^ in parse_password
+openvpn-mgmt-codec/src/command.rs:37:5: replace next_token -> Option<(String, &str)> with None
+openvpn-mgmt-codec/src/command.rs:37:5: replace next_token -> Option<(String, &str)> with Some((String::new(), ""))
+openvpn-mgmt-codec/src/codec.rs:1251:44: replace & with | in parse_password
+openvpn-mgmt-codec/src/command.rs:37:5: replace next_token -> Option<(String, &str)> with Some((String::new(), "xyzzy"))
+openvpn-mgmt-codec/src/codec.rs:1251:44: replace & with ^ in parse_password
+openvpn-mgmt-codec/src/command.rs:37:5: replace next_token -> Option<(String, &str)> with Some(("xyzzy".into(), ""))
+openvpn-mgmt-codec/src/command.rs:37:5: replace next_token -> Option<(String, &str)> with Some(("xyzzy".into(), "xyzzy"))
+openvpn-mgmt-codec/src/command.rs:61:12: delete ! in next_token
+openvpn-mgmt-codec/src/command.rs:135:9: replace <impl fmt::Display for RemoteEntryRange>::fmt -> fmt::Result with Ok(Default::default())
+openvpn-mgmt-codec/src/command.rs:519:13: delete match arm Self::Status(_) | Self::Version | Self::Help | Self::Net | Self::RemoteEntryCount | Self::RemoteEntryGet(_) in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:527:13: delete match arm Self::StateStream(mode) | Self::Log(mode) | Self::Echo(mode) in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:535:13: delete match arm Self::State in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:538:13: delete match arm Self::RawMultiLine(_) in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:541:13: delete match arm Self::Exit | Self::Quit in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:599:13: delete match arm "pid" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:600:13: delete match arm "help" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:601:13: delete match arm "net" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:602:13: delete match arm "load-stats" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:604:13: delete match arm "status" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:592:13: delete match arm "version" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:615:13: delete match arm "state" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:620:13: delete match arm "log" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:621:13: delete match arm "echo" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:623:13: delete match arm "verb" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:636:13: delete match arm "mute" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:649:13: delete match arm "bytecount" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:659:13: delete match arm "kill" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:657:13: delete match arm "signal" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:679:13: delete match arm "hold" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:701:13: delete match arm "username" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:717:13: delete match arm "password" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:733:13: delete match arm "auth-retry" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:735:13: delete match arm "forget-passwords" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:738:13: delete match arm "needok" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:765:13: delete match arm "needstr" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:776:13: delete match arm "pkcs11-id-count" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:778:13: delete match arm "pkcs11-id-get" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:786:13: delete match arm "client-auth" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:816:13: delete match arm "client-auth-nt" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:837:13: delete match arm "client-deny" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:862:13: delete match arm "client-kill" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:877:13: delete match arm "remote" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:896:13: delete match arm "proxy" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:936:13: delete match arm "remote-entry-count" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:922:13: delete match arm "env-filter" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:938:13: delete match arm "remote-entry-get" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:974:13: delete match arm "push-update-broad" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:981:13: delete match arm "push-update-cid" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:998:13: delete match arm "client-pending-auth" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:1045:13: delete match arm "raw-ml" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:1035:13: delete match arm "cr-response" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:1053:13: delete match arm "exit" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:1054:13: delete match arm "quit" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:591:26: replace match guard args.is_empty() with false in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:605:17: delete match arm "" | "1" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:606:17: delete match arm "2" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:607:17: delete match arm "3" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:680:17: delete match arm "" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:664:32: replace == with != in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:591:26: replace match guard args.is_empty() with true in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:681:17: delete match arm "on" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:683:17: delete match arm "release" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:682:17: delete match arm "off" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:746:21: delete match arm "cancel" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:745:21: delete match arm "ok" in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:878:17: delete match arm ["accept" | "ACCEPT"] in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:879:17: delete match arm ["skip" | "SKIP"] in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:887:17: delete match arm ["mod" | "MOD", host, port] in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:897:17: delete match arm ["none" | "NONE"] in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:898:17: delete match arm ["http" | "HTTP", host, port] in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:905:17: delete match arm ["http" | "HTTP", host, port, "nct"] in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:880:17: delete match arm ["skip" | "SKIP", n] in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:912:17: delete match arm ["socks" | "SOCKS", host, port] in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:942:37: replace == with != in <impl FromStr for OvpnCommand>::from_str
+openvpn-mgmt-codec/src/command.rs:1130:5: replace connection_sequence -> Vec<OvpnCommand> with vec![]
+openvpn-mgmt-codec/src/command.rs:1135:27: replace > with == in connection_sequence
+openvpn-mgmt-codec/src/command.rs:1135:27: replace > with >= in connection_sequence
+openvpn-mgmt-codec/src/command.rs:1135:27: replace > with < in connection_sequence
+openvpn-mgmt-codec/src/command.rs:1171:5: replace server_connection_sequence -> Vec<OvpnCommand> with vec![]
+openvpn-mgmt-codec/src/crv1_challenge.rs:73:9: replace <impl fmt::Display for Crv1Challenge>::fmt -> fmt::Result with Ok(Default::default())
+openvpn-mgmt-codec/src/log_level.rs:39:9: replace LogLevel::label -> &str with ""
+openvpn-mgmt-codec/src/log_level.rs:39:9: replace LogLevel::label -> &str with "xyzzy"
+openvpn-mgmt-codec/src/message.rs:319:9: replace <impl fmt::Debug for RedactedEnv<'_>>::fmt -> fmt::Result with Ok(Default::default())
+openvpn-mgmt-codec/src/parsed_response.rs:94:5: replace parse_pid -> Result<u32, ParseResponseError> with Ok(0)
+openvpn-mgmt-codec/src/parsed_response.rs:94:5: replace parse_pid -> Result<u32, ParseResponseError> with Ok(1)
+openvpn-mgmt-codec/src/parsed_response.rs:156:5: replace parse_hold -> Result<bool, ParseResponseError> with Ok(true)
+openvpn-mgmt-codec/src/parsed_response.rs:156:5: replace parse_hold -> Result<bool, ParseResponseError> with Ok(false)
+openvpn-mgmt-codec/src/parsed_response.rs:160:9: delete match arm "1" in parse_hold
+openvpn-mgmt-codec/src/parsed_response.rs:161:9: delete match arm "0" in parse_hold
+openvpn-mgmt-codec/src/parsed_response.rs:240:21: replace < with == in parse_state_entry
+openvpn-mgmt-codec/src/parsed_response.rs:240:21: replace < with <= in parse_state_entry
+openvpn-mgmt-codec/src/parsed_response.rs:240:21: replace < with > in parse_state_entry
+openvpn-mgmt-codec/src/parsed_response.rs:295:5: replace parse_state_history -> Result<Vec<StateEntry>, ParseResponseError> with Ok(vec![])
+openvpn-mgmt-codec/src/redacted.rs:40:9: replace Redacted::expose -> &str with ""
+openvpn-mgmt-codec/src/redacted.rs:40:9: replace Redacted::expose -> &str with "xyzzy"
+openvpn-mgmt-codec/src/redacted.rs:45:9: replace Redacted::into_inner -> String with String::new()
+openvpn-mgmt-codec/src/redacted.rs:45:9: replace Redacted::into_inner -> String with "xyzzy".into()
+openvpn-mgmt-codec/src/status.rs:189:5: replace detect_separator -> char with Default::default()
+openvpn-mgmt-codec/src/status.rs:194:13: replace || with && in detect_separator
+openvpn-mgmt-codec/src/status.rs:195:13: replace || with && in detect_separator
+openvpn-mgmt-codec/src/status.rs:193:13: replace || with && in detect_separator
+openvpn-mgmt-codec/src/status.rs:192:13: replace || with && in detect_separator
+openvpn-mgmt-codec/src/status.rs:191:13: replace || with && in detect_separator
+openvpn-mgmt-codec/src/status.rs:204:5: replace parse_u64 -> Result<u64, ParseStatusError> with Ok(0)
+openvpn-mgmt-codec/src/status.rs:204:5: replace parse_u64 -> Result<u64, ParseStatusError> with Ok(1)
+openvpn-mgmt-codec/src/status.rs:211:5: replace parse_optional_u64 -> Option<u64> with None
+openvpn-mgmt-codec/src/status.rs:211:5: replace parse_optional_u64 -> Option<u64> with Some(0)
+openvpn-mgmt-codec/src/status.rs:211:5: replace parse_optional_u64 -> Option<u64> with Some(1)
+openvpn-mgmt-codec/src/status.rs:211:26: replace == with != in parse_optional_u64
+openvpn-mgmt-codec/src/status.rs:257:34: replace == with != in parse_status
+openvpn-mgmt-codec/src/status.rs:288:17: replace == with != in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:296:17: replace == with != in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:300:17: replace == with != in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:310:35: replace == with != in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:317:33: replace < with == in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:317:33: replace < with <= in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:317:33: replace < with > in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:337:35: replace == with != in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:340:33: replace < with == in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:340:33: replace < with > in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:352:33: replace >= with < in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:340:33: replace < with <= in parse_status_v1
+openvpn-mgmt-codec/src/status.rs:380:13: delete match arm "TITLE" in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:383:13: delete match arm "TIME" in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:396:13: delete match arm "CLIENT_LIST" in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:445:13: delete match arm "ROUTING_TABLE" in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:458:31: replace match guard fields.len() >= 3 with true in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:458:31: replace match guard fields.len() >= 3 with false in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:426:35: replace < with == in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:405:50: replace >= with < in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:426:35: replace < with > in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:426:35: replace < with <= in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:447:31: replace < with == in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:447:31: replace < with > in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:447:31: replace < with <= in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:458:44: replace >= with < in parse_status_v2v3
+openvpn-mgmt-codec/src/status.rs:498:5: replace parse_client_statistics -> Result<ClientStatistics, ParseStatusError> with Ok(Default::default())
+openvpn-mgmt-codec/src/status.rs:506:17: replace == with != in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:513:13: delete match arm "TUN/TAP read bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:517:13: delete match arm "TUN/TAP write bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:521:13: delete match arm "TCP/UDP read bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:525:13: delete match arm "TCP/UDP write bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:529:13: delete match arm "Auth read bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:533:13: delete match arm "pre-compress bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:536:13: delete match arm "post-compress bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:539:13: delete match arm "pre-decompress bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:542:13: delete match arm "post-decompress bytes" in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:549:8: delete ! in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:552:8: delete ! in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:557:8: delete ! in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:560:8: delete ! in parse_client_statistics
+openvpn-mgmt-codec/src/status.rs:565:8: delete ! in parse_client_statistics
+openvpn-mgmt-codec/src/status_format.rs:34:9: replace <impl FromStr for StatusFormat>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+openvpn-mgmt-codec/src/stream.rs:101:9: replace <impl Stream for Classified<S>>::poll_next -> Poll<Option<Self::Item>> with Poll::from(None)
+openvpn-mgmt-codec/src/stream_mode.rs:36:9: replace StreamMode::returns_history -> bool with true
+openvpn-mgmt-codec/src/stream_mode.rs:36:9: replace StreamMode::returns_history -> bool with false
+openvpn-mgmt-codec/src/stream_mode.rs:42:9: replace <impl fmt::Display for StreamMode>::fmt -> fmt::Result with Ok(Default::default())
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 0, 0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 0, 0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 0, 0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 0, 0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 0, 1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 0, 1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 0, 1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 0, 1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 1, 0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 1, 0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 1, 0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 1, 0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 1, 1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 1, 1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 1, 1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 0, 1, 1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 0, 0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 0, 0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 0, 0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 0, 0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 0, 1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 0, 1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 0, 1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 0, 1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 1, 0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 1, 0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 1, 0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 1, 0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 1, 1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 1, 1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 1, 1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (0, 1, 1, 1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 0, 0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 0, 0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 0, 0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 0, 0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 0, 1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 0, 1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 0, 1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 0, 1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 1, 0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 1, 0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 1, 0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 1, 0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 1, 1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 1, 1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 1, 1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 0, 1, 1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 1, 0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 1, 0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 1, 0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 1, 0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 1, 1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 1, 1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 1, 1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:22:5: replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 1, 1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:22:19: replace % with / in decompose
+openvpn-mgmt-codec/src/timestamp.rs:22:19: replace % with + in decompose
+openvpn-mgmt-codec/src/timestamp.rs:23:25: replace / with % in decompose
+openvpn-mgmt-codec/src/timestamp.rs:23:25: replace / with * in decompose
+openvpn-mgmt-codec/src/timestamp.rs:24:27: replace % with / in decompose
+openvpn-mgmt-codec/src/timestamp.rs:24:27: replace % with + in decompose
+openvpn-mgmt-codec/src/timestamp.rs:25:34: replace / with % in decompose
+openvpn-mgmt-codec/src/timestamp.rs:25:34: replace / with * in decompose
+openvpn-mgmt-codec/src/timestamp.rs:26:29: replace % with / in decompose
+openvpn-mgmt-codec/src/timestamp.rs:26:29: replace % with + in decompose
+openvpn-mgmt-codec/src/timestamp.rs:27:34: replace / with % in decompose
+openvpn-mgmt-codec/src/timestamp.rs:27:34: replace / with * in decompose
+openvpn-mgmt-codec/src/timestamp.rs:36:5: replace format_utc -> String with String::new()
+openvpn-mgmt-codec/src/timestamp.rs:36:11: replace == with != in format_utc
+openvpn-mgmt-codec/src/timestamp.rs:36:5: replace format_utc -> String with "xyzzy".into()
+openvpn-mgmt-codec/src/timestamp.rs:47:5: replace format_timestamp -> String with String::new()
+openvpn-mgmt-codec/src/timestamp.rs:47:5: replace format_timestamp -> String with "xyzzy".into()
+openvpn-mgmt-codec/src/timestamp.rs:47:11: replace == with != in format_timestamp
+openvpn-mgmt-codec/src/timestamp.rs:60:5: replace days_to_ymd -> (u64, u64, u64) with (0, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:60:5: replace days_to_ymd -> (u64, u64, u64) with (0, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:60:5: replace days_to_ymd -> (u64, u64, u64) with (0, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:60:5: replace days_to_ymd -> (u64, u64, u64) with (0, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:60:5: replace days_to_ymd -> (u64, u64, u64) with (1, 0, 0)
+openvpn-mgmt-codec/src/timestamp.rs:60:5: replace days_to_ymd -> (u64, u64, u64) with (1, 0, 1)
+openvpn-mgmt-codec/src/timestamp.rs:60:5: replace days_to_ymd -> (u64, u64, u64) with (1, 1, 0)
+openvpn-mgmt-codec/src/timestamp.rs:60:5: replace days_to_ymd -> (u64, u64, u64) with (1, 1, 1)
+openvpn-mgmt-codec/src/timestamp.rs:60:10: replace += with -= in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:60:10: replace += with *= in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:61:20: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:61:20: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:62:20: replace - with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:62:20: replace - with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:62:26: replace * with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:62:26: replace * with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:64: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:64: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:33: replace + with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:20: replace - with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:20: replace - with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:26: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:26: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:39: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:39: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:53: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:53: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:64:20: replace + with - in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:64:20: replace + with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:64:26: replace * with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:64:26: replace * with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:19: replace - with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:19: replace - with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:42: replace - with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:42: replace - with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:32: replace + with - in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:32: replace + with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:26: replace * with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:26: replace * with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:38: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:38: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:48: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:66:38: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:65:48: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:66:33: replace + with - in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:66:38: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:66:33: replace + with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:66:27: replace * with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:66:27: replace * with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:50: replace + with - in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:50: replace + with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:19: replace - with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:19: replace - with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:46: replace / with % in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:46: replace / with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:41: replace + with - in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:41: replace + with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:26: replace * with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:67:26: replace * with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:68:33: replace < with == in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:68:33: replace < with > in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:68:33: replace < with <= in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:69:22: replace + with - in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:69:22: replace + with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:71:22: replace - with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:71:22: replace - with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:73:25: replace <= with > in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:73:37: replace + with - in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:73:37: replace + with * in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:84:9: replace <impl fmt::Display for UtcTimestamp>::fmt -> fmt::Result with Ok(Default::default())
+openvpn-mgmt-codec/src/timestamp.rs:84:19: replace == with != in <impl fmt::Display for UtcTimestamp>::fmt
+openvpn-mgmt-codec/src/version_info.rs:61:17: replace && with || in VersionInfo::parse
+openvpn-mgmt-codec/src/version_info.rs:60:17: replace && with || in VersionInfo::parse
+openvpn-mgmt-codec/src/version_info.rs:64:41: delete ! in VersionInfo::parse
+openvpn-mgmt-codec/src/version_info.rs:65:34: delete ! in VersionInfo::parse
+openvpn-mgmt-codec/src/version_info.rs:91:9: replace VersionInfo::management_version -> Option<u32> with None
+openvpn-mgmt-codec/src/version_info.rs:91:9: replace VersionInfo::management_version -> Option<u32> with Some(1)
+openvpn-mgmt-codec/src/version_info.rs:91:9: replace VersionInfo::management_version -> Option<u32> with Some(0)
+openvpn-mgmt-codec/src/version_info.rs:96:9: replace VersionInfo::openvpn_version_line -> Option<&str> with None
+openvpn-mgmt-codec/src/version_info.rs:96:9: replace VersionInfo::openvpn_version_line -> Option<&str> with Some("")
+openvpn-mgmt-codec/src/version_info.rs:96:9: replace VersionInfo::openvpn_version_line -> Option<&str> with Some("xyzzy")
+openvpn-mgmt-codec/src/version_info.rs:101:9: replace VersionInfo::raw_lines -> &[String] with Vec::leak(Vec::new())
+openvpn-mgmt-codec/src/version_info.rs:101:9: replace VersionInfo::raw_lines -> &[String] with Vec::leak(vec![String::new()])
+openvpn-mgmt-codec/src/version_info.rs:101:9: replace VersionInfo::raw_lines -> &[String] with Vec::leak(vec!["xyzzy".into()])
+openvpn-mgmt-ui/src/chart.rs:88:9: replace ThroughputHistory::push with ()
+openvpn-mgmt-ui/src/chart.rs:88:12: delete ! in ThroughputHistory::push
+openvpn-mgmt-ui/src/chart.rs:97:66: replace / with % in ThroughputHistory::push
+openvpn-mgmt-ui/src/chart.rs:97:66: replace / with * in ThroughputHistory::push
+openvpn-mgmt-ui/src/chart.rs:98:69: replace / with % in ThroughputHistory::push
+openvpn-mgmt-ui/src/chart.rs:98:69: replace / with * in ThroughputHistory::push
+openvpn-mgmt-ui/src/chart.rs:103:31: replace >= with < in ThroughputHistory::push
+openvpn-mgmt-ui/src/chart.rs:110:9: replace ThroughputHistory::samples -> &VecDeque<Sample> with Box::leak(Box::new(VecDeque::new()))
+openvpn-mgmt-ui/src/chart.rs:110:9: replace ThroughputHistory::samples -> &VecDeque<Sample> with Box::leak(Box::new(VecDeque::from_iter([Default::default()])))
+openvpn-mgmt-ui/src/chart.rs:114:9: replace ThroughputHistory::reset with ()
+openvpn-mgmt-ui/src/chart.rs:231:5: replace format_rate -> String with String::new()
+openvpn-mgmt-ui/src/chart.rs:232:29: replace * with + in format_rate
+openvpn-mgmt-ui/src/chart.rs:231:5: replace format_rate -> String with "xyzzy".into()
+openvpn-mgmt-ui/src/chart.rs:232:29: replace * with / in format_rate
+openvpn-mgmt-ui/src/chart.rs:234:12: replace >= with < in format_rate
+openvpn-mgmt-ui/src/chart.rs:236:19: replace >= with < in format_rate
+openvpn-mgmt-ui/src/completions.rs:186:5: replace fuzzy_match -> Vec<&'static CommandEntry> with vec![]

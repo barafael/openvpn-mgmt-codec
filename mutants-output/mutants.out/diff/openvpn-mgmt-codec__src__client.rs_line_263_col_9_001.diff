@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::state_stream -> Result<Option<Vec<StateEntry>>, ClientError> with Ok(Some(vec![]))
+@@ -255,23 +255,17 @@
+     /// Control real-time state notifications.
+     ///
+     /// Streaming modes (`All`, `OnAll`, `Recent`) return accumulated history
+     /// lines. `On`/`Off` return `Ok(None)`.
+     pub async fn state_stream(
+         &mut self,
+         mode: StreamMode,
+     ) -> Result<Option<Vec<StateEntry>>, ClientError> {
+-        match self
+-            .send_stream_command(mode, OvpnCommand::StateStream(mode))
+-            .await?
+-        {
+-            Some(lines) => Ok(Some(parsed_response::parse_state_history(&lines)?)),
+-            None => Ok(None),
+-        }
++        Ok(Some(vec![])) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Query the OpenVPN and management interface version.
+     pub async fn version(&mut self) -> Result<VersionInfo, ClientError> {
+         let lines = self.send_expect_multi_line(OvpnCommand::Version).await?;
+         Ok(parsed_response::parse_version(&lines))
+     }
+ 

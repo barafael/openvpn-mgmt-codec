@@ -1,0 +1,45 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_state -> Option<Notification> with None
+@@ -1017,41 +1017,17 @@
+         .inspect_err(|error| warn!(%error, value, field, "failed to parse notification field"))
+         .ok()
+ }
+ 
+ fn parse_state(payload: &str) -> Option<Notification> {
+     // Wire format per management-notes.txt:
+     //   (a) timestamp, (b) state, (c) desc, (d) local_ip, (e) remote_ip,
+     //   (f) remote_port, (g) local_addr, (h) local_port, (i) local_ipv6
+-    let mut parts = payload.splitn(9, ',');
+-    let timestamp = parse_field(parts.next()?, "state timestamp")?;
+-    let state_str = parts.next()?;
+-    let name = state_str
+-        .parse()
+-        .inspect_err(|error| warn!(%error, "unknown OpenVPN state"))
+-        .unwrap_or_else(|_| OpenVpnState::Unknown(state_str.to_string()));
+-    let description = parts.next()?.to_string();
+-    let local_ip = parts.next()?.to_string();
+-    let remote_ip = parts.next()?.to_string();
+-    let remote_port = parse_optional_port(parts.next().unwrap_or(""));
+-    let local_addr = parts.next().unwrap_or("").to_string();
+-    let local_port = parse_optional_port(parts.next().unwrap_or(""));
+-    let local_ipv6 = parts.next().unwrap_or("").to_string();
+-    Some(Notification::State {
+-        timestamp,
+-        name,
+-        description,
+-        local_ip,
+-        remote_ip,
+-        remote_port,
+-        local_addr,
+-        local_port,
+-        local_ipv6,
+-    })
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_bytecount(payload: &str) -> Option<Notification> {
+     let (a, b) = payload.split_once(',')?;
+     Some(Notification::ByteCount {
+         bytes_in: parse_field(a, "bytecount bytes_in")?,
+         bytes_out: parse_field(b, "bytecount bytes_out")?,
+     })

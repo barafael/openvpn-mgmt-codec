@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace < with > in parse_status_v2v3
+@@ -418,17 +418,17 @@
+                         connected_since_t: parse_optional_u64(cols.get(7).copied().unwrap_or("")),
+                         username: cols.get(8).map(|val| val.to_string()),
+                         cid: cols.get(9).and_then(|val| parse_optional_u64(val)),
+                         peer_id: cols.get(10).and_then(|val| parse_optional_u64(val)),
+                         cipher: cols.get(11).map(|val| val.to_string()),
+                     });
+                 } else {
+                     // Older layout: no IPv6, no PeerID, no Cipher
+-                    if cols.len() < 5 {
++                    if cols.len() > /* ~ changed by cargo-mutants ~ */ 5 {
+                         return Err(ParseStatusError::ClientListTooFewFields(cols.len()));
+                     }
+                     status.clients.push(ConnectedClient {
+                         common_name: cols[0].to_string(),
+                         real_address: cols[1].to_string(),
+                         virtual_address: cols[2].to_string(),
+                         virtual_ipv6: String::new(),
+                         bytes_in: parse_u64(cols[3], "bytes_received")?,

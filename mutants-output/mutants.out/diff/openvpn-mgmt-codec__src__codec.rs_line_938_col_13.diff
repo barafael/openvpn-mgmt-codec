@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete match arm "BYTECOUNT" in OvpnCodec::parse_notification
+@@ -930,17 +930,17 @@
+                 env: BTreeMap::new(),
+             });
+             return None; // Signal to the caller to keep reading.
+         }
+ 
+         // Dispatch to typed parsers. On parse failure, fall back to Simple.
+         let notification = match kind {
+             "STATE" => parse_state(payload),
+-            "BYTECOUNT" => parse_bytecount(payload),
++             /* ~ changed by cargo-mutants ~ */
+             "BYTECOUNT_CLI" => parse_bytecount_cli(payload),
+             "LOG" => parse_log(payload),
+             "ECHO" => parse_echo(payload),
+             "HOLD" => Some(Notification::Hold {
+                 text: payload.to_string(),
+             }),
+             "FATAL" => Some(Notification::Fatal {
+                 message: payload.to_string(),

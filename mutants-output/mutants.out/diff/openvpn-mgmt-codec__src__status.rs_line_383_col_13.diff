@@ -1,0 +1,30 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ delete match arm "TIME" in parse_status_v2v3
+@@ -375,26 +375,17 @@
+     for line in lines {
+         let fields: Vec<&str> = line.split(sep).collect();
+         let tag = fields.first().copied().unwrap_or("");
+ 
+         match tag {
+             "TITLE" => {
+                 status.title = fields.get(1).map(|val| val.to_string());
+             }
+-            "TIME" => {
+-                status.updated = fields.get(1).map(|val| val.to_string());
+-                status.timestamp = fields.get(2).and_then(|val| {
+-                    val.parse()
+-                        .inspect_err(|error| {
+-                            tracing::warn!(%error, value = val, "non-numeric timestamp in TIME row")
+-                        })
+-                        .ok()
+-                });
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             "HEADER" => {
+                 // Skip header rows — they describe columns, not data.
+             }
+             "CLIENT_LIST" => {
+                 // V2/V3 CLIENT_LIST columns (after the tag):
+                 // 0:CN 1:RealAddr 2:VirtAddr 3:VirtIPv6 4:BytesRecv 5:BytesSent
+                 // 6:ConnSince 7:ConnSince_t 8:Username 9:CID 10:PeerID 11:Cipher
+                 //

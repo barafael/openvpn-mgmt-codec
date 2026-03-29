@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::send_stream_command -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![String::new()]))
+@@ -199,22 +199,17 @@
+     ///
+     /// History-returning modes produce `Some(lines)`, on/off modes
+     /// produce `None`.
+     async fn send_stream_command(
+         &mut self,
+         mode: StreamMode,
+         cmd: OvpnCommand,
+     ) -> Result<Option<Vec<String>>, ClientError> {
+-        if mode.returns_history() {
+-            Ok(Some(self.send_expect_multi_line(cmd).await?))
+-        } else {
+-            self.send_expect_ok(cmd).await?;
+-            Ok(None)
+-        }
++        Ok(Some(vec![String::new()])) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // --- Public command methods ---
+ 
+     // -- Informational --
+ 
+     /// Query the connection status in the given format.
+     ///

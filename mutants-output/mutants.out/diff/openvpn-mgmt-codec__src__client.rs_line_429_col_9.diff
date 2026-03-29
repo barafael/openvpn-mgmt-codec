@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::static_challenge_response -> Result<(), ClientError> with Ok(())
+@@ -421,21 +421,17 @@
+     }
+ 
+     /// Respond to a static challenge.
+     pub async fn static_challenge_response(
+         &mut self,
+         password_b64: impl Into<String>,
+         response_b64: impl Into<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::StaticChallengeResponse {
+-            password_b64: Redacted::new(password_b64.into()),
+-            response_b64: Redacted::new(response_b64.into()),
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Respond to a CR_TEXT challenge.
+     pub async fn cr_response(&mut self, response: impl Into<String>) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::CrResponse {
+             response: Redacted::new(response.into()),
+         })
+         .await

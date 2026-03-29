@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in write_block
+@@ -625,17 +625,17 @@
+     // slightly, but over-reserving is harmless — only written bytes count.
+     let total: usize =
+         header.len() + 1 + lines.iter().map(|line| line.len() + 2).sum::<usize>() + 4;
+     dst.reserve(total);
+     dst.put_slice(header.as_bytes());
+     dst.put_u8(b'\n');
+     for line in lines {
+         let clean = wire_safe(line, "block body line", mode)?;
+-        if *clean == *"END" {
++        if *clean != /* ~ changed by cargo-mutants ~ */ *"END" {
+             match mode {
+                 EncoderMode::Sanitize => {
+                     dst.put_slice(b" END");
+                     dst.put_u8(b'\n');
+                     continue;
+                 }
+                 EncoderMode::Strict => {
+                     return Err(io::Error::other(EncodeError::EndInBlockBody));

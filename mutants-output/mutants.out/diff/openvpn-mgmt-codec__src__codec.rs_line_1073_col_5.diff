@@ -1,0 +1,31 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_log -> Option<Notification> with None
+@@ -1065,27 +1065,17 @@
+     Some(Notification::ByteCountCli {
+         cid,
+         bytes_in,
+         bytes_out,
+     })
+ }
+ 
+ fn parse_log(payload: &str) -> Option<Notification> {
+-    let (ts_str, rest) = payload.split_once(',')?;
+-    let timestamp = parse_field(ts_str, "log timestamp")?;
+-    let (level_str, message) = rest.split_once(',')?;
+-    Some(Notification::Log {
+-        timestamp,
+-        level: level_str
+-            .parse()
+-            .inspect_err(|error| warn!(%error, "unknown log level"))
+-            .unwrap_or_else(|_| LogLevel::Unknown(level_str.to_string())),
+-        message: message.to_string(),
+-    })
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_echo(payload: &str) -> Option<Notification> {
+     let (ts_str, param) = payload.split_once(',')?;
+     let timestamp = parse_field(ts_str, "echo timestamp")?;
+     Some(Notification::Echo {
+         timestamp,
+         param: param.to_string(),

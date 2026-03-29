@@ -26,7 +26,7 @@ fn state_all_fields_empty_trailing_commas() {
     let msgs = decode_all(">STATE:1676768325,WAIT,,,,,,\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             timestamp,
             name,
             description,
@@ -35,8 +35,8 @@ fn state_all_fields_empty_trailing_commas() {
             local_port,
             remote_port,
             ..
-        }) => {
-            assert_eq!(*timestamp, 1676768325);
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1676768325));
             assert_eq!(*name, OpenVpnState::Wait);
             assert_eq!(description, "");
             assert_eq!(local_ip, "");
@@ -55,14 +55,14 @@ fn state_only_four_fields_old_openvpn() {
     let msgs = decode_all(">STATE:1384405371,CONNECTED,SUCCESS,10.200.0.36\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             timestamp,
             name,
             description,
             local_ip,
             ..
-        }) => {
-            assert_eq!(*timestamp, 1384405371);
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1384405371));
             assert_eq!(*name, OpenVpnState::Connected);
             assert_eq!(description, "SUCCESS");
             assert_eq!(local_ip, "10.200.0.36");
@@ -83,9 +83,9 @@ fn state_reconnecting_with_reason() {
     let msgs = decode_all(">STATE:1676768323,RECONNECTING,dco-connect-error,,,,,\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             name, description, ..
-        }) => {
+        })) => {
             assert_eq!(*name, OpenVpnState::Reconnecting);
             assert_eq!(description, "dco-connect-error");
         }
@@ -245,26 +245,19 @@ fn decoder_handles_null_byte_in_success() {
 // ---  ---
 
 #[test]
-fn static_challenge_response_crlf_in_base64_stripped() {
-    // Simulate a base64 encoder that inserts CRLF mid-string.
+fn static_challenge_response_newline_in_password_safe() {
+    // Newlines in plaintext are safely absorbed by base64 encoding.
     let wire = encode(OvpnCommand::StaticChallengeResponse {
-        password_b64: "dGVzdHBhc3N3\r\nb3Jk".into(),
-        response_b64: "MTIzNDU2\r\n".into(),
+        password: "test\r\npassword".into(),
+        response: "123456\r\n".into(),
     });
 
-    // CRLF must be stripped — output must be a single line.
+    // Output must be a single line — newlines are encoded away.
     let line_count = wire.lines().count();
     assert_eq!(
         line_count, 1,
-        "CRLF in base64 was not stripped — got {line_count} lines\nwire: {wire:?}"
+        "newline in password produced {line_count} wire lines\nwire: {wire:?}"
     );
-
-    // The base64 content should be intact minus the CRLF.
-    assert!(
-        wire.contains("dGVzdHBhc3N3b3Jk"),
-        "base64 content was corrupted"
-    );
-    assert!(wire.contains("MTIzNDU2"), "response base64 was corrupted");
 }
 
 #[test]
@@ -290,18 +283,17 @@ fn challenge_response_crlf_in_state_id_stripped() {
 // ---  ---
 
 #[test]
-fn static_challenge_no_double_escape_of_base64() {
-    // Base64 strings contain only [A-Za-z0-9+/=].  quote_and_escape
-    // should not add extra backslashes to these characters.
+fn static_challenge_base64_output_is_clean() {
+    // Verify the encoder produces valid base64 in the SCRV1 payload.
     let wire = encode(OvpnCommand::StaticChallengeResponse {
-        password_b64: "dGVzdHBhcw==".into(),
-        response_b64: "MTIzNDU2".into(),
+        password: "testpass".into(),
+        response: "123456".into(),
     });
 
-    // The wire should contain the base64 verbatim inside quotes.
+    // The wire should contain well-formed SCRV1 with base64 content.
     assert!(
-        wire.contains("SCRV1:dGVzdHBhcw==:MTIzNDU2"),
-        "base64 was corrupted by double-escaping\nwire: {wire:?}"
+        wire.contains("SCRV1:dGVzdHBhc3M=:MTIzNDU2"),
+        "base64 encoding was incorrect\nwire: {wire:?}"
     );
 }
 
@@ -488,7 +480,7 @@ fn blank_line_between_notifications_skipped() {
     assert!(matches!(&msgs[0], OvpnMessage::Info(_)));
     assert!(matches!(
         &msgs[1],
-        OvpnMessage::Notification(Notification::State { .. })
+        OvpnMessage::Notification(Notification::State(..))
     ));
 }
 
@@ -632,7 +624,7 @@ fn decoder_handles_very_long_notification_line() {
     let msgs = decode_all(&wire);
     assert_eq!(msgs.len(), 2);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State { description, .. }) => {
+        OvpnMessage::Notification(Notification::State(StateEntry { description, .. })) => {
             assert_eq!(description.len(), 100_000);
         }
         other => panic!("expected State notification, got: {other:?}"),
@@ -810,7 +802,7 @@ fn status_v3_interleaved_with_notification() {
     );
     assert!(matches!(
         &msgs[0],
-        OvpnMessage::Notification(Notification::State { .. })
+        OvpnMessage::Notification(Notification::State(..))
     ));
     match &msgs[1] {
         OvpnMessage::MultiLine(lines) => {
@@ -925,13 +917,15 @@ fn bytecount_cli_realistic_server_data() {
 // ---  ---
 
 #[test]
-fn strict_static_challenge_response_crlf_in_base64_rejected() {
+fn strict_static_challenge_response_encodes_cleanly() {
+    // In strict mode, plaintext is base64-encoded internally — always succeeds
+    // since base64 output contains no unsafe characters.
     assert!(
         try_encode_strict(OvpnCommand::StaticChallengeResponse {
-            password_b64: "dGVzdHBhc3N3\r\nb3Jk".into(),
-            response_b64: "MTIzNDU2\r\n".into(),
+            password: "test\r\npassword".into(),
+            response: "123456\r\n".into(),
         })
-        .is_err()
+        .is_ok()
     );
 }
 
@@ -1622,11 +1616,11 @@ fn state_with_hostname_as_remote() {
     let msgs = decode_all(">STATE:1700000000,CONNECTED,SUCCESS,10.8.0.1,vpn.example.com,1194,,\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             remote_ip,
             remote_port,
             ..
-        }) => {
+        })) => {
             assert_eq!(remote_ip, "vpn.example.com");
             assert_eq!(*remote_port, Some(1194));
         }
@@ -1645,7 +1639,7 @@ fn state_with_ipv6_local_address() {
         decode_all(">STATE:1700000000,CONNECTED,SUCCESS,10.8.0.1,1.2.3.4,1194,,1194,fd00::1\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State { local_ipv6, .. }) => {
+        OvpnMessage::Notification(Notification::State(StateEntry { local_ipv6, .. })) => {
             assert_eq!(local_ipv6, "fd00::1");
         }
         other => panic!("expected State, got: {other:?}"),

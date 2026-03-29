@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete match arm "PASSWORD" in OvpnCodec::parse_notification
+@@ -955,17 +955,17 @@
+             "INFOMSG" => Some(Notification::InfoMsg {
+                 extra: payload.to_string(),
+             }),
+             "NEED-CERTIFICATE" => Some(Notification::NeedCertificate {
+                 hint: payload.to_string(),
+             }),
+             "REMOTE" => parse_remote(payload),
+             "PROXY" => parse_proxy(payload),
+-            "PASSWORD" => parse_password(payload),
++             /* ~ changed by cargo-mutants ~ */
+             "PKCS11ID-ENTRY" => {
+                 return parse_pkcs11id_entry_notif(payload).or_else(|| {
+                     Some(OvpnMessage::Notification(Notification::Simple {
+                         kind: kind.to_string(),
+                         payload: payload.to_string(),
+                     }))
+                 });
+             }

@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace OvpnCodec::with_max_client_env_entries -> Self with Default::default()
+@@ -223,18 +223,17 @@
+     pub fn with_max_multi_line_lines(mut self, limit: AccumulationLimit) -> Self {
+         self.max_multi_line_lines = limit;
+         self
+     }
+ 
+     /// Set the maximum number of ENV entries accumulated for
+     /// `>CLIENT:` notifications before the decoder returns an error.
+     pub fn with_max_client_env_entries(mut self, limit: AccumulationLimit) -> Self {
+-        self.max_client_env_entries = limit;
+-        self
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Set the encoder mode for handling unsafe characters in user-supplied
+     /// strings.
+     ///
+     /// The default is [`EncoderMode::Sanitize`], which silently strips
+     /// `\n`, `\r`, and `\0`. Use [`EncoderMode::Strict`] to reject inputs
+     /// containing those characters with an error instead.

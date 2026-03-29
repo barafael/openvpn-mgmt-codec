@@ -1,0 +1,52 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace OvpnCommand::expected_response -> ResponseKind with Default::default()
+@@ -509,48 +509,17 @@
+     /// No response expected (connection may close).
+     NoResponse,
+ }
+ 
+ impl OvpnCommand {
+     /// Determine what kind of response this command produces, so the
+     /// decoder knows how to frame the next incoming bytes.
+     pub(crate) fn expected_response(&self) -> ResponseKind {
+-        match self {
+-            // These always produce multi-line (END-terminated) responses.
+-            Self::Status(_)
+-            | Self::Version
+-            | Self::Help
+-            | Self::Net
+-            | Self::RemoteEntryCount
+-            | Self::RemoteEntryGet(_) => ResponseKind::MultiLine,
+-
+-            // state/log/echo: depends on the specific sub-mode.
+-            Self::StateStream(mode) | Self::Log(mode) | Self::Echo(mode) => match mode {
+-                StreamMode::All | StreamMode::OnAll | StreamMode::Recent(_) => {
+-                    ResponseKind::MultiLine
+-                }
+-                StreamMode::On | StreamMode::Off => ResponseKind::SuccessOrError,
+-            },
+-
+-            // Bare `state` returns state history (END-terminated).
+-            Self::State => ResponseKind::MultiLine,
+-
+-            // Raw multi-line expects END-terminated response.
+-            Self::RawMultiLine(_) => ResponseKind::MultiLine,
+-
+-            // exit/quit close the connection.
+-            Self::Exit | Self::Quit => ResponseKind::NoResponse,
+-
+-            // `version N` for N < 4 produces no response; N >= 4 returns SUCCESS:.
+-            Self::SetVersion(n) if *n < 4 => ResponseKind::NoResponse,
+-
+-            // Everything else (including Raw) produces SUCCESS: or ERROR:.
+-            _ => ResponseKind::SuccessOrError,
+-        }
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl FromStr for OvpnCommand {
+     type Err = CommandParseError;
+ 
+     /// Parse a human-readable command string into an [`OvpnCommand`].
+     ///

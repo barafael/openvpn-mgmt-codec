@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm ["none" | "NONE"] in <impl FromStr for OvpnCommand>::from_str
+@@ -889,17 +889,17 @@
+                     port: port
+                         .parse()
+                         .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+                 })),
+                 _ => cmd_err("usage: remote accept|skip [n]|mod <host> <port>"),
+             },
+ 
+             "proxy" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+-                ["none" | "NONE"] => Ok(Self::Proxy(ProxyAction::None)),
++                 /* ~ changed by cargo-mutants ~ */
+                 ["http" | "HTTP", host, port] => Ok(Self::Proxy(ProxyAction::Http {
+                     host: host.to_string(),
+                     port: port
+                         .parse()
+                         .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+                     non_cleartext_only: false,
+                 })),
+                 ["http" | "HTTP", host, port, "nct"] => Ok(Self::Proxy(ProxyAction::Http {

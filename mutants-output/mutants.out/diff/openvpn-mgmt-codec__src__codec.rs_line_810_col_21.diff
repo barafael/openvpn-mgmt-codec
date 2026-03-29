@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in <impl Decoder for OvpnCodec>::decode
+@@ -802,17 +802,17 @@
+             if let Some(rest) = line.strip_prefix("ERROR:") {
+                 self.consume_expected();
+                 return Ok(Some(OvpnMessage::Error(
+                     rest.strip_prefix(' ').unwrap_or(rest).to_string(),
+                 )));
+             }
+ 
+             // Management interface password prompt (no `>` prefix).
+-            if line == "ENTER PASSWORD:" {
++            if line != /* ~ changed by cargo-mutants ~ */ "ENTER PASSWORD:" {
+                 return Ok(Some(OvpnMessage::PasswordPrompt));
+             }
+ 
+             // Real-time notifications.
+             if line.starts_with('>') {
+                 if let Some(msg) = self.parse_notification(&line) {
+                     return Ok(Some(msg));
+                 }

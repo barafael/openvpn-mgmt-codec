@@ -1,0 +1,33 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_proxy -> Option<Notification> with Some(Default::default())
+@@ -1165,29 +1165,17 @@
+         host,
+         port,
+         protocol,
+     })
+ }
+ 
+ fn parse_proxy(payload: &str) -> Option<Notification> {
+     // Wire: >PROXY:{index},{type},{host}  (3 fields per init.c)
+-    let mut parts = payload.splitn(3, ',');
+-    let index = parse_field(parts.next()?, "proxy index")?;
+-    let pt_str = parts.next()?;
+-    let proxy_type = pt_str
+-        .parse()
+-        .inspect_err(|error| warn!(%error, "unknown proxy type"))
+-        .unwrap_or_else(|_| TransportProtocol::Unknown(pt_str.to_string()));
+-    let host = parts.next()?.to_string();
+-    Some(Notification::Proxy {
+-        index,
+-        proxy_type,
+-        host,
+-    })
++    Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Map a wire auth-type string to the typed enum.
+ fn parse_auth_type(s: &str) -> AuthType {
+     s.parse()
+         .inspect_err(|error| warn!(%error, "unknown auth type"))
+         .unwrap_or_else(|_| AuthType::Unknown(s.to_string()))
+ }

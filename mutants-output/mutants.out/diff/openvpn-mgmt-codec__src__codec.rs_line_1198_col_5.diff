@@ -1,0 +1,93 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_password -> Option<Notification> with None
+@@ -1190,89 +1190,17 @@
+     s.parse()
+         .inspect_err(|error| warn!(%error, "unknown auth type"))
+         .unwrap_or_else(|_| AuthType::Unknown(s.to_string()))
+ }
+ 
+ fn parse_password(payload: &str) -> Option<Notification> {
+     // Auth-Token:{token}
+     // Source: manage.c management_auth_token()
+-    if let Some(token) = payload.strip_prefix("Auth-Token:") {
+-        return Some(Notification::Password(PasswordNotification::AuthToken {
+-            token: Redacted::new(token),
+-        }));
+-    }
+-
+-    // Verification Failed: 'Auth' ['CRV1:flags:state_id:user_b64:challenge']
+-    // Verification Failed: 'Auth'
+-    if let Some(rest) = payload.strip_prefix("Verification Failed: '") {
+-        // Check for CRV1 dynamic challenge data
+-        if let Some((auth_part, crv1_part)) = rest.split_once("' ['CRV1:") {
+-            debug_assert_eq!(auth_part, "Auth", "CRV1 auth type should always be 'Auth'");
+-            let crv1_data = crv1_part.strip_suffix("']")?;
+-            let mut parts = crv1_data.splitn(4, ':');
+-            let flags = parts.next()?.to_string();
+-            let state_id = parts.next()?.to_string();
+-            let username_b64 = parts.next()?.to_string();
+-            let challenge = parts.next()?.to_string();
+-            return Some(Notification::Password(
+-                PasswordNotification::DynamicChallenge {
+-                    flags,
+-                    state_id,
+-                    username_b64,
+-                    challenge,
+-                },
+-            ));
+-        }
+-        // Bare verification failure
+-        let auth_type = rest.strip_suffix('\'')?;
+-        return Some(Notification::Password(
+-            PasswordNotification::VerificationFailed {
+-                auth_type: parse_auth_type(auth_type),
+-            },
+-        ));
+-    }
+-
+-    // Need 'type' username/password [SC:...]
+-    // Need 'type' password
+-    let rest = payload.strip_prefix("Need '")?;
+-    let (auth_type_str, rest) = rest.split_once('\'')?;
+-    let rest = rest.trim_start();
+-
+-    if let Some(after_up) = rest.strip_prefix("username/password") {
+-        let after_up = after_up.trim_start();
+-
+-        // Static challenge: SC:flag,challenge_text
+-        // flag is a multi-bit integer: bit 0 = ECHO, bit 1 = FORMAT/CONCAT
+-        if let Some(sc) = after_up.strip_prefix("SC:") {
+-            let (flag_str, challenge) = sc.split_once(',')?;
+-            let flags: u32 = parse_field(flag_str, "static challenge flags")?;
+-            return Some(Notification::Password(
+-                PasswordNotification::StaticChallenge {
+-                    echo: flags & 1 != 0,
+-                    response_concat: flags & 2 != 0,
+-                    challenge: challenge.to_string(),
+-                },
+-            ));
+-        }
+-
+-        // Plain username/password request
+-        return Some(Notification::Password(PasswordNotification::NeedAuth {
+-            auth_type: parse_auth_type(auth_type_str),
+-        }));
+-    }
+-
+-    // Need 'type' password
+-    if rest.starts_with("password") {
+-        return Some(Notification::Password(PasswordNotification::NeedPassword {
+-            auth_type: parse_auth_type(auth_type_str),
+-        }));
+-    }
+-
+-    None // Unrecognized PASSWORD sub-format — fall back to Simple
++    None /* ~ changed by cargo-mutants ~ */ // Unrecognized PASSWORD sub-format — fall back to Simple
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     use crate::{
+         auth::AuthType, client_deny::ClientDeny, client_event::ClientEvent,

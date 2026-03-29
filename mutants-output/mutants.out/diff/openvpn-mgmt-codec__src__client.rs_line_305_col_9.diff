@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::verb -> Result<String, ClientError> with Ok(String::new())
+@@ -297,17 +297,17 @@
+ 
+     /// List available management commands.
+     pub async fn help(&mut self) -> Result<Vec<String>, ClientError> {
+         self.send_expect_multi_line(OvpnCommand::Help).await
+     }
+ 
+     /// Query or set the log verbosity level.
+     pub async fn verb(&mut self, level: Option<u8>) -> Result<String, ClientError> {
+-        self.send_expect_success(OvpnCommand::Verb(level)).await
++        Ok(String::new()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Query or set the mute threshold.
+     pub async fn mute(&mut self, threshold: Option<u32>) -> Result<String, ClientError> {
+         self.send_expect_success(OvpnCommand::Mute(threshold)).await
+     }
+ 
+     /// (Windows) Show network adapter list.

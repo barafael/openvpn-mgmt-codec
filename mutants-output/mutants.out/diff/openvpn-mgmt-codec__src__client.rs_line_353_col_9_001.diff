@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::hold_query -> Result<bool, ClientError> with Ok(false)
+@@ -345,18 +345,17 @@
+ 
+     /// Kill a specific client connection (server mode).
+     pub async fn kill(&mut self, target: KillTarget) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::Kill(target)).await
+     }
+ 
+     /// Query the current hold flag.
+     pub async fn hold_query(&mut self) -> Result<bool, ClientError> {
+-        let payload = self.send_expect_success(OvpnCommand::HoldQuery).await?;
+-        Ok(parsed_response::parse_hold(&payload)?)
++        Ok(false) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Set the hold flag on.
+     pub async fn hold_on(&mut self) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::HoldOn).await
+     }
+ 
+     /// Clear the hold flag.

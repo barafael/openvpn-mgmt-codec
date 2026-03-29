@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace || with && in <impl Encoder<OvpnCommand> for OvpnCodec>::encode
+@@ -282,17 +282,17 @@
+ }
+ 
+ // --- Encoder ---
+ 
+ impl Encoder<OvpnCommand> for OvpnCodec {
+     type Error = io::Error;
+ 
+     fn encode(&mut self, item: OvpnCommand, dst: &mut BytesMut) -> Result<(), Self::Error> {
+-        if self.multi_line_buf.is_some() || self.client_notification.is_some() {
++        if self.multi_line_buf.is_some() && /* ~ changed by cargo-mutants ~ */ self.client_notification.is_some() {
+             warn!(
+                 "encode() called while the decoder is mid-accumulation \
+                  (multi_line_buf or client_notification is active). \
+                  Drain decode() before sending a new command."
+             );
+         }
+ 
+         // Push the expected response kind onto the queue so the decoder

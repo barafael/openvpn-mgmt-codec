@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::remote_entry_count -> Result<Vec<String>, ClientError> with Ok(vec![])
+@@ -583,18 +583,17 @@
+     pub async fn env_filter(&mut self, level: u32) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::EnvFilter(level)).await
+     }
+ 
+     // -- Remote entry queries --
+ 
+     /// Query the number of `--remote` entries.
+     pub async fn remote_entry_count(&mut self) -> Result<Vec<String>, ClientError> {
+-        self.send_expect_multi_line(OvpnCommand::RemoteEntryCount)
+-            .await
++        Ok(vec![]) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Retrieve `--remote` entries.
+     pub async fn remote_entry_get(
+         &mut self,
+         range: RemoteEntryRange,
+     ) -> Result<Vec<String>, ClientError> {
+         self.send_expect_multi_line(OvpnCommand::RemoteEntryGet(range))

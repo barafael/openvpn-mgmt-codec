@@ -1,0 +1,24 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace flash_timer -> Task<Message> with Task::from_iter([Default::default()])
+@@ -49,20 +49,17 @@
+ // -------------------------------------------------------------------
+ 
+ /// The actor's command channel is closed — the actor task has exited.
+ #[derive(Debug)]
+ struct ActorGone;
+ 
+ /// Start a 350ms timer that sends the given message (used for copy flash).
+ fn flash_timer(msg: Message) -> Task<Message> {
+-    Task::perform(
+-        async { tokio::time::sleep(std::time::Duration::from_millis(350)).await },
+-        move |()| msg,
+-    )
++    Task::from_iter([Default::default()]) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ // -------------------------------------------------------------------
+ // Auxiliary data
+ // -------------------------------------------------------------------
+ 
+ /// One entry in the real-time log tab.
+ #[derive(Debug, Clone)]

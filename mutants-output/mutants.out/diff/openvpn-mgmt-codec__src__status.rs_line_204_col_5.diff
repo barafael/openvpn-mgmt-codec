@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace parse_u64 -> Result<u64, ParseStatusError> with Ok(0)
+@@ -196,20 +196,17 @@
+         {
+             return '\t';
+         }
+     }
+     ','
+ }
+ 
+ fn parse_u64(s: &str, field: &'static str) -> Result<u64, ParseStatusError> {
+-    s.parse().map_err(|_| ParseStatusError::InvalidInteger {
+-        field,
+-        value: s.to_string(),
+-    })
++    Ok(0) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_optional_u64(s: &str) -> Option<u64> {
+     if s.is_empty() || s == "UNDEF" {
+         None
+     } else {
+         s.parse()
+             .inspect_err(|error| {

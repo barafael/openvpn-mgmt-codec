@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "pkcs11-id-get" in <impl FromStr for OvpnCommand>::from_str
+@@ -770,22 +770,17 @@
+                     "usage: needstr <name> <value>",
+                 ))?;
+                 Ok(Self::NeedStr { name, value })
+             }
+ 
+             // --- PKCS#11 ---
+             "pkcs11-id-count" => Ok(Self::Pkcs11IdCount),
+ 
+-            "pkcs11-id-get" => args.parse::<u32>().map(Self::Pkcs11IdGet).map_err(|_| {
+-                CommandParseError::InvalidNumber {
+-                    field: "pkcs11-id-get index",
+-                    input: args.to_string(),
+-                }
+-            }),
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Client management (server mode) ---
+             "client-auth" => {
+                 let mut parts = args.splitn(3, char::is_whitespace);
+                 let cid = parts
+                     .next()
+                     .ok_or(CommandParseError::MissingArgs(
+                         "usage: client-auth <cid> <kid> [config-lines]",

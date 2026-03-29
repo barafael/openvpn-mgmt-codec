@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm Self::StateStream(mode) | Self::Log(mode) | Self::Echo(mode) in OvpnCommand::expected_response
+@@ -519,22 +519,17 @@
+             Self::Status(_)
+             | Self::Version
+             | Self::Help
+             | Self::Net
+             | Self::RemoteEntryCount
+             | Self::RemoteEntryGet(_) => ResponseKind::MultiLine,
+ 
+             // state/log/echo: depends on the specific sub-mode.
+-            Self::StateStream(mode) | Self::Log(mode) | Self::Echo(mode) => match mode {
+-                StreamMode::All | StreamMode::OnAll | StreamMode::Recent(_) => {
+-                    ResponseKind::MultiLine
+-                }
+-                StreamMode::On | StreamMode::Off => ResponseKind::SuccessOrError,
+-            },
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // Bare `state` returns state history (END-terminated).
+             Self::State => ResponseKind::MultiLine,
+ 
+             // Raw multi-line expects END-terminated response.
+             Self::RawMultiLine(_) => ResponseKind::MultiLine,
+ 
+             // exit/quit close the connection.

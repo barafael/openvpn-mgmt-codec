@@ -1,0 +1,28 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_pk_sign -> Option<Notification> with Some(Default::default())
+@@ -1137,24 +1137,17 @@
+ /// Parse `>PK_SIGN:base64_data[,algorithm]`.
+ ///
+ /// The algorithm field is only present when the management client announced
+ /// version > 2 via the `version` command.
+ ///
+ /// Source: [`management-notes.txt`](https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt),
+ /// [`ssl_openssl.c` `get_sig_from_man()`](https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/ssl_openssl.c).
+ fn parse_pk_sign(payload: &str) -> Option<Notification> {
+-    if payload.is_empty() {
+-        return None;
+-    }
+-    let (data, algorithm) = match payload.split_once(',') {
+-        Some((d, a)) => (d.to_string(), Some(a.to_string())),
+-        None => (payload.to_string(), None),
+-    };
+-    Some(Notification::PkSign { data, algorithm })
++    Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_remote(payload: &str) -> Option<Notification> {
+     let mut parts = payload.splitn(3, ',');
+     let host = parts.next()?.to_string();
+     let port = parse_field(parts.next()?, "remote port")?;
+     let proto_str = parts.next()?;
+     let protocol = proto_str

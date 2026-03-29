@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::forget_passwords -> Result<(), ClientError> with Ok(())
+@@ -399,17 +399,17 @@
+ 
+     /// Set the auth-retry strategy.
+     pub async fn auth_retry(&mut self, mode: AuthRetryMode) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::AuthRetry(mode)).await
+     }
+ 
+     /// Forget all passwords entered during this management session.
+     pub async fn forget_passwords(&mut self) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::ForgetPasswords).await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Respond to a CRV1 dynamic challenge.
+     pub async fn challenge_response(
+         &mut self,
+         state_id: impl Into<String>,
+         response: impl Into<String>,
+     ) -> Result<(), ClientError> {

@@ -1,0 +1,28 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ replace parse_hold -> Result<bool, ParseResponseError> with Ok(true)
+@@ -148,24 +148,17 @@
+ /// `hold release` the flag stays on but the server is no longer waiting.
+ ///
+ /// ```
+ /// use openvpn_mgmt_codec::parsed_response::parse_hold;
+ /// assert_eq!(parse_hold("hold=1"), Ok(true));
+ /// assert_eq!(parse_hold("hold=0"), Ok(false));
+ /// ```
+ pub fn parse_hold(payload: &str) -> Result<bool, ParseResponseError> {
+-    let val = payload
+-        .strip_prefix("hold=")
+-        .ok_or_else(|| ParseResponseError::MissingHoldPrefix(payload.to_string()))?;
+-    match val {
+-        "1" => Ok(true),
+-        "0" => Ok(false),
+-        _ => Err(ParseResponseError::InvalidHoldValue(val.to_string())),
+-    }
++    Ok(true) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse the multi-line response from a `version` command into a
+ /// [`VersionInfo`].
+ ///
+ /// This is a convenience wrapper around [`VersionInfo::parse`].
+ ///
+ /// ```

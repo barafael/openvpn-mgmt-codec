@@ -1,0 +1,52 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::handle_startup -> Result<(), ActorGone> with Ok(())
+@@ -897,48 +897,17 @@
+             }
+         }
+     }
+ 
+     /// Handle startup-option changes. When connected, stream-mode and
+     /// bytecount changes are sent immediately so the tab controls
+     /// double as live toggles.
+     fn handle_startup(&mut self, msg: StartupMsg) -> Result<(), ActorGone> {
+-        match msg {
+-            StartupMsg::LogMode(mode) => {
+-                self.startup.log = mode;
+-                self.apply_stream_mode("log", mode, OvpnCommand::Log)?;
+-            }
+-            StartupMsg::StateMode(mode) => {
+-                self.startup.state = mode;
+-                self.apply_stream_mode("state", mode, OvpnCommand::StateStream)?;
+-            }
+-            StartupMsg::EchoMode(mode) => {
+-                self.startup.echo = mode;
+-                self.apply_stream_mode("echo", mode, OvpnCommand::Echo)?;
+-            }
+-            StartupMsg::ByteCountIntervalChanged(value) => {
+-                if let Ok(seconds) = value.parse::<u32>() {
+-                    self.startup.bytecount_interval = seconds;
+-                }
+-            }
+-            StartupMsg::ByteCountApply => {
+-                let seconds = self.startup.bytecount_interval;
+-                self.send_if_connected(
+-                    &format!("bytecount {seconds}"),
+-                    OvpnCommand::ByteCount(seconds),
+-                )?;
+-            }
+-            StartupMsg::ByteCountOff => {
+-                self.send_if_connected("bytecount 0", OvpnCommand::ByteCount(0))?;
+-            }
+-            StartupMsg::HoldReleaseToggled(value) => self.startup.hold_release = value,
+-            StartupMsg::QueryVersionToggled(value) => self.startup.query_version = value,
+-        }
+-        Ok(())
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Send a stream-mode change for a given channel when connected.
+     fn apply_stream_mode(
+         &mut self,
+         label: &str,
+         mode: StartupStreamMode,
+         make_cmd: fn(StreamMode) -> OvpnCommand,

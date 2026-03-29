@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_need_str -> Option<Notification> with None
+@@ -1120,23 +1120,17 @@
+     Some(Notification::NeedOk {
+         name: name.to_string(),
+         message: msg.to_string(),
+     })
+ }
+ 
+ /// Parse `Need 'name' input MSG:message` from NEED-STR payload.
+ fn parse_need_str(payload: &str) -> Option<Notification> {
+-    let rest = payload.strip_prefix("Need '")?;
+-    let (name, rest) = rest.split_once('\'')?;
+-    let msg = rest.split_once("MSG:")?.1;
+-    Some(Notification::NeedStr {
+-        name: name.to_string(),
+-        message: msg.to_string(),
+-    })
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse `>PK_SIGN:base64_data[,algorithm]`.
+ ///
+ /// The algorithm field is only present when the management client announced
+ /// version > 2 via the `version` command.
+ ///
+ /// Source: [`management-notes.txt`](https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt),

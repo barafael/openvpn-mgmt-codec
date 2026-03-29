@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::status_raw -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+@@ -216,18 +216,17 @@
+ 
+     // -- Informational --
+ 
+     /// Query the connection status in the given format.
+     ///
+     /// Returns the raw multi-line response. Use [`status`](Self::status)
+     /// for a typed result.
+     pub async fn status_raw(&mut self, format: StatusFormat) -> Result<Vec<String>, ClientError> {
+-        self.send_expect_multi_line(OvpnCommand::Status(format))
+-            .await
++        Ok(vec!["xyzzy".into()]) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Query and parse the server-mode connection status.
+     pub async fn status(&mut self, format: StatusFormat) -> Result<StatusResponse, ClientError> {
+         let lines = self.status_raw(format).await?;
+         Ok(status::parse_status(&lines)?)
+     }
+ 

@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace OvpnCodec::with_max_multi_line_lines -> Self with Default::default()
+@@ -216,18 +216,17 @@
+     /// decode responses.
+     pub fn new() -> Self {
+         Self::default()
+     }
+ 
+     /// Set the maximum number of lines accumulated in a multi-line
+     /// response before the decoder returns an error.
+     pub fn with_max_multi_line_lines(mut self, limit: AccumulationLimit) -> Self {
+-        self.max_multi_line_lines = limit;
+-        self
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Set the maximum number of ENV entries accumulated for
+     /// `>CLIENT:` notifications before the decoder returns an error.
+     pub fn with_max_client_env_entries(mut self, limit: AccumulationLimit) -> Self {
+         self.max_client_env_entries = limit;
+         self
+     }

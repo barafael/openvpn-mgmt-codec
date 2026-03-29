@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in OvpnCodec::parse_notification
+@@ -887,17 +887,17 @@
+             // ADDRESS notifications are always single-line (no ENV block).
+             if event == "ADDRESS" {
+                 let mut parts = args.splitn(3, ',');
+                 let cid = parts
+                     .next()
+                     .and_then(|field| parse_field(field, "client address cid"))
+                     .unwrap_or(0);
+                 let addr = parts.next().unwrap_or("").to_string();
+-                let primary = parts.next() == Some("1");
++                let primary = parts.next() != /* ~ changed by cargo-mutants ~ */ Some("1");
+                 return Some(OvpnMessage::Notification(Notification::ClientAddress {
+                     cid,
+                     addr,
+                     primary,
+                 }));
+             }
+ 
+             // CONNECT, REAUTH, ESTABLISHED, DISCONNECT, and CR_RESPONSE all

@@ -41,20 +41,20 @@ fn full_state_transition_sequence() {
     assert_eq!(msgs.len(), 7);
 
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             timestamp,
             name,
             description,
             ..
-        }) => {
-            assert_eq!(*timestamp, 1711000000);
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1711000000));
             assert_eq!(*name, OpenVpnState::Connecting);
             assert_eq!(description, "");
         }
         other => panic!("expected STATE notification, got: {other:?}"),
     }
     match &msgs[6] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             timestamp,
             name,
             description,
@@ -62,8 +62,8 @@ fn full_state_transition_sequence() {
             remote_ip,
             remote_port,
             ..
-        }) => {
-            assert_eq!(*timestamp, 1711000006);
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1711000006));
             assert_eq!(*name, OpenVpnState::Connected);
             assert_eq!(description, "SUCCESS");
             assert_eq!(local_ip, "10.8.0.6");
@@ -83,26 +83,26 @@ fn reconnecting_and_exiting_states() {
     let msgs = decode_all(input);
     assert_eq!(msgs.len(), 3);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             timestamp,
             name,
             description,
             ..
-        }) => {
-            assert_eq!(*timestamp, 1711000010);
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1711000010));
             assert_eq!(*name, OpenVpnState::Reconnecting);
             assert_eq!(description, "SIGUSR1");
         }
         other => panic!("unexpected: {other:?}"),
     }
     match &msgs[2] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             timestamp,
             name,
             description,
             ..
-        }) => {
-            assert_eq!(*timestamp, 1711000050);
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1711000050));
             assert_eq!(*name, OpenVpnState::Exiting);
             assert_eq!(description, "SIGTERM");
         }
@@ -629,7 +629,7 @@ fn echo_notification() {
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Echo { timestamp, param }) => {
-            assert_eq!(*timestamp, 1711000000);
+            assert_eq!(*timestamp, UtcTimestamp(1711000000));
             assert!(param.contains("my-custom-directive"));
         }
         other => panic!("unexpected: {other:?}"),
@@ -1119,7 +1119,7 @@ fn notification_interleaved_in_multiline_status() {
     assert_eq!(msgs.len(), 2);
     assert!(matches!(
         &msgs[0],
-        OvpnMessage::Notification(Notification::State { name, .. }) if *name == OpenVpnState::Connected
+        OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) if *name == OpenVpnState::Connected
     ));
     match &msgs[1] {
         OvpnMessage::MultiLine(lines) => {
@@ -1169,7 +1169,7 @@ fn multiple_notifications_before_any_command() {
     ));
     assert!(matches!(
         &msgs[2],
-        OvpnMessage::Notification(Notification::State { name, .. }) if *name == OpenVpnState::Connecting
+        OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) if *name == OpenVpnState::Connecting
     ));
 }
 
@@ -1294,11 +1294,11 @@ fn full_session_sequence() {
     let msg2 = codec.decode(&mut buf).unwrap().unwrap();
     assert!(matches!(
         msg1,
-        OvpnMessage::Notification(Notification::State { .. })
+        OvpnMessage::Notification(Notification::State(..))
     ));
     assert!(matches!(
         msg2,
-        OvpnMessage::Notification(Notification::State { .. })
+        OvpnMessage::Notification(Notification::State(..))
     ));
 
     // 4. Send status query.
@@ -1492,8 +1492,8 @@ fn encode_challenge_response_crv1() {
 #[test]
 fn encode_static_challenge_response_scrv1() {
     let wire = encode_to_string(OvpnCommand::StaticChallengeResponse {
-        password_b64: "cGFzc3dvcmQ=".into(),
-        response_b64: "MTIzNDU2".into(),
+        password: "password".into(),
+        response: "123456".into(),
     });
     assert_eq!(wire, "password \"Auth\" \"SCRV1:cGFzc3dvcmQ=:MTIzNDU2\"\n");
 }
@@ -1834,7 +1834,7 @@ fn state_all_known_names() {
         let msgs = decode_all(&input);
         assert_eq!(msgs.len(), 1, "failed for state: {state_str}");
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::State { name, .. }) => {
+            OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) => {
                 assert_eq!(name, expected);
             }
             other => panic!("unexpected for {state_str}: {other:?}"),
@@ -1848,7 +1848,7 @@ fn state_connected_with_all_fields_populated() {
     let msgs = decode_all(">STATE:1608159538,CONNECTED,SUCCESS,10.10.10.1,1.2.3.4,1194,\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             timestamp,
             name,
             description,
@@ -1856,8 +1856,8 @@ fn state_connected_with_all_fields_populated() {
             remote_ip,
             remote_port,
             ..
-        }) => {
-            assert_eq!(*timestamp, 1608159538);
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1608159538));
             assert_eq!(*name, OpenVpnState::Connected);
             assert_eq!(description, "SUCCESS");
             assert_eq!(local_ip, "10.10.10.1");
@@ -1884,9 +1884,9 @@ fn state_reconnecting_various_reasons() {
         let msgs = decode_all(&input);
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
-            OvpnMessage::Notification(Notification::State {
+            OvpnMessage::Notification(Notification::State(StateEntry {
                 name, description, ..
-            }) => {
+            })) => {
                 assert_eq!(*name, OpenVpnState::Reconnecting);
                 assert_eq!(description, *reason);
             }
@@ -1902,12 +1902,12 @@ fn state_ipv6_connection() {
     assert_eq!(msgs.len(), 5);
     // Last state should be CONNECTED with server.example.com as remote
     match &msgs[4] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             name,
             local_ip,
             remote_ip,
             ..
-        }) => {
+        })) => {
             assert_eq!(*name, OpenVpnState::Connected);
             assert_eq!(local_ip, "192.168.20.4");
             assert_eq!(remote_ip, "server.example.com");
@@ -1934,42 +1934,42 @@ fn full_connection_lifecycle_from_capture() {
     // CONNECTING
     assert!(matches!(
         &msgs[2],
-        OvpnMessage::Notification(Notification::State { name, .. }) if *name == OpenVpnState::Connecting
+        OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) if *name == OpenVpnState::Connecting
     ));
     // WAIT
     assert!(matches!(
         &msgs[3],
-        OvpnMessage::Notification(Notification::State { name, .. }) if *name == OpenVpnState::Wait
+        OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) if *name == OpenVpnState::Wait
     ));
     // AUTH
     assert!(matches!(
         &msgs[4],
-        OvpnMessage::Notification(Notification::State { name, .. }) if *name == OpenVpnState::Auth
+        OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) if *name == OpenVpnState::Auth
     ));
     // GET_CONFIG
     assert!(matches!(
         &msgs[5],
-        OvpnMessage::Notification(Notification::State { name, .. }) if *name == OpenVpnState::GetConfig
+        OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) if *name == OpenVpnState::GetConfig
     ));
     // ASSIGN_IP
     assert!(matches!(
         &msgs[6],
-        OvpnMessage::Notification(Notification::State { local_ip, .. }) if local_ip == "10.10.10.1"
+        OvpnMessage::Notification(Notification::State(StateEntry { local_ip, .. })) if local_ip == "10.10.10.1"
     ));
     // ADD_ROUTES
     assert!(matches!(
         &msgs[7],
-        OvpnMessage::Notification(Notification::State { name, .. }) if *name == OpenVpnState::AddRoutes
+        OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) if *name == OpenVpnState::AddRoutes
     ));
     // CONNECTED with full address info
     match &msgs[8] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             name,
             local_ip,
             remote_ip,
             remote_port,
             ..
-        }) => {
+        })) => {
             assert_eq!(*name, OpenVpnState::Connected);
             assert_eq!(local_ip, "10.10.10.1");
             assert_eq!(remote_ip, "1.2.3.4");
@@ -2168,7 +2168,7 @@ fn log_with_management_cmd_echo() {
             level,
             message,
         }) => {
-            assert_eq!(*timestamp, 1711000001);
+            assert_eq!(*timestamp, UtcTimestamp(1711000001));
             assert_eq!(*level, LogLevel::Debug);
             assert_eq!(message, "MANAGEMENT: CMD 'state on'");
         }
@@ -2430,7 +2430,7 @@ fn echo_forget_passwords() {
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
         OvpnMessage::Notification(Notification::Echo { timestamp, param }) => {
-            assert_eq!(*timestamp, 1101519562);
+            assert_eq!(*timestamp, UtcTimestamp(1101519562));
             assert_eq!(param, "forget-passwords");
         }
         other => panic!("unexpected: {other:?}"),
@@ -2804,7 +2804,7 @@ fn client_mode_auth_with_challenge_session() {
         let msg = codec.decode(&mut buf).unwrap().unwrap();
         assert!(matches!(
             msg,
-            OvpnMessage::Notification(Notification::State { .. })
+            OvpnMessage::Notification(Notification::State(..))
         ));
     }
 
@@ -2845,8 +2845,8 @@ fn client_mode_auth_with_challenge_session() {
     codec
         .encode(
             OvpnCommand::StaticChallengeResponse {
-                password_b64: "cGFzc3dvcmQ=".into(),
-                response_b64: "MTIzNDU2".into(),
+                password: "password".into(),
+                response: "123456".into(),
             },
             &mut enc_buf,
         )
@@ -2859,7 +2859,7 @@ fn client_mode_auth_with_challenge_session() {
     buf.extend_from_slice(b">STATE:1711000010,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,,\n");
     let msg = codec.decode(&mut buf).unwrap().unwrap();
     match &msg {
-        OvpnMessage::Notification(Notification::State { name, local_ip, .. }) => {
+        OvpnMessage::Notification(Notification::State(StateEntry { name, local_ip, .. })) => {
             assert_eq!(*name, OpenVpnState::Connected);
             assert_eq!(local_ip, "10.8.0.6");
         }
@@ -2948,7 +2948,7 @@ fn partial_state_notification_split_at_comma() {
     buf.extend_from_slice(b"ECTED,SUCCESS,10.8.0.6,1.2.3.4,1194,,\n");
     let msg = codec.decode(&mut buf).unwrap().unwrap();
     match msg {
-        OvpnMessage::Notification(Notification::State { name, local_ip, .. }) => {
+        OvpnMessage::Notification(Notification::State(StateEntry { name, local_ip, .. })) => {
             assert_eq!(name, OpenVpnState::Connected);
             assert_eq!(local_ip, "10.8.0.6");
         }
@@ -3017,7 +3017,7 @@ fn multiple_notifications_interleaved_in_status() {
     assert_eq!(msgs.len(), 4);
     assert!(matches!(
         &msgs[0],
-        OvpnMessage::Notification(Notification::State { .. })
+        OvpnMessage::Notification(Notification::State(..))
     ));
     assert!(matches!(
         &msgs[1],
@@ -3470,9 +3470,9 @@ fn state_auth_pending_with_timeout() {
     let msgs = decode_all(">STATE:1711000020,AUTH_PENDING,timeout 120,,,,,\n");
     assert_eq!(msgs.len(), 1);
     match &msgs[0] {
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             name, description, ..
-        }) => {
+        })) => {
             assert_eq!(*name, OpenVpnState::AuthPending);
             assert_eq!(description, "timeout 120");
         }
@@ -3515,10 +3515,10 @@ fn set_version_v2_no_response() {
     let msg = codec.decode(&mut buf).unwrap().unwrap();
     assert!(matches!(
         msg,
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             name: OpenVpnState::Connecting,
             ..
-        })
+        }))
     ));
 }
 
@@ -3628,5 +3628,187 @@ fn need_certificate_empty_hint() {
             assert_eq!(hint, "");
         }
         other => panic!("expected NeedCertificate, got: {other:?}"),
+    }
+}
+
+// ==========================================================================
+// Cross-version wire compatibility fixtures
+//
+// These tests parse real-world protocol output from different OpenVPN
+// versions (2.0 through 2.6) to verify the codec handles field-count
+// evolution, header wording changes, and format differences gracefully.
+//
+// Data sources documented in PROTOCOL_TEST_DATA_SOURCES.md.
+// ==========================================================================
+
+// --- Version response: OpenVPN 2.5 (Management Version 3) ---
+
+#[test]
+fn version_response_2_5_management_version_3() {
+    let response = include_str!("fixtures/version_2_5.txt");
+    let msgs = encode_then_decode(OvpnCommand::Version, response);
+    assert_eq!(msgs.len(), 1);
+    match &msgs[0] {
+        OvpnMessage::MultiLine(lines) => {
+            assert!(lines[0].contains("2.5.11"));
+            // 2.5 uses "Management Version:" (not "Management Interface Version:")
+            assert!(lines[1].contains("Management Version: 3"));
+            let info = openvpn_mgmt_codec::parsed_response::parse_version(lines).unwrap();
+            assert_eq!(info.management_version(), Some(3));
+        }
+        other => panic!("expected MultiLine, got: {other:?}"),
+    }
+}
+
+// --- STATE: 4-field format (OpenVPN 2.0) ---
+
+#[test]
+fn state_old_4_field_format() {
+    // OpenVPN 2.0: only timestamp,state,desc,tun_ip (no remote_ip)
+    let input = include_str!("fixtures/state_old_4_field.txt");
+    let msgs = decode_all(input);
+    assert_eq!(msgs.len(), 1);
+    // 4 fields is fewer than the required 5 — should fall back to Simple
+    match &msgs[0] {
+        OvpnMessage::Notification(Notification::Simple { kind, .. }) => {
+            assert_eq!(kind, "STATE");
+        }
+        // If the codec does parse it, verify basic fields
+        OvpnMessage::Notification(Notification::State(StateEntry {
+            timestamp,
+            name,
+            local_ip,
+            ..
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1101519562));
+            assert_eq!(*name, OpenVpnState::Connected);
+            assert_eq!(local_ip, "10.0.0.1");
+        }
+        other => panic!("unexpected: {other:?}"),
+    }
+}
+
+// --- STATE: 5-field format (OpenVPN 2.1-2.3) ---
+
+#[test]
+fn state_old_5_field_format() {
+    let input = include_str!("fixtures/state_old_5_field.txt");
+    let msgs = decode_all(input);
+    assert_eq!(msgs.len(), 1);
+    match &msgs[0] {
+        OvpnMessage::Notification(Notification::State(StateEntry {
+            timestamp,
+            name,
+            local_ip,
+            remote_ip,
+            remote_port,
+            local_addr,
+            local_port,
+            local_ipv6,
+            ..
+        })) => {
+            assert_eq!(*timestamp, UtcTimestamp(1101519562));
+            assert_eq!(*name, OpenVpnState::Connected);
+            assert_eq!(local_ip, "10.0.0.1");
+            assert_eq!(remote_ip, "vpn.example.com");
+            // Fields 6-9 should be empty/None — not present in this format
+            assert_eq!(*remote_port, None);
+            assert!(local_addr.is_empty());
+            assert_eq!(*local_port, None);
+            assert!(local_ipv6.is_empty());
+        }
+        other => panic!("unexpected: {other:?}"),
+    }
+}
+
+// --- STATE: 2.4 format with trailing commas for empty fields ---
+
+#[test]
+fn state_2_4_trailing_commas_full_sequence() {
+    let input = include_str!("fixtures/state_2_4_trailing_commas.txt");
+    let msgs = decode_all(input);
+    assert_eq!(msgs.len(), 6, "should decode all 6 state notifications");
+
+    // WAIT with empty fields
+    match &msgs[0] {
+        OvpnMessage::Notification(Notification::State(StateEntry { name, local_ip, .. })) => {
+            assert_eq!(*name, OpenVpnState::Wait);
+            assert!(local_ip.is_empty());
+        }
+        other => panic!("WAIT: {other:?}"),
+    }
+
+    // ASSIGN_IP with tun_ip populated
+    match &msgs[3] {
+        OvpnMessage::Notification(Notification::State(StateEntry { name, local_ip, .. })) => {
+            assert_eq!(*name, OpenVpnState::AssignIp);
+            assert_eq!(local_ip, "10.8.0.6");
+        }
+        other => panic!("ASSIGN_IP: {other:?}"),
+    }
+
+    // CONNECTED with populated fields
+    match &msgs[5] {
+        OvpnMessage::Notification(Notification::State(StateEntry {
+            name,
+            local_ip,
+            remote_ip,
+            remote_port,
+            ..
+        })) => {
+            assert_eq!(*name, OpenVpnState::Connected);
+            assert_eq!(local_ip, "10.8.0.6");
+            assert_eq!(remote_ip, "198.51.100.1");
+            assert_eq!(*remote_port, Some(1194));
+        }
+        other => panic!("CONNECTED: {other:?}"),
+    }
+}
+
+// --- PASSWORD: CRV1 dynamic challenge ---
+
+#[test]
+fn password_crv1_dynamic_challenge_fixture() {
+    let input = include_str!("fixtures/password_crv1_challenge.txt");
+    let msgs = decode_all(input);
+    assert_eq!(msgs.len(), 1);
+    match &msgs[0] {
+        OvpnMessage::Notification(Notification::Password(
+            PasswordNotification::DynamicChallenge {
+                flags,
+                state_id,
+                username_b64,
+                challenge,
+            },
+        )) => {
+            assert_eq!(flags, "R,E");
+            assert_eq!(state_id, "Om01u7Fh4LrGBS7uh0SWmzwabUiGiW6l");
+            assert_eq!(username_b64, "Y3Ix");
+            assert_eq!(challenge, "Please enter token PIN");
+        }
+        other => panic!("expected DynamicChallenge, got: {other:?}"),
+    }
+}
+
+// --- PASSWORD: static challenge ---
+
+#[test]
+fn password_static_challenge_fixture() {
+    let input = include_str!("fixtures/password_static_challenge.txt");
+    let msgs = decode_all(input);
+    assert_eq!(msgs.len(), 1);
+    match &msgs[0] {
+        OvpnMessage::Notification(Notification::Password(
+            PasswordNotification::StaticChallenge {
+                echo,
+                response_concat,
+                challenge,
+            },
+        )) => {
+            assert!(*echo, "SC:1 means echo=true");
+            assert!(!*response_concat, "bit 1 not set");
+            assert_eq!(challenge, "Please enter token PIN");
+        }
+        other => panic!("expected StaticChallenge, got: {other:?}"),
     }
 }

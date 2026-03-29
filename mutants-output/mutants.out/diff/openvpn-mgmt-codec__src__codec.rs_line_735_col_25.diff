@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in <impl Decoder for OvpnCodec>::decode
+@@ -727,17 +727,17 @@
+             // lines belong to it. The block terminates with >CLIENT:ENV,END.
+             // The spec guarantees atomicity for CLIENT notifications, so
+             // interleaving here should not occur. Any other line (SUCCESS,
+             // ERROR, other notifications) falls through to normal processing
+             // as a defensive measure.
+             if let Some(ref mut accum) = self.client_notification
+                 && let Some(rest) = line.strip_prefix(">CLIENT:ENV,")
+             {
+-                if rest == "END" {
++                if rest != /* ~ changed by cargo-mutants ~ */ "END" {
+                     let finished = self.client_notification.take().expect("guarded by if-let");
+                     debug!(event = ?finished.event, cid = finished.cid, env_count = finished.env.len(), "decoded CLIENT notification");
+                     return Ok(Some(OvpnMessage::Notification(Notification::Client {
+                         event: finished.event,
+                         cid: finished.cid,
+                         kid: finished.kid,
+                         env: finished.env,
+                     })));

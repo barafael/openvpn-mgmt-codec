@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::certificate -> Result<(), ClientError> with Ok(())
+@@ -493,18 +493,17 @@
+     /// Provide a signature in response to `>PK_SIGN:`.
+     pub async fn pk_sig(&mut self, base64_lines: Vec<String>) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::PkSig { base64_lines })
+             .await
+     }
+ 
+     /// Supply an external certificate in response to `>NEED-CERTIFICATE:`.
+     pub async fn certificate(&mut self, pem_lines: Vec<String>) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::Certificate { pem_lines })
+-            .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Client management (server mode) --
+ 
+     /// Authorize a client and push config directives.
+     pub async fn client_auth(
+         &mut self,
+         cid: u64,

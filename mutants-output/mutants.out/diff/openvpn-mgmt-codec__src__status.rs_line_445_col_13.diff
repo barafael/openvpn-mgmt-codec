@@ -1,0 +1,33 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ delete match arm "ROUTING_TABLE" in parse_status_v2v3
+@@ -437,29 +437,17 @@
+                         connected_since_t: cols.get(6).and_then(|val| parse_optional_u64(val)),
+                         username: cols.get(7).map(|val| val.to_string()),
+                         cid: None,
+                         peer_id: None,
+                         cipher: None,
+                     });
+                 }
+             }
+-            "ROUTING_TABLE" => {
+-                let cols = &fields[1..];
+-                if cols.len() < 4 {
+-                    return Err(ParseStatusError::RoutingTableTooFewFields(cols.len()));
+-                }
+-                status.routes.push(RoutingEntry {
+-                    virtual_address: cols[0].to_string(),
+-                    common_name: cols[1].to_string(),
+-                    real_address: cols[2].to_string(),
+-                    last_ref: cols[3].to_string(),
+-                    last_ref_t: cols.get(4).and_then(|val| parse_optional_u64(val)),
+-                });
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             "GLOBAL_STATS" if fields.len() >= 3 => {
+                 status
+                     .global_stats
+                     .push((fields[1].to_string(), fields[2..].join(&sep.to_string())));
+             }
+             _ => {
+                 // Unknown line — skip silently for forward compatibility.
+             }

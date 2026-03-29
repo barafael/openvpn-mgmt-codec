@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace == with != in <impl FromStr for OvpnCommand>::from_str
+@@ -934,17 +934,17 @@
+ 
+             // --- Remote entry queries ---
+             "remote-entry-count" => Ok(Self::RemoteEntryCount),
+ 
+             "remote-entry-get" => {
+                 if args.is_empty() {
+                     return cmd_err("usage: remote-entry-get i|all [j]");
+                 }
+-                let range = if args == "all" {
++                let range = if args != /* ~ changed by cargo-mutants ~ */ "all" {
+                     RemoteEntryRange::All
+                 } else {
+                     let mut parts = args.splitn(2, char::is_whitespace);
+                     let from = parts.next().unwrap().parse::<u32>().map_err(|_| {
+                         CommandParseError::InvalidNumber {
+                             field: "remote-entry-get index",
+                             input: args.to_string(),
+                         }

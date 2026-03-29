@@ -1,0 +1,40 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::reset_session_data with ()
+@@ -1296,36 +1296,17 @@
+             !trimmed.is_empty()
+                 && trimmed
+                     .parse::<OvpnCommand>()
+                     .is_ok_and(|cmd| !matches!(cmd, OvpnCommand::Raw(_)))
+         };
+     }
+ 
+     fn reset_session_data(&mut self) {
+-        self.vpn_state = None;
+-        self.vpn_state_description = None;
+-        self.local_ip = None;
+-        self.remote_addr = None;
+-        self.version_lines = None;
+-        self.pid = None;
+-        self.bytes_in = 0;
+-        self.bytes_out = 0;
+-        self.load_stats = None;
+-        self.throughput.reset();
+-        self.log_entries.clear();
+-        self.selected_log_index = None;
+-        self.log_flash_index = None;
+-        self.clients.clear();
+-        self.help_lines = None;
+-        self.ops = OperationsForm::default();
+-        self.command_history.clear();
+-        self.awaiting_command_response = false;
+-        self.selected_console_entry = None;
+-        self.console_flash_entry = None;
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     fn subscription(&self) -> iced::Subscription<Message> {
+         let keyboard = iced::event::listen_with(|event, _status, _window| match event {
+             iced::Event::Keyboard(iced::keyboard::Event::ModifiersChanged(modifiers)) => {
+                 Some(Message::ModifiersChanged(modifiers))
+             }
+             iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {

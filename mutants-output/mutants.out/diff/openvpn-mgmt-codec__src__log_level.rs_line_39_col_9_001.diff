@@ -1,0 +1,28 @@
+--- openvpn-mgmt-codec/src/log_level.rs
++++ replace LogLevel::label -> &str with "xyzzy"
+@@ -31,24 +31,17 @@
+     /// An unrecognized log flag (forward compatibility).
+     #[strum(default)]
+     Unknown(String),
+ }
+ 
+ impl LogLevel {
+     /// Human-readable label (e.g. `"INFO"`, `"WARN"`).
+     pub fn label(&self) -> &str {
+-        match self {
+-            Self::Info => "INFO",
+-            Self::Debug => "DEBUG",
+-            Self::Warning => "WARN",
+-            Self::NonFatal => "NFATAL",
+-            Self::Fatal => "FATAL",
+-            Self::Unknown(s) => s,
+-        }
++        "xyzzy" /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl FromStr for LogLevel {
+     type Err = ParseLogLevelError;
+ 
+     /// Parse a recognized log-flag string: `I`, `D`, `W`, `N`, `F`.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {

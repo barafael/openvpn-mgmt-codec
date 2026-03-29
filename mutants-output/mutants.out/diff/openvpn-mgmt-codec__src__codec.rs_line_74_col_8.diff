@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete ! in wire_safe
+@@ -66,17 +66,17 @@
+ ///
+ /// In [`EncoderMode::Strict`]: returns `Err` if any unsafe characters
+ /// are present.
+ fn wire_safe<'a>(
+     s: &'a str,
+     field: &'static str,
+     mode: EncoderMode,
+ ) -> Result<Cow<'a, str>, io::Error> {
+-    if !s.contains(WIRE_UNSAFE) {
++    if  /* ~ changed by cargo-mutants ~ */s.contains(WIRE_UNSAFE) {
+         return Ok(Cow::Borrowed(s));
+     }
+     match mode {
+         EncoderMode::Sanitize => Ok(Cow::Owned(
+             s.chars().filter(|chr| !WIRE_UNSAFE.contains(chr)).collect(),
+         )),
+         EncoderMode::Strict => Err(io::Error::other(EncodeError::UnsafeCharacters(field))),
+     }

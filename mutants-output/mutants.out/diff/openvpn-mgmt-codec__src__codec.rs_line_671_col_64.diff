@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in <impl Decoder for OvpnCodec>::decode
+@@ -663,17 +663,17 @@
+ 
+ impl Decoder for OvpnCodec {
+     type Item = OvpnMessage;
+     type Error = io::Error;
+ 
+     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+         loop {
+             // Find the next complete line.
+-            let Some(newline_pos) = src.iter().position(|&b| b == b'\n') else {
++            let Some(newline_pos) = src.iter().position(|&b| b != /* ~ changed by cargo-mutants ~ */ b'\n') else {
+                 // No complete line yet. Check for a password prompt
+                 // without a trailing newline (OpenVPN ≥ 2.6 sends it as
+                 // an interactive prompt with no line terminator).
+                 // We accept any buffer that starts with the prompt text
+                 // since no `\n` is present (checked above). Consume the
+                 // prompt and any trailing `\r`.
+                 if src.starts_with(PW_PROMPT) {
+                     let mut consume = PW_PROMPT.len();

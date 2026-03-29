@@ -1,0 +1,33 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_remote -> Option<Notification> with None
+@@ -1148,29 +1148,17 @@
+     let (data, algorithm) = match payload.split_once(',') {
+         Some((d, a)) => (d.to_string(), Some(a.to_string())),
+         None => (payload.to_string(), None),
+     };
+     Some(Notification::PkSign { data, algorithm })
+ }
+ 
+ fn parse_remote(payload: &str) -> Option<Notification> {
+-    let mut parts = payload.splitn(3, ',');
+-    let host = parts.next()?.to_string();
+-    let port = parse_field(parts.next()?, "remote port")?;
+-    let proto_str = parts.next()?;
+-    let protocol = proto_str
+-        .parse()
+-        .inspect_err(|error| warn!(%error, "unknown transport protocol"))
+-        .unwrap_or_else(|_| TransportProtocol::Unknown(proto_str.to_string()));
+-    Some(Notification::Remote {
+-        host,
+-        port,
+-        protocol,
+-    })
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_proxy(payload: &str) -> Option<Notification> {
+     // Wire: >PROXY:{index},{type},{host}  (3 fields per init.c)
+     let mut parts = payload.splitn(3, ',');
+     let index = parse_field(parts.next()?, "proxy index")?;
+     let pt_str = parts.next()?;
+     let proxy_type = pt_str

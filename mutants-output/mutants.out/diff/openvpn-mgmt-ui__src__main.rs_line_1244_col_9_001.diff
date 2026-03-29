@@ -1,0 +1,64 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::build_startup_commands -> Vec<OvpnCommand> with vec![Default::default()]
+@@ -1236,60 +1236,17 @@
+         self.actor_tx = None;
+         self.connection_state = ConnectionState::Disconnected;
+         self.last_error = Some("Connection actor exited".to_string());
+     }
+ 
+     /// Build the command sequence sent immediately after TCP connect,
+     /// driven by the user-visible startup options.
+     fn build_startup_commands(&self) -> Vec<OvpnCommand> {
+-        let mut commands = Vec::new();
+-
+-        if !self.management_password.is_empty() {
+-            commands.push(OvpnCommand::ManagementPassword(Redacted::new(
+-                self.management_password.clone(),
+-            )));
+-        }
+-
+-        // Quick commands first — these return a single Success/MultiLine
+-        // and won't flood the connection.
+-        commands.push(OvpnCommand::Pid);
+-        // One-shot state query so we always know the current state,
+-        // even if no >STATE: transition fires during connect.
+-        commands.push(OvpnCommand::State);
+-
+-        if self.startup.bytecount_interval > 0 {
+-            commands.push(OvpnCommand::ByteCount(self.startup.bytecount_interval));
+-        }
+-
+-        if self.startup.hold_release {
+-            commands.push(OvpnCommand::HoldRelease);
+-        }
+-
+-        // Streaming commands — may produce large history dumps that
+-        // eat the timeout, so run them after the quick essentials.
+-        if self.startup.log != StartupStreamMode::Off {
+-            commands.push(OvpnCommand::Log(self.startup.log.to_stream_mode()));
+-        }
+-        if self.startup.state != StartupStreamMode::Off {
+-            commands.push(OvpnCommand::StateStream(
+-                self.startup.state.to_stream_mode(),
+-            ));
+-        }
+-        if self.startup.echo != StartupStreamMode::Off {
+-            commands.push(OvpnCommand::Echo(self.startup.echo.to_stream_mode()));
+-        }
+-
+-        // Non-critical queries last — OK if these time out.
+-        if self.startup.query_version {
+-            commands.push(OvpnCommand::Version);
+-        }
+-        commands.push(OvpnCommand::Help);
+-
+-        commands
++        vec![Default::default()] /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Recompute `command_valid` from the current input and raw-mode flag.
+     fn revalidate_command(&mut self) {
+         let trimmed = self.command_input.trim();
+         self.command_valid = if self.raw_mode {
+             true
+         } else {

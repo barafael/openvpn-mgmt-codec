@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ delete ! in parse_client_statistics
+@@ -541,17 +541,17 @@
+             }
+             "post-decompress bytes" => {
+                 stats.post_decompress_bytes = Some(parse_u64(val, "post_decompress_bytes")?);
+             }
+             _ => {} // Forward-compat: ignore unknown keys
+         }
+     }
+ 
+-    if !found_tun_read {
++    if  /* ~ changed by cargo-mutants ~ */found_tun_read {
+         return Err(ParseStatusError::MissingStatisticsKey("TUN/TAP read bytes"));
+     }
+     if !found_tun_write {
+         return Err(ParseStatusError::MissingStatisticsKey(
+             "TUN/TAP write bytes",
+         ));
+     }
+     if !found_tcp_read {

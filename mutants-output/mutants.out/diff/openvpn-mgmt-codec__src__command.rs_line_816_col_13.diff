@@ -1,0 +1,36 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "client-auth-nt" in <impl FromStr for OvpnCommand>::from_str
+@@ -808,32 +808,17 @@
+                 };
+                 Ok(Self::ClientAuth {
+                     cid,
+                     kid,
+                     config_lines,
+                 })
+             }
+ 
+-            "client-auth-nt" => {
+-                let (cid_s, kid_s) =
+-                    args.split_once(char::is_whitespace)
+-                        .ok_or(CommandParseError::MissingArgs(
+-                            "usage: client-auth-nt <cid> <kid>",
+-                        ))?;
+-                Ok(Self::ClientAuthNt {
+-                    cid: cid_s
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?,
+-                    kid: kid_s
+-                        .trim()
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?,
+-                })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // Wire format per management-notes.txt:
+             //   client-deny <cid> <kid> "reason" ["client-reason"]
+             // Reason strings are quoted+escaped on the wire.
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+             "client-deny" => {
+                 let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+                     "usage: client-deny <cid> <kid> <reason> [client-reason]",

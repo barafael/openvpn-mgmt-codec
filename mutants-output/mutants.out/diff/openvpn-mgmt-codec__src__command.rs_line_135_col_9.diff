@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace <impl fmt::Display for RemoteEntryRange>::fmt -> fmt::Result with Ok(Default::default())
+@@ -127,21 +127,17 @@
+     },
+ 
+     /// All entries.
+     All,
+ }
+ 
+ impl fmt::Display for RemoteEntryRange {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        match self {
+-            Self::Single(index) => write!(f, "{index}"),
+-            Self::Range { from, end } => write!(f, "{from} {end}"),
+-            Self::All => f.write_str("all"),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// Every command the management interface accepts, modeled as a typed enum.
+ ///
+ /// The encoder handles all serialization — escaping, quoting, multi-line
+ /// block framing — so callers never assemble raw strings. The `Raw` variant
+ /// exists as an escape hatch for commands not yet modeled here.

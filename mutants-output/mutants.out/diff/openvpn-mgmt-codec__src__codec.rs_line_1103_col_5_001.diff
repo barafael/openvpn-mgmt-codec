@@ -1,0 +1,29 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_pkcs11id_entry_notif -> Option<OvpnMessage> with Some(Default::default())
+@@ -1095,25 +1095,17 @@
+ fn parse_pkcs11id_count(payload: &str) -> Option<Notification> {
+     let count = parse_field(payload.trim(), "pkcs11id_count")?;
+     Some(Notification::Pkcs11IdCount { count })
+ }
+ 
+ /// Parse `>PKCS11ID-ENTRY:'idx', ID:'id', BLOB:'blob'` from the notification
+ /// payload (after the kind and colon have been stripped).
+ fn parse_pkcs11id_entry_notif(payload: &str) -> Option<OvpnMessage> {
+-    let rest = payload.strip_prefix('\'')?;
+-    let (index, rest) = rest.split_once("', ID:'")?;
+-    let (id, rest) = rest.split_once("', BLOB:'")?;
+-    let blob = rest.strip_suffix('\'')?;
+-    Some(OvpnMessage::Pkcs11IdEntry {
+-        index: index.to_string(),
+-        id: id.to_string(),
+-        blob: blob.to_string(),
+-    })
++    Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse `Need 'name' ... MSG:message` from NEED-OK payload.
+ fn parse_need_ok(payload: &str) -> Option<Notification> {
+     // Format: Need 'name' confirmation MSG:message
+     let rest = payload.strip_prefix("Need '")?;
+     let (name, rest) = rest.split_once('\'')?;
+     let msg = rest.split_once("MSG:")?.1;

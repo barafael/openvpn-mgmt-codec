@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_bytecount -> Option<Notification> with Some(Default::default())
+@@ -1045,21 +1045,17 @@
+         remote_port,
+         local_addr,
+         local_port,
+         local_ipv6,
+     })
+ }
+ 
+ fn parse_bytecount(payload: &str) -> Option<Notification> {
+-    let (a, b) = payload.split_once(',')?;
+-    Some(Notification::ByteCount {
+-        bytes_in: parse_field(a, "bytecount bytes_in")?,
+-        bytes_out: parse_field(b, "bytecount bytes_out")?,
+-    })
++    Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_bytecount_cli(payload: &str) -> Option<Notification> {
+     let mut parts = payload.splitn(3, ',');
+     let cid = parse_field(parts.next()?, "bytecount_cli cid")?;
+     let bytes_in = parse_field(parts.next()?, "bytecount_cli bytes_in")?;
+     let bytes_out = parse_field(parts.next()?, "bytecount_cli bytes_out")?;
+     Some(Notification::ByteCountCli {

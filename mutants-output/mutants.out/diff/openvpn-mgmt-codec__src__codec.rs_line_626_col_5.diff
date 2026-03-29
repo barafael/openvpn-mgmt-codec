@@ -1,0 +1,44 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace write_block -> Result<(), io::Error> with Ok(())
+@@ -618,40 +618,17 @@
+ ) -> Result<(), io::Error> {
+     // Upper-bound byte count for the entire block on the wire:
+     //   header.len()  — header line text (e.g. ">client-auth 7 42")
+     //   + 1           — '\n' terminating the header
+     //   + Σ(l.len()+2)— each body line's text + "\r\n" (2 bytes)
+     //   + 4           — "END\n" block terminator
+     // This is a conservative estimate: sanitized lines may shrink or grow
+     // slightly, but over-reserving is harmless — only written bytes count.
+-    let total: usize =
+-        header.len() + 1 + lines.iter().map(|line| line.len() + 2).sum::<usize>() + 4;
+-    dst.reserve(total);
+-    dst.put_slice(header.as_bytes());
+-    dst.put_u8(b'\n');
+-    for line in lines {
+-        let clean = wire_safe(line, "block body line", mode)?;
+-        if *clean == *"END" {
+-            match mode {
+-                EncoderMode::Sanitize => {
+-                    dst.put_slice(b" END");
+-                    dst.put_u8(b'\n');
+-                    continue;
+-                }
+-                EncoderMode::Strict => {
+-                    return Err(io::Error::other(EncodeError::EndInBlockBody));
+-                }
+-            }
+-        }
+-        dst.put_slice(clean.as_bytes());
+-        dst.put_u8(b'\n');
+-    }
+-    dst.put_slice(b"END\n");
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// The password prompt.
+ ///
+ /// May arrive without a trailing newline
+ /// (OpenVPN ≥ 2.6 sends it as an interactive prompt, expecting
+ /// the password on the same line).
+ /// Handle this only when no complete line is available —

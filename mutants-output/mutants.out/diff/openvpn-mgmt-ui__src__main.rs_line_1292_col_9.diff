@@ -1,0 +1,29 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::revalidate_command with ()
+@@ -1284,25 +1284,17 @@
+         }
+         commands.push(OvpnCommand::Help);
+ 
+         commands
+     }
+ 
+     /// Recompute `command_valid` from the current input and raw-mode flag.
+     fn revalidate_command(&mut self) {
+-        let trimmed = self.command_input.trim();
+-        self.command_valid = if self.raw_mode {
+-            true
+-        } else {
+-            !trimmed.is_empty()
+-                && trimmed
+-                    .parse::<OvpnCommand>()
+-                    .is_ok_and(|cmd| !matches!(cmd, OvpnCommand::Raw(_)))
+-        };
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     fn reset_session_data(&mut self) {
+         self.vpn_state = None;
+         self.vpn_state_description = None;
+         self.local_ip = None;
+         self.remote_addr = None;
+         self.version_lines = None;

@@ -63,9 +63,9 @@ pub struct StatusResponse {
     /// Present in V2/V3, absent in V1.
     pub title: Option<String>,
 
-    /// Unix timestamp of the status snapshot.
+    /// Timestamp of the status snapshot.
     /// Present in V2/V3, absent in V1.
-    pub timestamp: Option<u64>,
+    pub timestamp: Option<crate::timestamp::UtcTimestamp>,
 
     /// Human-readable update time (e.g. `"2024-03-21 14:30:00"`).
     /// Present in V1 (`Updated,...`) and V2/V3 (`TIME,...,...`).
@@ -103,9 +103,10 @@ pub struct ConnectedClient {
     pub bytes_out: u64,
     /// Human-readable connection time.
     pub connected_since: String,
-    /// Unix timestamp of connection. V2/V3 only.
-    pub connected_since_t: Option<u64>,
-    /// Username (`UNDEF` if not using `--auth-user-pass`). V2/V3 only.
+    /// Timestamp of connection. V2/V3 only.
+    pub connected_since_t: Option<crate::timestamp::UtcTimestamp>,
+    /// Username. `None` when not using `--auth-user-pass` (OpenVPN sends
+    /// `"UNDEF"`, which the parser maps to `None`). V2/V3 only.
     pub username: Option<String>,
     /// Client ID. V2/V3 only.
     pub cid: Option<u64>,
@@ -126,8 +127,8 @@ pub struct RoutingEntry {
     pub real_address: String,
     /// Human-readable last reference time.
     pub last_ref: String,
-    /// Unix timestamp of last reference. V2/V3 only.
-    pub last_ref_t: Option<u64>,
+    /// Timestamp of last reference. V2/V3 only.
+    pub last_ref_t: Option<crate::timestamp::UtcTimestamp>,
 }
 
 /// Client-mode statistics from `OpenVPN STATISTICS`.
@@ -216,6 +217,19 @@ fn parse_optional_u64(s: &str) -> Option<u64> {
                 tracing::warn!(%error, value = s, "non-numeric optional u64 in status response")
             })
             .ok()
+    }
+}
+
+fn parse_optional_timestamp(s: &str) -> Option<crate::timestamp::UtcTimestamp> {
+    parse_optional_u64(s).map(crate::timestamp::UtcTimestamp)
+}
+
+/// Map OpenVPN's `"UNDEF"` sentinel to `None`.
+fn parse_optional_string(s: &str) -> Option<String> {
+    if s.is_empty() || s == "UNDEF" {
+        None
+    } else {
+        Some(s.to_string())
     }
 }
 
@@ -382,13 +396,8 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
             }
             "TIME" => {
                 status.updated = fields.get(1).map(|val| val.to_string());
-                status.timestamp = fields.get(2).and_then(|val| {
-                    val.parse()
-                        .inspect_err(|error| {
-                            tracing::warn!(%error, value = val, "non-numeric timestamp in TIME row")
-                        })
-                        .ok()
-                });
+                status.timestamp =
+                    fields.get(2).and_then(|val| parse_optional_timestamp(val));
             }
             "HEADER" => {
                 // Skip header rows — they describe columns, not data.
@@ -415,11 +424,13 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
                         bytes_in: parse_u64(cols[4], "bytes_received")?,
                         bytes_out: parse_u64(cols[5], "bytes_sent")?,
                         connected_since: cols[6].to_string(),
-                        connected_since_t: parse_optional_u64(cols.get(7).copied().unwrap_or("")),
-                        username: cols.get(8).map(|val| val.to_string()),
+                        connected_since_t: parse_optional_timestamp(
+                            cols.get(7).copied().unwrap_or(""),
+                        ),
+                        username: cols.get(8).and_then(|val| parse_optional_string(val)),
                         cid: cols.get(9).and_then(|val| parse_optional_u64(val)),
                         peer_id: cols.get(10).and_then(|val| parse_optional_u64(val)),
-                        cipher: cols.get(11).map(|val| val.to_string()),
+                        cipher: cols.get(11).and_then(|val| parse_optional_string(val)),
                     });
                 } else {
                     // Older layout: no IPv6, no PeerID, no Cipher
@@ -434,8 +445,8 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
                         bytes_in: parse_u64(cols[3], "bytes_received")?,
                         bytes_out: parse_u64(cols[4], "bytes_sent")?,
                         connected_since: cols.get(5).unwrap_or(&"").to_string(),
-                        connected_since_t: cols.get(6).and_then(|val| parse_optional_u64(val)),
-                        username: cols.get(7).map(|val| val.to_string()),
+                        connected_since_t: cols.get(6).and_then(|val| parse_optional_timestamp(val)),
+                        username: cols.get(7).and_then(|val| parse_optional_string(val)),
                         cid: None,
                         peer_id: None,
                         cipher: None,
@@ -452,7 +463,7 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
                     common_name: cols[1].to_string(),
                     real_address: cols[2].to_string(),
                     last_ref: cols[3].to_string(),
-                    last_ref_t: cols.get(4).and_then(|val| parse_optional_u64(val)),
+                    last_ref_t: cols.get(4).and_then(|val| parse_optional_timestamp(val)),
                 });
             }
             "GLOBAL_STATS" if fields.len() >= 3 => {
@@ -573,21 +584,27 @@ pub fn parse_client_statistics(lines: &[String]) -> Result<ClientStatistics, Par
 mod tests {
     use super::*;
 
+    /// Load a fixture file's content into the `Vec<String>` format that
+    /// `parse_status` / `parse_client_statistics` expect: one entry per
+    /// non-empty line, with the `END` terminator stripped.
+    fn fixture_lines(raw: &str) -> Vec<String> {
+        raw.lines()
+            .filter(|line| !line.is_empty() && *line != "END")
+            .map(String::from)
+            .collect()
+    }
+
     // --- V3 (tab-separated) ---
 
     #[test]
     fn v3_single_client() {
-        let lines: Vec<String> = include_str!("../tests/fixtures/status_v3.txt")
-            .lines()
-            .filter(|line| !line.is_empty() && *line != "END")
-            .map(String::from)
-            .collect();
+        let lines = fixture_lines(include_str!("../tests/fixtures/status_v3.txt"));
         let status = parse_status(&lines).unwrap();
         assert_eq!(
             status.title.as_deref(),
             Some("OpenVPN 2.6.8 x86_64-pc-linux-gnu")
         );
-        assert_eq!(status.timestamp, Some(1711031400));
+        assert_eq!(status.timestamp, Some(crate::timestamp::UtcTimestamp(1711031400)));
         assert_eq!(status.updated.as_deref(), Some("2024-03-21 14:30:00"));
         assert_eq!(status.clients.len(), 1);
         let client = &status.clients[0];
@@ -597,8 +614,8 @@ mod tests {
         assert!(client.virtual_ipv6.is_empty());
         assert_eq!(client.bytes_in, 1548576);
         assert_eq!(client.bytes_out, 984320);
-        assert_eq!(client.connected_since_t, Some(1711012500));
-        assert_eq!(client.username.as_deref(), Some("UNDEF"));
+        assert_eq!(client.connected_since_t, Some(crate::timestamp::UtcTimestamp(1711012500)));
+        assert_eq!(client.username, None); // "UNDEF" is mapped to None
         assert_eq!(client.cid, Some(0));
         assert_eq!(client.peer_id, Some(0));
         assert_eq!(client.cipher.as_deref(), Some("AES-256-GCM"));
@@ -606,7 +623,7 @@ mod tests {
         assert_eq!(status.routes.len(), 1);
         let route = &status.routes[0];
         assert_eq!(route.virtual_address, "10.8.0.6");
-        assert_eq!(route.last_ref_t, Some(1711031390));
+        assert_eq!(route.last_ref_t, Some(crate::timestamp::UtcTimestamp(1711031390)));
 
         assert_eq!(status.global_stats.len(), 1);
         assert_eq!(status.global_stats[0].0, "Max bcast/mcast queue length");
@@ -617,11 +634,7 @@ mod tests {
 
     #[test]
     fn v2_single_client() {
-        let lines: Vec<String> = include_str!("../tests/fixtures/status_v2.txt")
-            .lines()
-            .filter(|line| !line.is_empty() && *line != "END")
-            .map(String::from)
-            .collect();
+        let lines = fixture_lines(include_str!("../tests/fixtures/status_v2.txt"));
         let status = parse_status(&lines).unwrap();
         assert_eq!(status.clients.len(), 1);
         assert_eq!(status.clients[0].common_name, "client1");
@@ -631,11 +644,7 @@ mod tests {
 
     #[test]
     fn v2_full_multiple_clients() {
-        let lines: Vec<String> = include_str!("../tests/fixtures/status_v2_full.txt")
-            .lines()
-            .filter(|line| !line.is_empty() && *line != "END")
-            .map(String::from)
-            .collect();
+        let lines = fixture_lines(include_str!("../tests/fixtures/status_v2_full.txt"));
         let status = parse_status(&lines).unwrap();
         assert_eq!(status.clients.len(), 2);
         assert_eq!(status.clients[0].common_name, "ntafs");
@@ -658,11 +667,7 @@ mod tests {
 
     #[test]
     fn v2_old_openvpn_23() {
-        let lines: Vec<String> = include_str!("../tests/fixtures/status_v2_old.txt")
-            .lines()
-            .filter(|line| !line.is_empty() && *line != "END")
-            .map(String::from)
-            .collect();
+        let lines = fixture_lines(include_str!("../tests/fixtures/status_v2_old.txt"));
         let status = parse_status(&lines).unwrap();
         assert_eq!(
             status.title.as_deref(),
@@ -682,11 +687,7 @@ mod tests {
 
     #[test]
     fn v1_server_two_clients() {
-        let lines: Vec<String> = include_str!("../tests/fixtures/status_v1_server.txt")
-            .lines()
-            .filter(|line| !line.is_empty() && *line != "END")
-            .map(String::from)
-            .collect();
+        let lines = fixture_lines(include_str!("../tests/fixtures/status_v1_server.txt"));
         let status = parse_status(&lines).unwrap();
         assert!(status.title.is_none());
         assert!(status.timestamp.is_none());
@@ -705,11 +706,7 @@ mod tests {
 
     #[test]
     fn v1_server_empty() {
-        let lines: Vec<String> = include_str!("../tests/fixtures/status_v1_server_empty.txt")
-            .lines()
-            .filter(|line| !line.is_empty() && *line != "END")
-            .map(String::from)
-            .collect();
+        let lines = fixture_lines(include_str!("../tests/fixtures/status_v1_server_empty.txt"));
         let status = parse_status(&lines).unwrap();
         assert!(status.clients.is_empty());
         assert!(status.routes.is_empty());
@@ -718,12 +715,9 @@ mod tests {
 
     #[test]
     fn v1_server_many_clients() {
-        let lines: Vec<String> =
-            include_str!("../tests/fixtures/status_v1_server_many_clients.txt")
-                .lines()
-                .filter(|line| !line.is_empty() && *line != "END")
-                .map(String::from)
-                .collect();
+        let lines = fixture_lines(include_str!(
+            "../tests/fixtures/status_v1_server_many_clients.txt"
+        ));
         let status = parse_status(&lines).unwrap();
         assert_eq!(status.clients.len(), 3);
         assert_eq!(status.routes.len(), 3);
@@ -733,11 +727,7 @@ mod tests {
 
     #[test]
     fn client_statistics_basic() {
-        let lines: Vec<String> = include_str!("../tests/fixtures/status_v1_client.txt")
-            .lines()
-            .filter(|line| !line.is_empty() && *line != "END")
-            .map(String::from)
-            .collect();
+        let lines = fixture_lines(include_str!("../tests/fixtures/status_v1_client.txt"));
         let stats = parse_client_statistics(&lines).unwrap();
         assert_eq!(stats.tun_tap_read_bytes, 1548576);
         assert_eq!(stats.tun_tap_write_bytes, 984320);
@@ -749,11 +739,7 @@ mod tests {
 
     #[test]
     fn client_statistics_with_compression() {
-        let lines: Vec<String> = include_str!("../tests/fixtures/status_v1_client_full.txt")
-            .lines()
-            .filter(|line| !line.is_empty() && *line != "END")
-            .map(String::from)
-            .collect();
+        let lines = fixture_lines(include_str!("../tests/fixtures/status_v1_client_full.txt"));
         let stats = parse_client_statistics(&lines).unwrap();
         assert_eq!(stats.tun_tap_read_bytes, 153789941);
         assert_eq!(stats.pre_compress_bytes, Some(45388190));
@@ -995,5 +981,54 @@ mod tests {
         let status = parse_status(&lines).unwrap();
         assert_eq!(status.title.as_deref(), Some("Test"));
         assert_eq!(status.global_stats.len(), 1);
+    }
+
+    #[test]
+    fn v2v3_non_numeric_timestamp_in_time_row() {
+        let lines = vec![
+            "TIME,not-a-timestamp,also-not".to_string(),
+            "GLOBAL_STATS,key,val".to_string(),
+        ];
+        let status = parse_status(&lines).unwrap();
+        assert!(status.timestamp.is_none());
+        assert_eq!(status.updated.as_deref(), Some("not-a-timestamp"));
+    }
+
+    #[test]
+    fn v2v3_non_numeric_optional_field_in_client_list() {
+        // connected_since_t is an optional u64 — non-numeric should yield None.
+        let lines = vec![
+            "CLIENT_LIST,cn,10.0.0.1:1234,10.8.0.1,,100,200,2024-01-01,abc,UNDEF,1,0,AES-256-GCM"
+                .to_string(),
+        ];
+        let status = parse_status(&lines).unwrap();
+        assert_eq!(status.clients.len(), 1);
+        assert_eq!(status.clients[0].connected_since_t, None);
+    }
+
+    #[test]
+    fn client_statistics_missing_all_keys() {
+        let lines = vec!["OpenVPN STATISTICS".to_string(), "Updated,now".to_string()];
+        let err = parse_client_statistics(&lines).unwrap_err();
+        assert!(matches!(
+            err,
+            ParseStatusError::MissingStatisticsKey("TUN/TAP read bytes")
+        ));
+    }
+
+    #[test]
+    fn client_statistics_unknown_keys_ignored() {
+        let lines = vec![
+            "OpenVPN STATISTICS".to_string(),
+            "Updated,now".to_string(),
+            "TUN/TAP read bytes,100".to_string(),
+            "TUN/TAP write bytes,200".to_string(),
+            "TCP/UDP read bytes,300".to_string(),
+            "TCP/UDP write bytes,400".to_string(),
+            "Auth read bytes,0".to_string(),
+            "future-metric,999".to_string(),
+        ];
+        let stats = parse_client_statistics(&lines).unwrap();
+        assert_eq!(stats.tun_tap_read_bytes, 100);
     }
 }

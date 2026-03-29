@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::remote_entry_get -> Result<Vec<String>, ClientError> with Ok(vec![])
+@@ -592,18 +592,17 @@
+             .await
+     }
+ 
+     /// Retrieve `--remote` entries.
+     pub async fn remote_entry_get(
+         &mut self,
+         range: RemoteEntryRange,
+     ) -> Result<Vec<String>, ClientError> {
+-        self.send_expect_multi_line(OvpnCommand::RemoteEntryGet(range))
+-            .await
++        Ok(vec![]) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Push updates (server mode) --
+ 
+     /// Broadcast a push option update to all connected clients.
+     pub async fn push_update_broad(
+         &mut self,
+         options: impl Into<String>,

@@ -1,0 +1,32 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "mute" in <impl FromStr for OvpnCommand>::from_str
+@@ -628,28 +628,17 @@
+                         .map(|level| Self::Verb(Some(level)))
+                         .map_err(|_| CommandParseError::InvalidNumber {
+                             field: "verbosity",
+                             input: args.to_string(),
+                         })
+                 }
+             }
+ 
+-            "mute" => {
+-                if args.is_empty() {
+-                    Ok(Self::Mute(None))
+-                } else {
+-                    args.parse::<u32>()
+-                        .map(|threshold| Self::Mute(Some(threshold)))
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "mute threshold",
+-                            input: args.to_string(),
+-                        })
+-                }
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "bytecount" => args.parse::<u32>().map(Self::ByteCount).map_err(|_| {
+                 CommandParseError::InvalidNumber {
+                     field: "bytecount interval",
+                     input: args.to_string(),
+                 }
+             }),
+ 

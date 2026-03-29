@@ -74,7 +74,7 @@ async fn remote_accept() {
     timeout(Duration::from_secs(5), async {
         loop {
             let msg = recv_raw(&mut framed).await;
-            if let OvpnMessage::Notification(Notification::State { name, .. }) = msg {
+            if let OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) = msg {
                 states.push(name);
             }
         }
@@ -139,7 +139,7 @@ async fn remote_modify() {
     timeout(Duration::from_secs(5), async {
         loop {
             let msg = recv_raw(&mut framed).await;
-            if let OvpnMessage::Notification(Notification::State { name, .. }) = msg {
+            if let OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) = msg {
                 states.push(name);
             }
         }
@@ -197,7 +197,7 @@ async fn remote_skip() {
         while let Some(Ok(msg)) = framed.next().await {
             match msg {
                 OvpnMessage::Notification(Notification::Remote { .. })
-                | OvpnMessage::Notification(Notification::State { .. }) => {
+                | OvpnMessage::Notification(Notification::State(..)) => {
                     saw_remote_or_state = true;
                 }
                 _ => {}

@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ delete match arm "TCP/UDP write bytes" in parse_client_statistics
+@@ -517,20 +517,17 @@
+             "TUN/TAP write bytes" => {
+                 stats.tun_tap_write_bytes = parse_u64(val, "tun_tap_write_bytes")?;
+                 found_tun_write = true;
+             }
+             "TCP/UDP read bytes" => {
+                 stats.tcp_udp_read_bytes = parse_u64(val, "tcp_udp_read_bytes")?;
+                 found_tcp_read = true;
+             }
+-            "TCP/UDP write bytes" => {
+-                stats.tcp_udp_write_bytes = parse_u64(val, "tcp_udp_write_bytes")?;
+-                found_tcp_write = true;
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             "Auth read bytes" => {
+                 stats.auth_read_bytes = parse_u64(val, "auth_read_bytes")?;
+                 found_auth_read = true;
+             }
+             "pre-compress bytes" => {
+                 stats.pre_compress_bytes = Some(parse_u64(val, "pre_compress_bytes")?);
+             }
+             "post-compress bytes" => {

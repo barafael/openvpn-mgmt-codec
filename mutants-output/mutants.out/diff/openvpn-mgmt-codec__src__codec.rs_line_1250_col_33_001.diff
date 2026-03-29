@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace & with ^ in parse_password
+@@ -1242,17 +1242,17 @@
+ 
+         // Static challenge: SC:flag,challenge_text
+         // flag is a multi-bit integer: bit 0 = ECHO, bit 1 = FORMAT/CONCAT
+         if let Some(sc) = after_up.strip_prefix("SC:") {
+             let (flag_str, challenge) = sc.split_once(',')?;
+             let flags: u32 = parse_field(flag_str, "static challenge flags")?;
+             return Some(Notification::Password(
+                 PasswordNotification::StaticChallenge {
+-                    echo: flags & 1 != 0,
++                    echo: flags ^ /* ~ changed by cargo-mutants ~ */ 1 != 0,
+                     response_concat: flags & 2 != 0,
+                     challenge: challenge.to_string(),
+                 },
+             ));
+         }
+ 
+         // Plain username/password request
+         return Some(Notification::Password(PasswordNotification::NeedAuth {

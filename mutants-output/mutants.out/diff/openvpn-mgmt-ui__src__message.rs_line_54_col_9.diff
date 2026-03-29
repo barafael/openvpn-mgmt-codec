@@ -1,0 +1,25 @@
+--- openvpn-mgmt-ui/src/message.rs
++++ replace StartupStreamMode::to_stream_mode -> StreamMode with Default::default()
+@@ -46,21 +46,17 @@
+     On,
+     #[default]
+     OnAll,
+ }
+ 
+ impl StartupStreamMode {
+     /// Map to the protocol's [`StreamMode`].
+     pub fn to_stream_mode(self) -> StreamMode {
+-        match self {
+-            Self::Off => StreamMode::Off,
+-            Self::On => StreamMode::On,
+-            Self::OnAll => StreamMode::OnAll,
+-        }
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// Configurable options applied by the actor immediately after connecting.
+ #[derive(Debug, Clone)]
+ pub(crate) struct StartupOptions {
+     pub log: StartupStreamMode,
+     pub state: StartupStreamMode,

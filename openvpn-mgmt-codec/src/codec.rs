@@ -392,13 +392,15 @@ impl Encoder<OvpnCommand> for OvpnCodec {
                 write_line(dst, &format!("password \"Auth\" {escaped}"));
             }
             OvpnCommand::StaticChallengeResponse {
-                ref password_b64,
-                ref response_b64,
+                ref password,
+                ref response,
             } => {
-                let password =
-                    wire_safe(password_b64.expose(), "static-challenge password_b64", mode)?;
-                let resp = wire_safe(response_b64.expose(), "static-challenge response_b64", mode)?;
-                let value = format!("SCRV1:{password}:{resp}");
+                use base64::Engine;
+                let password_b64 =
+                    base64::engine::general_purpose::STANDARD.encode(password.expose());
+                let response_b64 =
+                    base64::engine::general_purpose::STANDARD.encode(response.expose());
+                let value = format!("SCRV1:{password_b64}:{response_b64}");
                 let escaped = quote(&escape(&value));
                 write_line(dst, &format!("password \"Auth\" {escaped}"));
             }
@@ -1023,7 +1025,8 @@ fn parse_state(payload: &str) -> Option<Notification> {
     //   (a) timestamp, (b) state, (c) desc, (d) local_ip, (e) remote_ip,
     //   (f) remote_port, (g) local_addr, (h) local_port, (i) local_ipv6
     let mut parts = payload.splitn(9, ',');
-    let timestamp = parse_field(parts.next()?, "state timestamp")?;
+    let timestamp =
+        crate::timestamp::UtcTimestamp(parse_field(parts.next()?, "state timestamp")?);
     let state_str = parts.next()?;
     let name = state_str
         .parse()
@@ -1036,7 +1039,7 @@ fn parse_state(payload: &str) -> Option<Notification> {
     let local_addr = parts.next().unwrap_or("").to_string();
     let local_port = parse_optional_port(parts.next().unwrap_or(""));
     let local_ipv6 = parts.next().unwrap_or("").to_string();
-    Some(Notification::State {
+    Some(Notification::State(crate::parsed_response::StateEntry {
         timestamp,
         name,
         description,
@@ -1046,7 +1049,7 @@ fn parse_state(payload: &str) -> Option<Notification> {
         local_addr,
         local_port,
         local_ipv6,
-    })
+    }))
 }
 
 fn parse_bytecount(payload: &str) -> Option<Notification> {
@@ -1071,7 +1074,7 @@ fn parse_bytecount_cli(payload: &str) -> Option<Notification> {
 
 fn parse_log(payload: &str) -> Option<Notification> {
     let (ts_str, rest) = payload.split_once(',')?;
-    let timestamp = parse_field(ts_str, "log timestamp")?;
+    let timestamp = crate::timestamp::UtcTimestamp(parse_field(ts_str, "log timestamp")?);
     let (level_str, message) = rest.split_once(',')?;
     Some(Notification::Log {
         timestamp,
@@ -1085,7 +1088,7 @@ fn parse_log(payload: &str) -> Option<Notification> {
 
 fn parse_echo(payload: &str) -> Option<Notification> {
     let (ts_str, param) = payload.split_once(',')?;
-    let timestamp = parse_field(ts_str, "echo timestamp")?;
+    let timestamp = crate::timestamp::UtcTimestamp(parse_field(ts_str, "echo timestamp")?);
     Some(Notification::Echo {
         timestamp,
         param: param.to_string(),
@@ -1276,8 +1279,8 @@ mod tests {
 
     use crate::{
         auth::AuthType, client_deny::ClientDeny, client_event::ClientEvent,
-        message::PasswordNotification, signal::Signal, status_format::StatusFormat,
-        stream_mode::StreamMode,
+        message::PasswordNotification, parsed_response::StateEntry, signal::Signal,
+        status_format::StatusFormat, stream_mode::StreamMode, timestamp::UtcTimestamp,
     };
 
     use bytes::BytesMut;
@@ -1630,14 +1633,14 @@ mod tests {
         assert_eq!(msgs.len(), 1);
         assert!(matches!(
             &msgs[0],
-            OvpnMessage::Notification(Notification::State {
-                timestamp: 1234567890,
+            OvpnMessage::Notification(Notification::State(StateEntry {
+                timestamp: UtcTimestamp(1234567890),
                 name: OpenVpnState::Connected,
                 description,
                 local_ip,
                 remote_ip,
                 ..
-            }) if description == "SUCCESS" && local_ip.is_empty() && remote_ip == "10.0.0.1"
+            })) if description == "SUCCESS" && local_ip.is_empty() && remote_ip == "10.0.0.1"
         ));
     }
 

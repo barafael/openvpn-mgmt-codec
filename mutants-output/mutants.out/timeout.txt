@@ -1,0 +1,12 @@
+openvpn-mgmt-codec/src/client.rs:284:20: replace < with == in ManagementClient<T>::set_version
+openvpn-mgmt-codec/src/client.rs:284:20: replace < with > in ManagementClient<T>::set_version
+openvpn-mgmt-codec/src/codec.rs:671:64: replace == with != in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:669:9: replace <impl Decoder for OvpnCodec>::decode -> Result<Option<Self::Item>, Self::Error> with Ok(None)
+openvpn-mgmt-codec/src/codec.rs:688:35: replace - with + in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:695:55: replace + with * in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:695:55: replace + with - in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:719:17: replace && with || in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:717:17: replace && with || in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:718:17: replace && with || in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:764:25: replace == with != in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:856:9: replace OvpnCodec::parse_notification -> Option<OvpnMessage> with None

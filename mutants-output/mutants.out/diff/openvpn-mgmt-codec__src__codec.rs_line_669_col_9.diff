@@ -1,0 +1,199 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace <impl Decoder for OvpnCodec>::decode -> Result<Option<Self::Item>, Self::Error> with Ok(None)
+@@ -661,195 +661,17 @@
+ 
+ // --- Decoder ---
+ 
+ impl Decoder for OvpnCodec {
+     type Item = OvpnMessage;
+     type Error = io::Error;
+ 
+     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+-        loop {
+-            // Find the next complete line.
+-            let Some(newline_pos) = src.iter().position(|&b| b == b'\n') else {
+-                // No complete line yet. Check for a password prompt
+-                // without a trailing newline (OpenVPN ≥ 2.6 sends it as
+-                // an interactive prompt with no line terminator).
+-                // We accept any buffer that starts with the prompt text
+-                // since no `\n` is present (checked above). Consume the
+-                // prompt and any trailing `\r`.
+-                if src.starts_with(PW_PROMPT) {
+-                    let mut consume = PW_PROMPT.len();
+-                    if src.get(consume) == Some(&b'\r') {
+-                        consume += 1;
+-                    }
+-                    src.advance(consume);
+-                    return Ok(Some(OvpnMessage::PasswordPrompt));
+-                }
+-                // Hint to Framed: reserve enough for a typical management
+-                // protocol line so the next read_buf doesn't micro-allocate.
+-                if src.capacity() - src.len() < 256 {
+-                    src.reserve(256);
+-                }
+-                return Ok(None); // Need more data.
+-            };
+-
+-            // Extract the line and advance the buffer past the newline.
+-            let line_bytes = src.split_to(newline_pos + 1);
+-            let line = match std::str::from_utf8(&line_bytes) {
+-                Ok(text) => text,
+-                Err(error) => {
+-                    // Reset all accumulation state so the decoder doesn't
+-                    // remain stuck in a half-finished multi-line block.
+-                    self.multi_line_buf = None;
+-                    self.client_notification = None;
+-                    self.expected_queue.clear();
+-                    return Err(io::Error::new(io::ErrorKind::InvalidData, error));
+-                }
+-            }
+-            .trim_end_matches(['\r', '\n'])
+-            .to_string();
+-
+-            // Bare newlines (empty lines) carry no information when the
+-            // decoder is not inside an accumulation context AND is not
+-            // expecting a multi-line response. Skip them silently rather
+-            // than emitting Unrecognized. This also absorbs the trailing
+-            // `\n` when the password prompt was already consumed without
+-            // a line terminator (OpenVPN ≥ 2.6).
+-            if line.is_empty()
+-                && self.multi_line_buf.is_none()
+-                && self.client_notification.is_none()
+-                && !matches!(self.expected_front(), ResponseKind::MultiLine)
+-            {
+-                continue;
+-            }
+-
+-            // --- Phase 1: Multi-line >CLIENT: accumulation ---
+-            //
+-            // When we're accumulating a CLIENT notification, >CLIENT:ENV
+-            // lines belong to it. The block terminates with >CLIENT:ENV,END.
+-            // The spec guarantees atomicity for CLIENT notifications, so
+-            // interleaving here should not occur. Any other line (SUCCESS,
+-            // ERROR, other notifications) falls through to normal processing
+-            // as a defensive measure.
+-            if let Some(ref mut accum) = self.client_notification
+-                && let Some(rest) = line.strip_prefix(">CLIENT:ENV,")
+-            {
+-                if rest == "END" {
+-                    let finished = self.client_notification.take().expect("guarded by if-let");
+-                    debug!(event = ?finished.event, cid = finished.cid, env_count = finished.env.len(), "decoded CLIENT notification");
+-                    return Ok(Some(OvpnMessage::Notification(Notification::Client {
+-                        event: finished.event,
+-                        cid: finished.cid,
+-                        kid: finished.kid,
+-                        env: finished.env,
+-                    })));
+-                } else {
+-                    // Parse "key=value" (value may contain '=').
+-                    let (k, v) = rest
+-                        .split_once('=')
+-                        .map(|(k, v)| (k.to_string(), v.to_string()))
+-                        .unwrap_or_else(|| (rest.to_string(), String::new()));
+-                    check_accumulation_limit(
+-                        accum.env.len(),
+-                        self.max_client_env_entries,
+-                        "client ENV",
+-                    )?;
+-                    accum.env.insert(k, v);
+-                    continue; // Next line.
+-                }
+-            }
+-            // Not a >CLIENT:ENV line — fall through to normal processing.
+-            // This handles interleaved notifications or unexpected output.
+-
+-            // --- Phase 2: Multi-line command response accumulation ---
+-            if let Some(ref mut buf) = self.multi_line_buf {
+-                if line == "END" {
+-                    let lines = self.multi_line_buf.take().expect("guarded by if-let");
+-                    self.consume_expected();
+-                    debug!(line_count = lines.len(), "decoded multi-line response");
+-                    return Ok(Some(OvpnMessage::MultiLine(lines)));
+-                }
+-                // The spec only guarantees atomicity for CLIENT notifications,
+-                // not for command responses — real-time notifications (>STATE:,
+-                // >LOG:, etc.) can arrive mid-response. Emit them immediately
+-                // without breaking the accumulation.
+-                if line.starts_with('>') {
+-                    if let Some(msg) = self.parse_notification(&line) {
+-                        return Ok(Some(msg));
+-                    }
+-                    // parse_notification returns None when it starts a CLIENT
+-                    // accumulation. Loop to read the next line.
+-                    continue;
+-                }
+-                check_accumulation_limit(
+-                    buf.len(),
+-                    self.max_multi_line_lines,
+-                    "multi-line response",
+-                )?;
+-                buf.push(line);
+-                continue; // Next line.
+-            }
+-
+-            // --- Phase 3: Self-describing lines ---
+-            //
+-            // SUCCESS: and ERROR: are unambiguous. We match on "SUCCESS:"
+-            // without requiring a trailing space — the doc shows
+-            // "SUCCESS: [text]" but text could be empty.
+-            if let Some(rest) = line.strip_prefix("SUCCESS:") {
+-                self.consume_expected();
+-                return Ok(Some(OvpnMessage::Success(
+-                    rest.strip_prefix(' ').unwrap_or(rest).to_string(),
+-                )));
+-            }
+-            if let Some(rest) = line.strip_prefix("ERROR:") {
+-                self.consume_expected();
+-                return Ok(Some(OvpnMessage::Error(
+-                    rest.strip_prefix(' ').unwrap_or(rest).to_string(),
+-                )));
+-            }
+-
+-            // Management interface password prompt (no `>` prefix).
+-            if line == "ENTER PASSWORD:" {
+-                return Ok(Some(OvpnMessage::PasswordPrompt));
+-            }
+-
+-            // Real-time notifications.
+-            if line.starts_with('>') {
+-                if let Some(msg) = self.parse_notification(&line) {
+-                    return Ok(Some(msg));
+-                }
+-                // Started CLIENT notification accumulation — loop for ENV lines.
+-                continue;
+-            }
+-
+-            // --- Phase 4: Ambiguous lines — use command tracking ---
+-            //
+-            // The line is not self-describing (no SUCCESS/ERROR/> prefix).
+-            // Use the expected-response state from the last encoded command
+-            // to decide how to frame it.
+-            match self.expected_front() {
+-                ResponseKind::MultiLine => {
+-                    if line == "END" {
+-                        // Edge case: empty multi-line block (header-less).
+-                        self.consume_expected();
+-                        return Ok(Some(OvpnMessage::MultiLine(Vec::new())));
+-                    }
+-                    self.multi_line_buf = Some(vec![line]);
+-                    continue; // Accumulate until END.
+-                }
+-                ResponseKind::SuccessOrError | ResponseKind::NoResponse => {
+-                    self.consume_expected();
+-                    warn!(line = %line, "unrecognized line from server");
+-                    return Ok(Some(OvpnMessage::Unrecognized {
+-                        line,
+-                        kind: UnrecognizedKind::UnexpectedLine,
+-                    }));
+-                }
+-            }
+-        }
++        Ok(None) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl OvpnCodec {
+     /// Parse a `>` notification line. Returns `Some(msg)` for single-line
+     /// notifications and `None` when a multi-line CLIENT accumulation has
+     /// been started (the caller should continue reading lines).
+     fn parse_notification(&mut self, line: &str) -> Option<OvpnMessage> {

@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete ! in next_token
+@@ -53,17 +53,17 @@
+                 }
+                 Some('\\') => match chars.next() {
+                     Some(escaped) => token.push(escaped),
+                     None => break,
+                 },
+                 Some(plain) => token.push(plain),
+             }
+         }
+-        if !closed {
++        if  /* ~ changed by cargo-mutants ~ */closed {
+             return None;
+         }
+         let rest = chars.as_str().trim_start();
+         Some((token, rest))
+     } else {
+         // Unquoted token: delimited by whitespace.
+         match input.split_once(char::is_whitespace) {
+             Some((tok, rest)) => Some((tok.to_string(), rest.trim_start())),

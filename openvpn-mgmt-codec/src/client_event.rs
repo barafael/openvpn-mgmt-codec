@@ -6,7 +6,7 @@ use std::str::FromStr;
 pub struct ParseClientEventError(String);
 
 /// The sub-type of a `>CLIENT:` notification.
-#[derive(Debug, Clone, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum::Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum ClientEvent {
     /// A new client is connecting (`>CLIENT:CONNECT`).

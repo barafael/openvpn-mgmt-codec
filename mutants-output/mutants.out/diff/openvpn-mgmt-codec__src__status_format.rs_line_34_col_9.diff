@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/status_format.rs
++++ replace <impl FromStr for StatusFormat>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -26,22 +26,17 @@
+     V3,
+ }
+ 
+ impl FromStr for StatusFormat {
+     type Err = ParseStatusFormatError;
+ 
+     /// Parse a status format version: `1`, `2`, or `3`.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {
+-        match input {
+-            "1" => Ok(Self::V1),
+-            "2" => Ok(Self::V2),
+-            "3" => Ok(Self::V3),
+-            other => Err(ParseStatusFormatError(other.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use test_case::test_case;
+ 

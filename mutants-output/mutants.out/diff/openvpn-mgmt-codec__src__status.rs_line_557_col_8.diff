@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ delete ! in parse_client_statistics
+@@ -549,17 +549,17 @@
+     if !found_tun_read {
+         return Err(ParseStatusError::MissingStatisticsKey("TUN/TAP read bytes"));
+     }
+     if !found_tun_write {
+         return Err(ParseStatusError::MissingStatisticsKey(
+             "TUN/TAP write bytes",
+         ));
+     }
+-    if !found_tcp_read {
++    if  /* ~ changed by cargo-mutants ~ */found_tcp_read {
+         return Err(ParseStatusError::MissingStatisticsKey("TCP/UDP read bytes"));
+     }
+     if !found_tcp_write {
+         return Err(ParseStatusError::MissingStatisticsKey(
+             "TCP/UDP write bytes",
+         ));
+     }
+     if !found_auth_read {

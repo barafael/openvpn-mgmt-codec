@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/auth.rs
++++ replace <impl FromStr for AuthRetryMode>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -69,22 +69,17 @@
+     NoInteract,
+ }
+ 
+ impl FromStr for AuthRetryMode {
+     type Err = ParseAuthRetryModeError;
+ 
+     /// Parse an auth-retry mode: `none`, `interact`, or `nointeract`.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {
+-        match input {
+-            "none" => Ok(Self::None),
+-            "interact" => Ok(Self::Interact),
+-            "nointeract" => Ok(Self::NoInteract),
+-            other => Err(ParseAuthRetryModeError(other.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use test_case::test_case;
+ 

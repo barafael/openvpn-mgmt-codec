@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::log -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![]))
+@@ -316,17 +316,17 @@
+     }
+ 
+     // -- Notification control --
+ 
+     /// Control real-time log streaming.
+     ///
+     /// Streaming modes return accumulated log history. `On`/`Off` return `Ok(None)`.
+     pub async fn log(&mut self, mode: StreamMode) -> Result<Option<Vec<String>>, ClientError> {
+-        self.send_stream_command(mode, OvpnCommand::Log(mode)).await
++        Ok(Some(vec![])) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Control real-time echo notifications.
+     pub async fn echo(&mut self, mode: StreamMode) -> Result<Option<Vec<String>>, ClientError> {
+         self.send_stream_command(mode, OvpnCommand::Echo(mode))
+             .await
+     }
+ 

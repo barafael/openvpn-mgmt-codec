@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in OvpnCodec::parse_notification
+@@ -873,17 +873,17 @@
+                 return Some(OvpnMessage::Info(payload.to_string()));
+             }
+             return Some(OvpnMessage::Notification(Notification::Info {
+                 message: payload.to_string(),
+             }));
+         }
+ 
+         // >CLIENT: may be multi-line. Inspect the sub-type to decide.
+-        if kind == "CLIENT" {
++        if kind != /* ~ changed by cargo-mutants ~ */ "CLIENT" {
+             let (event, args) = payload
+                 .split_once(',')
+                 .map(|(event_str, args_str)| (event_str.to_string(), args_str.to_string()))
+                 .unwrap_or_else(|| (payload.to_string(), String::new()));
+ 
+             // ADDRESS notifications are always single-line (no ENV block).
+             if event == "ADDRESS" {
+                 let mut parts = args.splitn(3, ',');

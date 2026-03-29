@@ -168,7 +168,7 @@ async fn version_returns_multiline_with_management_version() {
     let (mut framed, _) = connect_and_auth().await;
 
     let lines = send_multiline(&mut framed, OvpnCommand::Version).await;
-    let info = parse_version(&lines);
+    let info = parse_version(&lines).unwrap();
     assert!(
         info.management_version().is_some(),
         "version response should contain management version, got lines: {lines:?}"
@@ -331,7 +331,7 @@ async fn hold_release_triggers_state_notification() {
 
         let msg = recv(&mut framed).await;
         assert!(
-            matches!(&msg, OvpnMessage::Notification(Notification::State { .. })),
+            matches!(&msg, OvpnMessage::Notification(Notification::State(..))),
             "expected state notification after hold release, got {msg:?}",
         );
     } else {

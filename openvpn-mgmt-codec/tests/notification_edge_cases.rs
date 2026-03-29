@@ -43,11 +43,11 @@ fn state_minimal_fields() {
         expect_notification(">STATE:1711000000,CONNECTED,SUCCESS,10.0.0.2,1.2.3.4\n");
     assert!(matches!(
         notification,
-        Notification::State {
-            timestamp: 1711000000,
+        Notification::State(StateEntry {
+            timestamp: UtcTimestamp(1711000000),
             name: OpenVpnState::Connected,
             ..
-        }
+        })
     ));
 }
 
@@ -56,10 +56,10 @@ fn state_empty_optional_fields() {
     let notification = expect_notification(">STATE:1711000000,CONNECTING,,,,,,\n");
     assert!(matches!(
         notification,
-        Notification::State {
+        Notification::State(StateEntry {
             name: OpenVpnState::Connecting,
             ..
-        }
+        })
     ));
 }
 
@@ -88,11 +88,11 @@ fn state_with_all_nine_fields() {
     let notification = expect_notification(
         ">STATE:1711000000,CONNECTED,SUCCESS,10.0.0.2,1.2.3.4,1194,192.168.1.5,51234,fd00::1\n",
     );
-    if let Notification::State {
+    if let Notification::State(StateEntry {
         local_ipv6,
         remote_port,
         ..
-    } = notification
+    }) = notification
     {
         assert_eq!(local_ipv6, "fd00::1");
         assert_eq!(remote_port, Some(1194));
@@ -102,9 +102,27 @@ fn state_with_all_nine_fields() {
 }
 
 #[test]
+fn state_non_numeric_port_degrades_to_none() {
+    let notification = expect_notification(
+        ">STATE:1711000000,CONNECTED,SUCCESS,10.0.0.2,1.2.3.4,abc,192.168.1.5,xyz,\n",
+    );
+    if let Notification::State(StateEntry {
+        remote_port,
+        local_port,
+        ..
+    }) = notification
+    {
+        assert_eq!(remote_port, None, "non-numeric remote_port should be None");
+        assert_eq!(local_port, None, "non-numeric local_port should be None");
+    } else {
+        panic!("expected State");
+    }
+}
+
+#[test]
 fn state_unknown_state_name() {
     let notification = expect_notification(">STATE:1711000000,FUTURE_STATE,desc,,,,,\n");
-    if let Notification::State { name, .. } = notification {
+    if let Notification::State(StateEntry { name, .. }) = notification {
         assert!(matches!(name, OpenVpnState::Unknown(s) if s == "FUTURE_STATE"));
     } else {
         panic!("expected State");

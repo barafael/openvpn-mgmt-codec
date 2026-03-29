@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::client_kill -> Result<(), ClientError> with Ok(())
+@@ -531,18 +531,17 @@
+     }
+ 
+     /// Kill a client session by CID.
+     pub async fn client_kill(
+         &mut self,
+         cid: u64,
+         message: Option<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::ClientKill { cid, message })
+-            .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Defer authentication for a client.
+     pub async fn client_pending_auth(
+         &mut self,
+         cid: u64,
+         kid: u64,
+         extra: impl Into<String>,

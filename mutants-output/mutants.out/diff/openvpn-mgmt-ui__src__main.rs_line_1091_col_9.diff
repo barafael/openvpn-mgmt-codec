@@ -1,0 +1,42 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::ingest_success with ()
+@@ -1083,38 +1083,17 @@
+             }
+         }
+         Ok(())
+     }
+ 
+     /// Try to extract structured data from a `SUCCESS:` payload.
+     fn ingest_success(&mut self, payload: &str) {
+         // `pid` response: "pid=12345"
+-        if let Some(rest) = payload.strip_prefix("pid=")
+-            && let Ok(pid) = rest.parse::<u32>()
+-        {
+-            self.pid = Some(pid);
+-        }
+-
+-        // `load-stats` response: "nclients=0,bytesin=0,bytesout=0"
+-        if payload.starts_with("nclients=")
+-            && let Ok(stats) = openvpn_mgmt_codec::parsed_response::parse_load_stats(payload)
+-        {
+-            self.load_stats = Some(stats);
+-        }
+-
+-        // `verb` response: "verb=3"
+-        if let Some(rest) = payload.strip_prefix("verb=") {
+-            self.ops.verb_input = rest.to_string();
+-        }
+-
+-        // `mute` response: "mute=0"
+-        if let Some(rest) = payload.strip_prefix("mute=") {
+-            self.ops.mute_input = rest.to_string();
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Try to extract structured data from a multi-line response.
+     fn ingest_multiline(&mut self, lines: &[String]) {
+         // Version info: lines contain "OpenVPN Version:" and "Management Version:"
+         if lines
+             .iter()
+             .any(|line| line.contains("OpenVPN Version:") || line.contains("Management Version:"))

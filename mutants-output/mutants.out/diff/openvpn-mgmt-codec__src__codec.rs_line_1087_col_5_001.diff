@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_echo -> Option<Notification> with Some(Default::default())
+@@ -1079,22 +1079,17 @@
+             .parse()
+             .inspect_err(|error| warn!(%error, "unknown log level"))
+             .unwrap_or_else(|_| LogLevel::Unknown(level_str.to_string())),
+         message: message.to_string(),
+     })
+ }
+ 
+ fn parse_echo(payload: &str) -> Option<Notification> {
+-    let (ts_str, param) = payload.split_once(',')?;
+-    let timestamp = parse_field(ts_str, "echo timestamp")?;
+-    Some(Notification::Echo {
+-        timestamp,
+-        param: param.to_string(),
+-    })
++    Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_pkcs11id_count(payload: &str) -> Option<Notification> {
+     let count = parse_field(payload.trim(), "pkcs11id_count")?;
+     Some(Notification::Pkcs11IdCount { count })
+ }
+ 
+ /// Parse `>PKCS11ID-ENTRY:'idx', ID:'id', BLOB:'blob'` from the notification

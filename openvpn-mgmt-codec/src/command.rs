@@ -290,15 +290,15 @@ pub enum OvpnCommand {
     },
 
     /// Respond to a static challenge (SC).
-    /// Wire: `password "Auth" "SCRV1::base64_password::base64_response"`
+    /// Wire: `password "Auth" "SCRV1::base64(password)::base64(response)"`
     ///
-    /// The caller must pre-encode password and response as base64 —
-    /// this crate does not include a base64 dependency.
+    /// The password and response are provided as plaintext — the encoder
+    /// base64-encodes them before sending on the wire.
     StaticChallengeResponse {
-        /// Base64-encoded password (redacted in debug output).
-        password_b64: Redacted,
-        /// Base64-encoded challenge response (redacted in debug output).
-        response_b64: Redacted,
+        /// Plaintext password (redacted in debug output; base64-encoded on the wire).
+        password: Redacted,
+        /// Plaintext challenge response (redacted in debug output; base64-encoded on the wire).
+        response: Redacted,
     },
 
     // --- Interactive prompts (OpenVPN 2.1+) ---
@@ -2041,5 +2041,162 @@ mod tests {
     #[test]
     fn parse_cr_response_missing_arg() {
         assert!("cr-response".parse::<OvpnCommand>().is_err());
+    }
+
+    // --- FromStr: set-version invalid ---
+
+    #[test]
+    fn parse_set_version_non_numeric() {
+        let err = "version abc".parse::<OvpnCommand>().unwrap_err();
+        assert!(matches!(
+            err,
+            CommandParseError::InvalidChoice {
+                field: "version number",
+                ..
+            }
+        ));
+    }
+
+    // --- FromStr: remote skip non-numeric ---
+
+    #[test]
+    fn parse_remote_skip_n_non_numeric() {
+        let err = "remote SKIP abc".parse::<OvpnCommand>().unwrap_err();
+        assert!(matches!(
+            err,
+            CommandParseError::InvalidChoice {
+                field: "remote skip count",
+                ..
+            }
+        ));
+    }
+
+    // --- server_connection_sequence ---
+
+    #[test]
+    fn server_connection_sequence_with_bytecount() {
+        let cmds = server_connection_sequence(5, 0);
+        assert!(
+            cmds.iter()
+                .any(|cmd| matches!(cmd, OvpnCommand::EnvFilter(0)))
+        );
+        assert!(
+            cmds.iter()
+                .any(|cmd| matches!(cmd, OvpnCommand::ByteCount(5)))
+        );
+        assert!(
+            cmds.iter()
+                .any(|cmd| matches!(cmd, OvpnCommand::HoldRelease))
+        );
+    }
+
+    #[test]
+    fn server_connection_sequence_without_bytecount() {
+        let cmds = server_connection_sequence(0, 2);
+        assert!(
+            cmds.iter()
+                .any(|cmd| matches!(cmd, OvpnCommand::EnvFilter(2)))
+        );
+        assert!(
+            !cmds
+                .iter()
+                .any(|cmd| matches!(cmd, OvpnCommand::ByteCount(_)))
+        );
+        assert!(
+            cmds.iter()
+                .any(|cmd| matches!(cmd, OvpnCommand::HoldRelease))
+        );
+    }
+
+    // --- Debug redaction: canary leak detection ---
+    //
+    // Every OvpnCommand variant containing a Redacted field must never
+    // leak the secret through Debug or Display formatting. These tests
+    // use a known canary string and assert it never appears.
+
+    const CANARY: &str = "CANARY_SECRET_VALUE_12345";
+
+    #[test]
+    fn debug_redacts_username_value() {
+        let cmd = OvpnCommand::Username {
+            auth_type: AuthType::Auth,
+            value: Redacted::new(CANARY),
+        };
+        let dbg = format!("{cmd:?}");
+        assert!(
+            !dbg.contains(CANARY),
+            "Username value leaked in Debug: {dbg}"
+        );
+    }
+
+    #[test]
+    fn debug_redacts_password_value() {
+        let cmd = OvpnCommand::Password {
+            auth_type: AuthType::Auth,
+            value: Redacted::new(CANARY),
+        };
+        let dbg = format!("{cmd:?}");
+        assert!(
+            !dbg.contains(CANARY),
+            "Password value leaked in Debug: {dbg}"
+        );
+    }
+
+    #[test]
+    fn debug_redacts_challenge_response() {
+        let cmd = OvpnCommand::ChallengeResponse {
+            state_id: "some-state".to_string(),
+            response: Redacted::new(CANARY),
+        };
+        let dbg = format!("{cmd:?}");
+        assert!(
+            !dbg.contains(CANARY),
+            "ChallengeResponse leaked in Debug: {dbg}",
+        );
+    }
+
+    #[test]
+    fn debug_redacts_static_challenge_password() {
+        let cmd = OvpnCommand::StaticChallengeResponse {
+            password: Redacted::new(CANARY),
+            response: Redacted::new("other-secret"),
+        };
+        let dbg = format!("{cmd:?}");
+        assert!(
+            !dbg.contains(CANARY),
+            "StaticChallengeResponse password leaked in Debug: {dbg}",
+        );
+    }
+
+    #[test]
+    fn debug_redacts_static_challenge_response() {
+        let cmd = OvpnCommand::StaticChallengeResponse {
+            password: Redacted::new("other-secret"),
+            response: Redacted::new(CANARY),
+        };
+        let dbg = format!("{cmd:?}");
+        assert!(
+            !dbg.contains(CANARY),
+            "StaticChallengeResponse response leaked in Debug: {dbg}",
+        );
+    }
+
+    #[test]
+    fn debug_redacts_cr_response() {
+        let cmd = OvpnCommand::CrResponse {
+            response: Redacted::new(CANARY),
+        };
+        let dbg = format!("{cmd:?}");
+        assert!(!dbg.contains(CANARY), "CrResponse leaked in Debug: {dbg}");
+    }
+
+    #[test]
+    fn debug_redacts_management_password() {
+        let cmd = OvpnCommand::ManagementPassword(Redacted::new(CANARY));
+        let dbg = format!("{cmd:?}");
+        assert!(
+            !dbg.contains(CANARY),
+            "ManagementPassword leaked in Debug: {dbg}",
+        );
     }
 }

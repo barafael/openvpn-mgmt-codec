@@ -1,0 +1,29 @@
+--- openvpn-mgmt-codec/src/message.rs
++++ replace <impl fmt::Debug for RedactedEnv<'_>>::fmt -> fmt::Result with Ok(Default::default())
+@@ -311,25 +311,17 @@
+ 
+ /// Helper for Debug output: displays env entries, masking sensitive keys.
+ /// Constructed by `derive_more::Debug` on [`Notification::Client::env`].
+ #[allow(dead_code)] // used via derive_more::Debug attribute
+ struct RedactedEnv<'a>(&'a BTreeMap<String, String>);
+ 
+ impl fmt::Debug for RedactedEnv<'_> {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        f.debug_map()
+-            .entries(self.0.iter().map(|(k, v)| {
+-                if SENSITIVE_ENV_KEYS.contains(&k.as_str()) {
+-                    (k.as_str(), "<redacted>")
+-                } else {
+-                    (k.as_str(), v.as_str())
+-                }
+-            }))
+-            .finish()
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use crate::transport_protocol::TransportProtocol;
+     // --- Debug redaction ---

@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::raw_multi_line -> Result<Vec<String>, ClientError> with Ok(vec![String::new()])
+@@ -657,18 +657,17 @@
+             .await
+     }
+ 
+     /// Send a raw command expecting a multi-line response.
+     pub async fn raw_multi_line(
+         &mut self,
+         command: impl Into<String>,
+     ) -> Result<Vec<String>, ClientError> {
+-        self.send_expect_multi_line(OvpnCommand::RawMultiLine(command.into()))
+-            .await
++        Ok(vec![String::new()]) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use tokio::io::{AsyncWriteExt, DuplexStream};
+ 

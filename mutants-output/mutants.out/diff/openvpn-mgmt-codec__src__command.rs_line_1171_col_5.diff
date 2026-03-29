@@ -1,0 +1,31 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace server_connection_sequence -> Vec<OvpnCommand> with vec![]
+@@ -1163,27 +1163,17 @@
+ ///
+ /// let cmds = server_connection_sequence(5, 0);
+ ///
+ /// // Contains env-filter for server-mode client notifications.
+ /// assert!(cmds.iter().any(|cmd| matches!(cmd, OvpnCommand::EnvFilter(0))));
+ /// assert!(cmds.iter().any(|cmd| matches!(cmd, OvpnCommand::HoldRelease)));
+ /// ```
+ pub fn server_connection_sequence(bytecount_interval: u32, env_filter: u32) -> Vec<OvpnCommand> {
+-    let mut cmds = vec![
+-        OvpnCommand::Log(StreamMode::OnAll),
+-        OvpnCommand::StateStream(StreamMode::OnAll),
+-        OvpnCommand::Pid,
+-        OvpnCommand::EnvFilter(env_filter),
+-    ];
+-    if bytecount_interval > 0 {
+-        cmds.push(OvpnCommand::ByteCount(bytecount_interval));
+-    }
+-    cmds.push(OvpnCommand::HoldRelease);
+-    cmds
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]
+     fn into_static_str_labels() {

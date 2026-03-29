@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/version_info.rs
++++ replace VersionInfo::raw_lines -> &[String] with Vec::leak(Vec::new())
+@@ -93,17 +93,17 @@
+ 
+     /// The full `OpenVPN Version:` line (e.g. `"OpenVPN Version: OpenVPN 2.6.9 ..."`).
+     pub fn openvpn_version_line(&self) -> Option<&str> {
+         self.openvpn_version_line.as_deref()
+     }
+ 
+     /// All raw lines from the response, for anything not explicitly parsed.
+     pub fn raw_lines(&self) -> &[String] {
+-        &self.raw_lines
++        Vec::leak(Vec::new()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]

@@ -1,0 +1,24 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace throughput_chart_sized -> Element<'_, Message> with Element::from_iter([Default::default()])
+@@ -241,20 +241,17 @@
+ }
+ 
+ /// Create a chart widget element for the throughput history with a custom height.
+ pub(crate) fn throughput_chart_sized(
+     history: &ThroughputHistory,
+     height: f32,
+     palette: ChartPalette,
+ ) -> Element<'_, Message> {
+-    ChartWidget::new(ThroughputChart::new(history, palette))
+-        .width(Length::Fill)
+-        .height(Length::Fixed(height))
+-        .into()
++    Element::from_iter([Default::default()]) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ // -------------------------------------------------------------------
+ // View helper
+ // -------------------------------------------------------------------
+ 
+ #[cfg(test)]
+ mod tests {

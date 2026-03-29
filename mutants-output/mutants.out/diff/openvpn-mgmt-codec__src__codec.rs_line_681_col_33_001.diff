@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace += with *= in <impl Decoder for OvpnCodec>::decode
+@@ -673,17 +673,17 @@
+                 // without a trailing newline (OpenVPN ≥ 2.6 sends it as
+                 // an interactive prompt with no line terminator).
+                 // We accept any buffer that starts with the prompt text
+                 // since no `\n` is present (checked above). Consume the
+                 // prompt and any trailing `\r`.
+                 if src.starts_with(PW_PROMPT) {
+                     let mut consume = PW_PROMPT.len();
+                     if src.get(consume) == Some(&b'\r') {
+-                        consume += 1;
++                        consume *= /* ~ changed by cargo-mutants ~ */ 1;
+                     }
+                     src.advance(consume);
+                     return Ok(Some(OvpnMessage::PasswordPrompt));
+                 }
+                 // Hint to Framed: reserve enough for a typical management
+                 // protocol line so the next read_buf doesn't micro-allocate.
+                 if src.capacity() - src.len() < 256 {
+                     src.reserve(256);

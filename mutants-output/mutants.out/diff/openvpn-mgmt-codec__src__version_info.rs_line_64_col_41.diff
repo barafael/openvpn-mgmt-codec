@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/version_info.rs
++++ delete ! in VersionInfo::parse
+@@ -56,17 +56,17 @@
+             //   "Management Version: 5"            (OpenVPN ≥ 2.6.16)
+             // Future-proof: accept any line starting with "management"
+             // that contains "version" followed by a number.
+             if management_version.is_none()
+                 && lower.starts_with("management")
+                 && lower.contains("version")
+             {
+                 management_version = line
+-                    .rsplit(|chr: char| !chr.is_ascii_digit())
++                    .rsplit(|chr: char|  /* ~ changed by cargo-mutants ~ */chr.is_ascii_digit())
+                     .find(|part| !part.is_empty())
+                     .and_then(|part| {
+                         part.parse()
+                             .inspect_err(|error| {
+                                 tracing::warn!(%error, part, "non-numeric management version")
+                             })
+                             .ok()
+                     });

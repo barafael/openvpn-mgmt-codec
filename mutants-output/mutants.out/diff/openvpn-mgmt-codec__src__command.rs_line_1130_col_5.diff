@@ -1,0 +1,30 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace connection_sequence -> Vec<OvpnCommand> with vec![]
+@@ -1122,26 +1122,17 @@
+ ///
+ /// for cmd in connection_sequence(5) {
+ ///     framed.send(cmd).await?;
+ /// }
+ /// # Ok(())
+ /// # }
+ /// ```
+ pub fn connection_sequence(bytecount_interval: u32) -> Vec<OvpnCommand> {
+-    let mut cmds = vec![
+-        OvpnCommand::Log(StreamMode::OnAll),
+-        OvpnCommand::StateStream(StreamMode::OnAll),
+-        OvpnCommand::Pid,
+-    ];
+-    if bytecount_interval > 0 {
+-        cmds.push(OvpnCommand::ByteCount(bytecount_interval));
+-    }
+-    cmds.push(OvpnCommand::HoldRelease);
+-    cmds
++    vec![] /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Standard startup sequence for **server-mode** management clients.
+ ///
+ /// Returns the commands that a management program typically sends when
+ /// OpenVPN connects with `--management-client`. This covers the same
+ /// basics as [`connection_sequence`] (log/state streaming, PID, bytecount,
+ /// hold release) and additionally sets the `>CLIENT:ENV` filter level so

@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::exit -> Result<(), ClientError> with Ok(())
+@@ -640,18 +640,17 @@
+         .await
+     }
+ 
+     // -- Session lifecycle --
+ 
+     /// Close the management session. Consumes the client since the
+     /// connection is no longer usable.
+     pub async fn exit(mut self) -> Result<(), ClientError> {
+-        self.framed.send(OvpnCommand::Exit).await?;
+-        Ok(())
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Raw escape hatch --
+ 
+     /// Send a raw command expecting `SUCCESS:`/`ERROR:`.
+     pub async fn raw(&mut self, command: impl Into<String>) -> Result<String, ClientError> {
+         self.send_expect_success(OvpnCommand::Raw(command.into()))
+             .await

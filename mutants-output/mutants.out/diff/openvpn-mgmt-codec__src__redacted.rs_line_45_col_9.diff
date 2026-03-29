@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/redacted.rs
++++ replace Redacted::into_inner -> String with String::new()
+@@ -37,17 +37,17 @@
+     /// encoding it onto the wire. Avoid passing the result to logging or
+     /// display formatting.
+     pub fn expose(&self) -> &str {
+         &self.0
+     }
+ 
+     /// Consume the wrapper and return the inner string.
+     pub fn into_inner(self) -> String {
+-        self.0
++        String::new() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl From<String> for Redacted {
+     fn from(s: String) -> Self {
+         Self(s)
+     }
+ }

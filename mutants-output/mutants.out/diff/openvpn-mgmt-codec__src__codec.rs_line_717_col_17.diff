@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace && with || in <impl Decoder for OvpnCodec>::decode
+@@ -709,17 +709,17 @@
+ 
+             // Bare newlines (empty lines) carry no information when the
+             // decoder is not inside an accumulation context AND is not
+             // expecting a multi-line response. Skip them silently rather
+             // than emitting Unrecognized. This also absorbs the trailing
+             // `\n` when the password prompt was already consumed without
+             // a line terminator (OpenVPN ≥ 2.6).
+             if line.is_empty()
+-                && self.multi_line_buf.is_none()
++                || /* ~ changed by cargo-mutants ~ */ self.multi_line_buf.is_none()
+                 && self.client_notification.is_none()
+                 && !matches!(self.expected_front(), ResponseKind::MultiLine)
+             {
+                 continue;
+             }
+ 
+             // --- Phase 1: Multi-line >CLIENT: accumulation ---
+             //

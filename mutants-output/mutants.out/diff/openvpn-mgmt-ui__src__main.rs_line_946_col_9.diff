@@ -1,0 +1,22 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::apply_stream_mode -> Result<(), ActorGone> with Ok(())
+@@ -938,18 +938,17 @@
+ 
+     /// Send a stream-mode change for a given channel when connected.
+     fn apply_stream_mode(
+         &mut self,
+         label: &str,
+         mode: StartupStreamMode,
+         make_cmd: fn(StreamMode) -> OvpnCommand,
+     ) -> Result<(), ActorGone> {
+-        let stream = mode.to_stream_mode();
+-        self.send_if_connected(label, make_cmd(stream))
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     fn handle_ops(&mut self, msg: OpsMsg) -> Result<(), ActorGone> {
+         match msg {
+             // -- Query -----------------------------------------------------------
+             OpsMsg::Version => self.send_and_record("version", OvpnCommand::Version)?,
+             OpsMsg::Status1 => {
+                 self.send_and_record("status 1", OvpnCommand::Status(StatusFormat::V1))?;

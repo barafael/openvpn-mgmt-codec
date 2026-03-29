@@ -1,0 +1,23 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ delete match arm "post-compress bytes" in parse_client_statistics
+@@ -528,19 +528,17 @@
+             }
+             "Auth read bytes" => {
+                 stats.auth_read_bytes = parse_u64(val, "auth_read_bytes")?;
+                 found_auth_read = true;
+             }
+             "pre-compress bytes" => {
+                 stats.pre_compress_bytes = Some(parse_u64(val, "pre_compress_bytes")?);
+             }
+-            "post-compress bytes" => {
+-                stats.post_compress_bytes = Some(parse_u64(val, "post_compress_bytes")?);
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             "pre-decompress bytes" => {
+                 stats.pre_decompress_bytes = Some(parse_u64(val, "pre_decompress_bytes")?);
+             }
+             "post-decompress bytes" => {
+                 stats.post_decompress_bytes = Some(parse_u64(val, "post_decompress_bytes")?);
+             }
+             _ => {} // Forward-compat: ignore unknown keys
+         }

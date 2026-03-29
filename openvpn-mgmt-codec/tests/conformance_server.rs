@@ -283,7 +283,7 @@ async fn server_mode_lifecycle() {
                         | OvpnMessage::Notification(Notification::ByteCountCli { .. }) => {
                             bytecount_count += 1;
                         }
-                        OvpnMessage::Notification(Notification::State { .. }) => {
+                        OvpnMessage::Notification(Notification::State(..)) => {
                             state_count += 1;
                         }
                         OvpnMessage::Notification(_) => {}
@@ -427,7 +427,7 @@ async fn server_mode_lifecycle() {
     timeout(Duration::from_secs(5), async {
         loop {
             let msg = recv_raw(&mut framed).await;
-            if let OvpnMessage::Notification(Notification::State { name, .. }) = msg {
+            if let OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) = msg {
                 states.push(name);
             }
         }

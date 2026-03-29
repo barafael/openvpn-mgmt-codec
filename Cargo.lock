@@ -2680,6 +2680,8 @@ dependencies = [
  "futures-util",
  "pin-project-lite",
  "proptest",
+ "proptest-state-machine",
+ "serde",
  "strum",
  "test-case",
  "thiserror 2.0.18",
@@ -2989,6 +2991,15 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
+]
+
+[[package]]
+name = "proptest-state-machine"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1675727965d66ff6f335e7d398e477184da08f4bed22f1a7f0dbf2f077f56f2e"
+dependencies = [
+ "proptest",
 ]
 
 [[package]]

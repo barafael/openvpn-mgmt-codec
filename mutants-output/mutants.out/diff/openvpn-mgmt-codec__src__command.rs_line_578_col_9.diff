@@ -1,0 +1,501 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace <impl FromStr for OvpnCommand>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -570,497 +570,17 @@
+     ///
+     /// let cmd: OvpnCommand = "version".parse().unwrap();
+     /// assert_eq!(cmd, OvpnCommand::Version);
+     ///
+     /// let cmd: OvpnCommand = "state on all".parse().unwrap();
+     /// assert_eq!(cmd, OvpnCommand::StateStream(openvpn_mgmt_codec::StreamMode::OnAll));
+     /// ```
+     fn from_str(line: &str) -> Result<Self, Self::Err> {
+-        /// Shorthand for `Err(CommandParseError::MissingArgs(...))`.
+-        fn cmd_err<T>(msg: &'static str) -> Result<T, CommandParseError> {
+-            Err(CommandParseError::MissingArgs(msg))
+-        }
+-
+-        let line = line.trim();
+-        let (cmd, args) = line
+-            .split_once(char::is_whitespace)
+-            .map(|(c, a)| (c, a.trim()))
+-            .unwrap_or((line, ""));
+-
+-        match cmd {
+-            // --- Informational ---
+-            "version" if args.is_empty() => Ok(Self::Version),
+-            "version" => Ok(Self::SetVersion(args.parse().map_err(|_| {
+-                CommandParseError::InvalidChoice {
+-                    field: "version number",
+-                    input: args.to_string(),
+-                    hint: "expected a positive integer (e.g. version 2)",
+-                }
+-            })?)),
+-            "pid" => Ok(Self::Pid),
+-            "help" => Ok(Self::Help),
+-            "net" => Ok(Self::Net),
+-            "load-stats" => Ok(Self::LoadStats),
+-
+-            "status" => match args {
+-                "" | "1" => Ok(Self::Status(StatusFormat::V1)),
+-                "2" => Ok(Self::Status(StatusFormat::V2)),
+-                "3" => Ok(Self::Status(StatusFormat::V3)),
+-                _ => Err(CommandParseError::InvalidChoice {
+-                    field: "status format",
+-                    input: args.to_string(),
+-                    hint: "use 1, 2, or 3",
+-                }),
+-            },
+-
+-            "state" => match args {
+-                "" => Ok(Self::State),
+-                other => Ok(Self::StateStream(other.parse::<StreamMode>()?)),
+-            },
+-
+-            "log" => Ok(Self::Log(args.parse::<StreamMode>()?)),
+-            "echo" => Ok(Self::Echo(args.parse::<StreamMode>()?)),
+-
+-            "verb" => {
+-                if args.is_empty() {
+-                    Ok(Self::Verb(None))
+-                } else {
+-                    args.parse::<u8>()
+-                        .map(|level| Self::Verb(Some(level)))
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "verbosity",
+-                            input: args.to_string(),
+-                        })
+-                }
+-            }
+-
+-            "mute" => {
+-                if args.is_empty() {
+-                    Ok(Self::Mute(None))
+-                } else {
+-                    args.parse::<u32>()
+-                        .map(|threshold| Self::Mute(Some(threshold)))
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "mute threshold",
+-                            input: args.to_string(),
+-                        })
+-                }
+-            }
+-
+-            "bytecount" => args.parse::<u32>().map(Self::ByteCount).map_err(|_| {
+-                CommandParseError::InvalidNumber {
+-                    field: "bytecount interval",
+-                    input: args.to_string(),
+-                }
+-            }),
+-
+-            // --- Connection control ---
+-            "signal" => Ok(Self::Signal(args.parse::<Signal>()?)),
+-
+-            "kill" => {
+-                if args.is_empty() {
+-                    return cmd_err("kill requires a target (common name or proto:ip:port)");
+-                }
+-                let parts: Vec<&str> = args.splitn(3, ':').collect();
+-                if parts.len() == 3
+-                    && let Ok(port) = parts[2].parse::<u16>()
+-                {
+-                    return Ok(Self::Kill(KillTarget::Address {
+-                        protocol: parts[0]
+-                            .parse()
+-                            .inspect_err(|error| warn!(%error, "unknown transport protocol"))
+-                            .unwrap_or_else(|_| TransportProtocol::Unknown(parts[0].to_string())),
+-                        ip: parts[1].to_string(),
+-                        port,
+-                    }));
+-                }
+-                Ok(Self::Kill(KillTarget::CommonName(args.to_string())))
+-            }
+-
+-            "hold" => match args {
+-                "" => Ok(Self::HoldQuery),
+-                "on" => Ok(Self::HoldOn),
+-                "off" => Ok(Self::HoldOff),
+-                "release" => Ok(Self::HoldRelease),
+-                _ => Err(CommandParseError::InvalidChoice {
+-                    field: "hold argument",
+-                    input: args.to_string(),
+-                    hint: "use on, off, or release",
+-                }),
+-            },
+-
+-            // --- Authentication ---
+-            // Wire format per management-notes.txt:
+-            //   username "Auth" myuser
+-            //   password "Private Key" "foo\"bar"
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            //
+-            // Auth types are quoted and may contain spaces ("HTTP Proxy",
+-            // "SOCKS Proxy", "Private Key"), so we use quote-aware
+-            // tokenization matching manage.c's parse_line() lexer.
+-            // https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/manage.c
+-            "username" => {
+-                let (auth_type_str, rest) = next_token(args).ok_or(
+-                    CommandParseError::MissingArgs("usage: username <auth-type> <value>"),
+-                )?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: username <auth-type> <value>",
+-                ))?;
+-                Ok(Self::Username {
+-                    auth_type: auth_type_str
+-                        .parse()
+-                        .inspect_err(|error| warn!(%error, "unknown auth type"))
+-                        .unwrap_or(AuthType::Unknown(auth_type_str)),
+-                    value: value.into(),
+-                })
+-            }
+-
+-            "password" => {
+-                let (auth_type_str, rest) = next_token(args).ok_or(
+-                    CommandParseError::MissingArgs("usage: password <auth-type> <value>"),
+-                )?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: password <auth-type> <value>",
+-                ))?;
+-                Ok(Self::Password {
+-                    auth_type: auth_type_str
+-                        .parse()
+-                        .inspect_err(|error| warn!(%error, "unknown auth type"))
+-                        .unwrap_or(AuthType::Unknown(auth_type_str)),
+-                    value: value.into(),
+-                })
+-            }
+-
+-            "auth-retry" => Ok(Self::AuthRetry(args.parse::<AuthRetryMode>()?)),
+-
+-            "forget-passwords" => Ok(Self::ForgetPasswords),
+-
+-            // --- Interactive prompts ---
+-            "needok" => {
+-                let (name, resp) =
+-                    args.rsplit_once(char::is_whitespace)
+-                        .ok_or(CommandParseError::MissingArgs(
+-                            "usage: needok <name> ok|cancel",
+-                        ))?;
+-                let response = match resp {
+-                    "ok" => NeedOkResponse::Ok,
+-                    "cancel" => NeedOkResponse::Cancel,
+-                    _ => {
+-                        return Err(CommandParseError::InvalidChoice {
+-                            field: "needok response",
+-                            input: resp.to_string(),
+-                            hint: "use ok or cancel",
+-                        });
+-                    }
+-                };
+-                Ok(Self::NeedOk {
+-                    name: name.trim().to_string(),
+-                    response,
+-                })
+-            }
+-
+-            // Wire format per management-notes.txt:
+-            //   needstr <name> <value>
+-            // where <value> may be quoted+escaped.
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "needstr" => {
+-                let (name, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: needstr <name> <value>",
+-                ))?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: needstr <name> <value>",
+-                ))?;
+-                Ok(Self::NeedStr { name, value })
+-            }
+-
+-            // --- PKCS#11 ---
+-            "pkcs11-id-count" => Ok(Self::Pkcs11IdCount),
+-
+-            "pkcs11-id-get" => args.parse::<u32>().map(Self::Pkcs11IdGet).map_err(|_| {
+-                CommandParseError::InvalidNumber {
+-                    field: "pkcs11-id-get index",
+-                    input: args.to_string(),
+-                }
+-            }),
+-
+-            // --- Client management (server mode) ---
+-            "client-auth" => {
+-                let mut parts = args.splitn(3, char::is_whitespace);
+-                let cid = parts
+-                    .next()
+-                    .ok_or(CommandParseError::MissingArgs(
+-                        "usage: client-auth <cid> <kid> [config-lines]",
+-                    ))?
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
+-                let kid = parts
+-                    .next()
+-                    .ok_or(CommandParseError::MissingArgs(
+-                        "usage: client-auth <cid> <kid> [config-lines]",
+-                    ))?
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
+-                let config_lines = match parts.next() {
+-                    Some(rest) => rest
+-                        .split(',')
+-                        .map(|line| line.trim().to_string())
+-                        .collect(),
+-                    None => vec![],
+-                };
+-                Ok(Self::ClientAuth {
+-                    cid,
+-                    kid,
+-                    config_lines,
+-                })
+-            }
+-
+-            "client-auth-nt" => {
+-                let (cid_s, kid_s) =
+-                    args.split_once(char::is_whitespace)
+-                        .ok_or(CommandParseError::MissingArgs(
+-                            "usage: client-auth-nt <cid> <kid>",
+-                        ))?;
+-                Ok(Self::ClientAuthNt {
+-                    cid: cid_s
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?,
+-                    kid: kid_s
+-                        .trim()
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?,
+-                })
+-            }
+-
+-            // Wire format per management-notes.txt:
+-            //   client-deny <cid> <kid> "reason" ["client-reason"]
+-            // Reason strings are quoted+escaped on the wire.
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "client-deny" => {
+-                let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let cid = cid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
+-                let (kid_str, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let kid = kid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
+-                let (reason, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let client_reason = next_token(rest).map(|(cr, _)| cr);
+-                Ok(Self::ClientDeny(ClientDeny {
+-                    cid,
+-                    kid,
+-                    reason,
+-                    client_reason,
+-                }))
+-            }
+-
+-            "client-kill" => {
+-                let (cid_str, message) = match args.split_once(char::is_whitespace) {
+-                    Some((c, m)) => (c, Some(m.trim().to_string())),
+-                    None => (args, None),
+-                };
+-                let cid = cid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::InvalidNumber {
+-                        field: "client-kill CID",
+-                        input: cid_str.to_string(),
+-                    })?;
+-                Ok(Self::ClientKill { cid, message })
+-            }
+-
+-            // --- Remote/Proxy override ---
+-            "remote" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+-                ["accept" | "ACCEPT"] => Ok(Self::Remote(RemoteAction::Accept)),
+-                ["skip" | "SKIP"] => Ok(Self::Remote(RemoteAction::Skip)),
+-                ["skip" | "SKIP", n] => Ok(Self::Remote(RemoteAction::SkipN(n.parse().map_err(
+-                    |_| CommandParseError::InvalidChoice {
+-                        field: "remote skip count",
+-                        input: n.to_string(),
+-                        hint: "expected a positive integer (e.g. remote SKIP 3)",
+-                    },
+-                )?))),
+-                ["mod" | "MOD", host, port] => Ok(Self::Remote(RemoteAction::Modify {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                })),
+-                _ => cmd_err("usage: remote accept|skip [n]|mod <host> <port>"),
+-            },
+-
+-            "proxy" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+-                ["none" | "NONE"] => Ok(Self::Proxy(ProxyAction::None)),
+-                ["http" | "HTTP", host, port] => Ok(Self::Proxy(ProxyAction::Http {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                    non_cleartext_only: false,
+-                })),
+-                ["http" | "HTTP", host, port, "nct"] => Ok(Self::Proxy(ProxyAction::Http {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                    non_cleartext_only: true,
+-                })),
+-                ["socks" | "SOCKS", host, port] => Ok(Self::Proxy(ProxyAction::Socks {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                })),
+-                _ => cmd_err("usage: proxy none|http <host> <port> [nct]|socks <host> <port>"),
+-            },
+-
+-            // --- ENV filter ---
+-            "env-filter" => {
+-                let level = if args.is_empty() {
+-                    0
+-                } else {
+-                    args.parse::<u32>()
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "env-filter level",
+-                            input: args.to_string(),
+-                        })?
+-                };
+-                Ok(Self::EnvFilter(level))
+-            }
+-
+-            // --- Remote entry queries ---
+-            "remote-entry-count" => Ok(Self::RemoteEntryCount),
+-
+-            "remote-entry-get" => {
+-                if args.is_empty() {
+-                    return cmd_err("usage: remote-entry-get i|all [j]");
+-                }
+-                let range = if args == "all" {
+-                    RemoteEntryRange::All
+-                } else {
+-                    let mut parts = args.splitn(2, char::is_whitespace);
+-                    let from = parts.next().unwrap().parse::<u32>().map_err(|_| {
+-                        CommandParseError::InvalidNumber {
+-                            field: "remote-entry-get index",
+-                            input: args.to_string(),
+-                        }
+-                    })?;
+-                    match parts.next() {
+-                        Some(to_str) => {
+-                            let end = to_str.trim().parse::<u32>().map_err(|_| {
+-                                CommandParseError::InvalidNumber {
+-                                    field: "remote-entry-get end index",
+-                                    input: to_str.to_string(),
+-                                }
+-                            })?;
+-                            RemoteEntryRange::Range { from, end }
+-                        }
+-                        None => RemoteEntryRange::Single(from),
+-                    }
+-                };
+-                Ok(Self::RemoteEntryGet(range))
+-            }
+-
+-            // --- Push updates ---
+-            // Wire format per management-notes.txt:
+-            //   push-update-broad "options"
+-            //   push-update-cid <cid> "options"
+-            // Options are quoted+escaped on the wire.
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "push-update-broad" => {
+-                let (options, _) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-broad <options>",
+-                ))?;
+-                Ok(Self::PushUpdateBroad { options })
+-            }
+-
+-            "push-update-cid" => {
+-                let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-cid <cid> <options>",
+-                ))?;
+-                let cid = cid_str.parse::<u64>().map_err(|_| {
+-                    CommandParseError::MissingArgs("push-update-cid: cid must be a number")
+-                })?;
+-                let (options, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-cid <cid> <options>",
+-                ))?;
+-                Ok(Self::PushUpdateCid { cid, options })
+-            }
+-
+-            // --- Extended client management ---
+-            // Wire format per management-notes.txt:
+-            //   client-pending-auth <cid> <kid> <extra> <timeout>
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "client-pending-auth" => {
+-                let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-pending-auth <cid> <kid> <extra> <timeout>",
+-                ))?;
+-                let cid = cid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
+-                let (kid_str, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-pending-auth <cid> <kid> <extra> <timeout>",
+-                ))?;
+-                let kid = kid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
+-                let (extra, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-pending-auth <cid> <kid> <extra> <timeout>",
+-                ))?;
+-                let (timeout_str, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-pending-auth <cid> <kid> <extra> <timeout>",
+-                ))?;
+-                let timeout =
+-                    timeout_str
+-                        .parse::<u32>()
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "client-pending-auth timeout",
+-                            input: timeout_str,
+-                        })?;
+-                Ok(Self::ClientPendingAuth {
+-                    cid,
+-                    kid,
+-                    extra,
+-                    timeout,
+-                })
+-            }
+-
+-            // Wire format per management-notes.txt:
+-            //   cr-response <base64-response>
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "cr-response" => {
+-                let (response, _) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: cr-response <response>",
+-                ))?;
+-                Ok(Self::CrResponse {
+-                    response: Redacted::new(response),
+-                })
+-            }
+-
+-            // --- Raw multi-line ---
+-            "raw-ml" => {
+-                if args.is_empty() {
+-                    return cmd_err("usage: raw-ml <command>");
+-                }
+-                Ok(Self::RawMultiLine(args.to_string()))
+-            }
+-
+-            // --- Lifecycle ---
+-            "exit" => Ok(Self::Exit),
+-            "quit" => Ok(Self::Quit),
+-
+-            // --- Fallback: send as raw command ---
+-            _ => Ok(Self::Raw(line.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// The standard startup sequence that most management clients send after
+ /// connecting.
+ ///
+ /// This is the pattern used by `node-openvpn` and other clients: enable
+ /// log streaming, request the PID, start byte-count notifications, and

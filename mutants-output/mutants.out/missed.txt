@@ -1,0 +1,86 @@
+openvpn-mgmt-codec/src/client.rs:239:9: replace ManagementClient<T>::client_statistics -> Result<ClientStatistics, ClientError> with Ok(Default::default())
+openvpn-mgmt-codec/src/client.rs:283:9: replace ManagementClient<T>::set_version -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:284:20: replace < with <= in ManagementClient<T>::set_version
+openvpn-mgmt-codec/src/client.rs:329:9: replace ManagementClient<T>::echo -> Result<Option<Vec<String>>, ClientError> with Ok(None)
+openvpn-mgmt-codec/src/client.rs:336:9: replace ManagementClient<T>::bytecount -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:343:9: replace ManagementClient<T>::signal -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:348:9: replace ManagementClient<T>::kill -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:380:9: replace ManagementClient<T>::username -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:364:9: replace ManagementClient<T>::hold_off -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:359:9: replace ManagementClient<T>::hold_on -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:393:9: replace ManagementClient<T>::password -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:407:9: replace ManagementClient<T>::forget_passwords -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:416:9: replace ManagementClient<T>::challenge_response -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:402:9: replace ManagementClient<T>::auth_retry -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:429:9: replace ManagementClient<T>::static_challenge_response -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:438:9: replace ManagementClient<T>::cr_response -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:452:9: replace ManagementClient<T>::need_ok -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:465:9: replace ManagementClient<T>::need_str -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:489:9: replace ManagementClient<T>::rsa_sig -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:495:9: replace ManagementClient<T>::pk_sig -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:501:9: replace ManagementClient<T>::certificate -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:514:9: replace ManagementClient<T>::client_auth -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:524:9: replace ManagementClient<T>::client_auth_nt -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:539:9: replace ManagementClient<T>::client_kill -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:530:9: replace ManagementClient<T>::client_deny -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:551:9: replace ManagementClient<T>::client_pending_auth -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:564:9: replace ManagementClient<T>::remote -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:569:9: replace ManagementClient<T>::proxy -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:584:9: replace ManagementClient<T>::env_filter -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:623:9: replace ManagementClient<T>::push_update_cid -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:611:9: replace ManagementClient<T>::push_update_broad -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:637:9: replace ManagementClient<T>::management_password -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/client.rs:648:9: replace ManagementClient<T>::exit -> Result<(), ClientError> with Ok(())
+openvpn-mgmt-codec/src/codec.rs:688:47: replace < with == in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:688:47: replace < with > in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/codec.rs:688:47: replace < with <= in <impl Decoder for OvpnCodec>::decode
+openvpn-mgmt-codec/src/command.rs:544:36: replace match guard *n < 4 with true in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:544:36: replace match guard *n < 4 with false in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:544:39: replace < with == in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:544:39: replace < with > in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:544:39: replace < with <= in OvpnCommand::expected_response
+openvpn-mgmt-codec/src/command.rs:1177:27: replace > with < in server_connection_sequence
+openvpn-mgmt-codec/src/command.rs:1177:27: replace > with == in server_connection_sequence
+openvpn-mgmt-codec/src/command.rs:1177:27: replace > with >= in server_connection_sequence
+openvpn-mgmt-codec/src/stream.rs:108:9: replace <impl Stream for Classified<S>>::size_hint -> (usize, Option<usize>) with (0, Some(0))
+openvpn-mgmt-codec/src/stream.rs:108:9: replace <impl Stream for Classified<S>>::size_hint -> (usize, Option<usize>) with (0, None)
+openvpn-mgmt-codec/src/stream.rs:108:9: replace <impl Stream for Classified<S>>::size_hint -> (usize, Option<usize>) with (0, Some(1))
+openvpn-mgmt-codec/src/stream.rs:108:9: replace <impl Stream for Classified<S>>::size_hint -> (usize, Option<usize>) with (1, None)
+openvpn-mgmt-codec/src/stream.rs:108:9: replace <impl Stream for Classified<S>>::size_hint -> (usize, Option<usize>) with (1, Some(0))
+openvpn-mgmt-codec/src/stream.rs:108:9: replace <impl Stream for Classified<S>>::size_hint -> (usize, Option<usize>) with (1, Some(1))
+openvpn-mgmt-codec/src/timestamp.rs:63:47: replace - with + in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:47: replace - with / in days_to_ymd
+openvpn-mgmt-codec/src/timestamp.rs:63:33: replace + with - in days_to_ymd
+openvpn-mgmt-ui/src/main.rs:178:5: replace main -> iced::Result with Ok(Default::default())
+openvpn-mgmt-ui/src/main.rs:605:25: delete field rate_out from struct DemoState expression in App::update
+openvpn-mgmt-ui/src/main.rs:604:25: delete field rate_in from struct DemoState expression in App::update
+openvpn-mgmt-ui/src/main.rs:642:9: replace App::handle_ovpn_message with ()
+openvpn-mgmt-ui/src/main.rs:679:9: replace App::handle_notification with ()
+openvpn-mgmt-ui/src/main.rs:905:9: replace App::handle_startup -> Result<(), ActorGone> with Ok(())
+openvpn-mgmt-ui/src/main.rs:946:9: replace App::apply_stream_mode -> Result<(), ActorGone> with Ok(())
+openvpn-mgmt-ui/src/main.rs:951:9: replace App::handle_ops -> Result<(), ActorGone> with Ok(())
+openvpn-mgmt-ui/src/main.rs:1118:9: replace App::ingest_multiline with ()
+openvpn-mgmt-ui/src/main.rs:1091:9: replace App::ingest_success with ()
+openvpn-mgmt-ui/src/main.rs:1162:9: replace App::console_entry_text -> Option<String> with None
+openvpn-mgmt-ui/src/main.rs:1162:9: replace App::console_entry_text -> Option<String> with Some(String::new())
+openvpn-mgmt-ui/src/main.rs:1174:9: replace App::append_command_response with ()
+openvpn-mgmt-ui/src/main.rs:1162:9: replace App::console_entry_text -> Option<String> with Some("xyzzy".into())
+openvpn-mgmt-ui/src/main.rs:1184:9: replace App::append_command_response_lines with ()
+openvpn-mgmt-ui/src/main.rs:1193:9: replace App::add_log with ()
+openvpn-mgmt-ui/src/main.rs:1212:9: replace App::send_if_connected -> Result<(), ActorGone> with Ok(())
+openvpn-mgmt-ui/src/main.rs:1205:9: replace App::send_actor -> Result<(), ActorGone> with Ok(())
+openvpn-mgmt-ui/src/main.rs:1235:9: replace App::on_actor_gone with ()
+openvpn-mgmt-ui/src/main.rs:1221:9: replace App::send_and_record -> Result<(), ActorGone> with Ok(())
+openvpn-mgmt-ui/src/main.rs:1244:9: replace App::build_startup_commands -> Vec<OvpnCommand> with vec![]
+openvpn-mgmt-ui/src/main.rs:1304:9: replace App::reset_session_data with ()
+openvpn-mgmt-ui/src/main.rs:1292:9: replace App::revalidate_command with ()
+openvpn-mgmt-ui/src/chart.rs:39:5: replace to_rgb -> RGBColor with Default::default()
+openvpn-mgmt-ui/src/chart.rs:40:14: replace * with / in to_rgb
+openvpn-mgmt-ui/src/chart.rs:40:14: replace * with + in to_rgb
+openvpn-mgmt-ui/src/chart.rs:41:14: replace * with + in to_rgb
+openvpn-mgmt-ui/src/chart.rs:41:14: replace * with / in to_rgb
+openvpn-mgmt-ui/src/chart.rs:42:14: replace * with + in to_rgb
+openvpn-mgmt-ui/src/chart.rs:42:14: replace * with / in to_rgb
+openvpn-mgmt-ui/src/chart.rs:146:9: replace <impl Chart<Message> for ThroughputChart<'_>>::draw_chart with ()
+openvpn-mgmt-ui/src/chart.rs:226:5: replace format_rate_public -> String with String::new()
+openvpn-mgmt-ui/src/chart.rs:226:5: replace format_rate_public -> String with "xyzzy".into()

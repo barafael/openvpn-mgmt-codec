@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace OvpnCodec::expected_front -> ResponseKind with Default::default()
+@@ -242,20 +242,17 @@
+         self.encoder_mode = mode;
+         self
+     }
+ 
+     /// Peek at the expected response kind for the next unmatched command.
+     /// Falls back to `SuccessOrError` when no command is pending (defensive;
+     /// self-describing SUCCESS/ERROR lines will still decode correctly).
+     fn expected_front(&self) -> ResponseKind {
+-        self.expected_queue
+-            .front()
+-            .copied()
+-            .unwrap_or(ResponseKind::SuccessOrError)
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Pop the front response kind after a complete response has been
+     /// decoded (Success, Error, MultiLine, or NoResponse).
+     fn consume_expected(&mut self) {
+         self.expected_queue.pop_front();
+     }
+ }

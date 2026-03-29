@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/stream.rs
++++ replace <impl From<OvpnMessage> for ManagementEvent>::from -> Self with Default::default()
+@@ -66,20 +66,17 @@
+     Response(OvpnMessage),
+ 
+     /// A real-time notification from the daemon.
+     Notification(Notification),
+ }
+ 
+ impl From<OvpnMessage> for ManagementEvent {
+     fn from(msg: OvpnMessage) -> Self {
+-        match msg {
+-            OvpnMessage::Notification(notification) => Self::Notification(notification),
+-            other => Self::Response(other),
+-        }
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ pin_project! {
+     /// A stream of [`ManagementEvent`]s, produced by
+     /// [`ClassifyExt::classify`].
+     ///
+     /// Each incoming `Result<OvpnMessage, io::Error>` is mapped through

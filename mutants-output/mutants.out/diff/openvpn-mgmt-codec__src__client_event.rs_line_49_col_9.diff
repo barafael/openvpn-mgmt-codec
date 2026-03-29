@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/client_event.rs
++++ replace <impl FromStr for ClientEvent>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -41,23 +41,17 @@
+     ///
+     /// Recognized values: `CONNECT`, `REAUTH`, `ESTABLISHED`, `DISCONNECT`.
+     /// Returns `Err` for anything else — use [`ClientEvent::Unknown`]
+     /// explicitly if forward-compatible fallback is desired.
+     ///
+     /// Note: `CR_RESPONSE` is handled separately in the codec because it
+     /// carries an inline base64 field; it is not recognized by `FromStr`.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {
+-        match input {
+-            "CONNECT" => Ok(Self::Connect),
+-            "REAUTH" => Ok(Self::Reauth),
+-            "ESTABLISHED" => Ok(Self::Established),
+-            "DISCONNECT" => Ok(Self::Disconnect),
+-            other => Err(ParseClientEventError(other.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]

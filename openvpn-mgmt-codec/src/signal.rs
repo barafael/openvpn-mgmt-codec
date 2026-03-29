@@ -7,7 +7,7 @@ pub struct ParseSignalError(String);
 
 /// Signals that can be sent to the OpenVPN daemon via the management
 /// interface. These are sent as string names, not actual Unix signals.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display)]
 pub enum Signal {
     /// Soft restart — re-read config, renegotiate TLS.
     #[strum(to_string = "SIGHUP")]

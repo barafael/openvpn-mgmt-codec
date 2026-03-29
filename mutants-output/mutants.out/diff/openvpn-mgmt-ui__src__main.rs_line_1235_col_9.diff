@@ -1,0 +1,24 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::on_actor_gone with ()
+@@ -1227,20 +1227,17 @@
+                 .drain(0..self.command_history.len() - MAX_COMMAND_HISTORY);
+         }
+         self.awaiting_command_response = true;
+         self.send_actor(ActorCommand::Send(command))
+     }
+ 
+     /// The actor's command channel is broken — transition to disconnected.
+     fn on_actor_gone(&mut self) {
+-        tracing::warn!("actor command channel closed");
+-        self.actor_tx = None;
+-        self.connection_state = ConnectionState::Disconnected;
+-        self.last_error = Some("Connection actor exited".to_string());
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Build the command sequence sent immediately after TCP connect,
+     /// driven by the user-visible startup options.
+     fn build_startup_commands(&self) -> Vec<OvpnCommand> {
+         let mut commands = Vec::new();
+ 
+         if !self.management_password.is_empty() {

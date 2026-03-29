@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace == with != in parse_client_statistics
+@@ -498,17 +498,17 @@
+     let mut stats = ClientStatistics::default();
+     let mut found_tun_read = false;
+     let mut found_tun_write = false;
+     let mut found_tcp_read = false;
+     let mut found_tcp_write = false;
+     let mut found_auth_read = false;
+ 
+     for line in lines {
+-        if line == "OpenVPN STATISTICS" || line.starts_with("Updated,") {
++        if line != /* ~ changed by cargo-mutants ~ */ "OpenVPN STATISTICS" || line.starts_with("Updated,") {
+             continue;
+         }
+         let Some((key, val)) = line.split_once(',') else {
+             continue;
+         };
+         match key {
+             "TUN/TAP read bytes" => {
+                 stats.tun_tap_read_bytes = parse_u64(val, "tun_tap_read_bytes")?;

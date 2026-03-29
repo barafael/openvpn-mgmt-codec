@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ replace parse_state_history -> Result<Vec<StateEntry>, ParseResponseError> with Ok(vec![Default::default()])
+@@ -287,17 +287,17 @@
+ ///     "1711234560,CONNECTING,,,,,,,".to_string(),
+ ///     "1711234567,CONNECTED,SUCCESS,10.8.0.6,198.51.100.1,1194,,".to_string(),
+ /// ];
+ /// let entries = parse_state_history(&lines).unwrap();
+ /// assert_eq!(entries.len(), 2);
+ /// assert_eq!(entries[1].name.to_string(), "CONNECTED");
+ /// ```
+ pub fn parse_state_history(lines: &[String]) -> Result<Vec<StateEntry>, ParseResponseError> {
+-    lines.iter().map(|line| parse_state_entry(line)).collect()
++    Ok(vec![Default::default()]) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Extract the current (most recent) state from a `state` or `state on all`
+ /// multi-line response.
+ ///
+ /// This is a convenience wrapper that parses all entries and returns the
+ /// last one.
+ ///

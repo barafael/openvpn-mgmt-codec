@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace == with != in parse_status
+@@ -249,17 +249,17 @@
+ /// assert_eq!(status.clients[0].common_name, "peer1");
+ /// assert_eq!(status.clients[0].bytes_in, 1548576);
+ /// assert_eq!(status.routes[0].virtual_address, "10.8.0.6");
+ /// ```
+ pub fn parse_status(lines: &[String]) -> Result<StatusResponse, ParseStatusError> {
+     // Detect V1 by looking for the header line.
+     if lines
+         .first()
+-        .is_some_and(|line| line == "OpenVPN CLIENT LIST")
++        .is_some_and(|line| line != /* ~ changed by cargo-mutants ~ */ "OpenVPN CLIENT LIST")
+     {
+         return parse_status_v1(lines);
+     }
+ 
+     let sep = detect_separator(lines);
+     parse_status_v2v3(lines, sep)
+ }
+ 

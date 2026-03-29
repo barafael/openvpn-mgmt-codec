@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::pkcs11_id_count -> Result<String, ClientError> with Ok(String::new())
+@@ -468,17 +468,17 @@
+         })
+         .await
+     }
+ 
+     // -- PKCS#11 --
+ 
+     /// Query available PKCS#11 certificate count.
+     pub async fn pkcs11_id_count(&mut self) -> Result<String, ClientError> {
+-        self.send_expect_success(OvpnCommand::Pkcs11IdCount).await
++        Ok(String::new()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Retrieve a PKCS#11 certificate by index.
+     pub async fn pkcs11_id_get(&mut self, index: u32) -> Result<String, ClientError> {
+         self.send_expect_success(OvpnCommand::Pkcs11IdGet(index))
+             .await
+     }
+ 

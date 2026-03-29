@@ -1,0 +1,35 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "password" in <impl FromStr for OvpnCommand>::from_str
+@@ -709,31 +709,17 @@
+                     auth_type: auth_type_str
+                         .parse()
+                         .inspect_err(|error| warn!(%error, "unknown auth type"))
+                         .unwrap_or(AuthType::Unknown(auth_type_str)),
+                     value: value.into(),
+                 })
+             }
+ 
+-            "password" => {
+-                let (auth_type_str, rest) = next_token(args).ok_or(
+-                    CommandParseError::MissingArgs("usage: password <auth-type> <value>"),
+-                )?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: password <auth-type> <value>",
+-                ))?;
+-                Ok(Self::Password {
+-                    auth_type: auth_type_str
+-                        .parse()
+-                        .inspect_err(|error| warn!(%error, "unknown auth type"))
+-                        .unwrap_or(AuthType::Unknown(auth_type_str)),
+-                    value: value.into(),
+-                })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "auth-retry" => Ok(Self::AuthRetry(args.parse::<AuthRetryMode>()?)),
+ 
+             "forget-passwords" => Ok(Self::ForgetPasswords),
+ 
+             // --- Interactive prompts ---
+             "needok" => {
+                 let (name, resp) =

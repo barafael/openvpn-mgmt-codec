@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::username -> Result<(), ClientError> with Ok(())
+@@ -372,21 +372,17 @@
+     // -- Authentication --
+ 
+     /// Supply a username for the given auth type.
+     pub async fn username(
+         &mut self,
+         auth_type: AuthType,
+         value: impl Into<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::Username {
+-            auth_type,
+-            value: Redacted::new(value.into()),
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Supply a password for the given auth type.
+     pub async fn password(
+         &mut self,
+         auth_type: AuthType,
+         value: impl Into<String>,
+     ) -> Result<(), ClientError> {

@@ -142,7 +142,7 @@ async fn password_need_auth() {
     timeout(Duration::from_secs(5), async {
         loop {
             let msg = recv_raw(&mut framed).await;
-            if let OvpnMessage::Notification(Notification::State { name, .. }) = msg {
+            if let OvpnMessage::Notification(Notification::State(StateEntry { name, .. })) = msg {
                 states.push(name);
             }
         }

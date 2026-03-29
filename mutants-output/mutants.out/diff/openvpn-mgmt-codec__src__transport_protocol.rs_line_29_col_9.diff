@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/transport_protocol.rs
++++ replace <impl FromStr for TransportProtocol>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -21,21 +21,17 @@
+ }
+ 
+ impl FromStr for TransportProtocol {
+     type Err = ParseTransportProtocolError;
+ 
+     /// Parse a recognized protocol string (case-insensitive: `udp`/`UDP`,
+     /// `tcp`/`TCP`).
+     fn from_str(input: &str) -> Result<Self, Self::Err> {
+-        match input {
+-            "udp" | "UDP" => Ok(Self::Udp),
+-            "tcp" | "TCP" => Ok(Self::Tcp),
+-            other => Err(ParseTransportProtocolError(other.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]

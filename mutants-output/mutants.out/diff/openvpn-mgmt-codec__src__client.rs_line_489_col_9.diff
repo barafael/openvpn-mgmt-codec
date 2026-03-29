@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::rsa_sig -> Result<(), ClientError> with Ok(())
+@@ -481,18 +481,17 @@
+         self.send_expect_success(OvpnCommand::Pkcs11IdGet(index))
+             .await
+     }
+ 
+     // -- External key / signatures --
+ 
+     /// Provide an RSA signature in response to `>RSA_SIGN:`.
+     pub async fn rsa_sig(&mut self, base64_lines: Vec<String>) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::RsaSig { base64_lines })
+-            .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Provide a signature in response to `>PK_SIGN:`.
+     pub async fn pk_sig(&mut self, base64_lines: Vec<String>) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::PkSig { base64_lines })
+             .await
+     }
+ 

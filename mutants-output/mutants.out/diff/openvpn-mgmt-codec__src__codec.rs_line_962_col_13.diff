@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete match arm "PROXY" in OvpnCodec::parse_notification
+@@ -954,17 +954,17 @@
+             "PK_SIGN" => parse_pk_sign(payload),
+             "INFOMSG" => Some(Notification::InfoMsg {
+                 extra: payload.to_string(),
+             }),
+             "NEED-CERTIFICATE" => Some(Notification::NeedCertificate {
+                 hint: payload.to_string(),
+             }),
+             "REMOTE" => parse_remote(payload),
+-            "PROXY" => parse_proxy(payload),
++             /* ~ changed by cargo-mutants ~ */
+             "PASSWORD" => parse_password(payload),
+             "PKCS11ID-ENTRY" => {
+                 return parse_pkcs11id_entry_notif(payload).or_else(|| {
+                     Some(OvpnMessage::Notification(Notification::Simple {
+                         kind: kind.to_string(),
+                         payload: payload.to_string(),
+                     }))
+                 });

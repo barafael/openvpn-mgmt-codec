@@ -1,0 +1,30 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace ChartPalette::from_theme -> Self with Default::default()
+@@ -17,26 +17,17 @@
+     fg_muted: RGBColor,
+     green: RGBColor,
+     blue: RGBColor,
+     grid: RGBColor,
+ }
+ 
+ impl ChartPalette {
+     pub(crate) fn from_theme(theme: &Theme) -> Self {
+-        let (foreground, background) = style::foreground_background(theme);
+-        let palette = theme.extended_palette();
+-
+-        Self {
+-            background: to_rgb(background),
+-            fg_muted: to_rgb(style::mix(foreground, background, 0.4)),
+-            green: to_rgb(palette.success.base.color),
+-            blue: to_rgb(palette.primary.base.color),
+-            grid: to_rgb(style::mix(background, foreground, 0.08)),
+-        }
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ fn to_rgb(c: Color) -> RGBColor {
+     RGBColor(
+         (c.r * 255.0) as u8,
+         (c.g * 255.0) as u8,
+         (c.b * 255.0) as u8,

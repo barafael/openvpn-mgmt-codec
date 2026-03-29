@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete ! in <impl Decoder for OvpnCodec>::decode
+@@ -711,17 +711,17 @@
+             // decoder is not inside an accumulation context AND is not
+             // expecting a multi-line response. Skip them silently rather
+             // than emitting Unrecognized. This also absorbs the trailing
+             // `\n` when the password prompt was already consumed without
+             // a line terminator (OpenVPN ≥ 2.6).
+             if line.is_empty()
+                 && self.multi_line_buf.is_none()
+                 && self.client_notification.is_none()
+-                && !matches!(self.expected_front(), ResponseKind::MultiLine)
++                &&  /* ~ changed by cargo-mutants ~ */matches!(self.expected_front(), ResponseKind::MultiLine)
+             {
+                 continue;
+             }
+ 
+             // --- Phase 1: Multi-line >CLIENT: accumulation ---
+             //
+             // When we're accumulating a CLIENT notification, >CLIENT:ENV
+             // lines belong to it. The block terminates with >CLIENT:ENV,END.

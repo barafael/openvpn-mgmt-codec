@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace quote -> String with String::new()
+@@ -102,17 +102,17 @@
+ }
+ 
+ /// Wrap an already-escaped string in double quotes for the wire format.
+ ///
+ /// This is required for any user-supplied string that might contain
+ /// whitespace, backslashes, or quotes — passwords, reason strings,
+ /// needstr values, etc.
+ fn quote(s: &str) -> String {
+-    format!("\"{s}\"")
++    String::new() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Codec-internal state for accumulating multi-line `>CLIENT:` notifications.
+ #[derive(Debug)]
+ struct ClientNotificationAccumulator {
+     event: ClientEvent,
+     cid: u64,
+     kid: Option<u64>,

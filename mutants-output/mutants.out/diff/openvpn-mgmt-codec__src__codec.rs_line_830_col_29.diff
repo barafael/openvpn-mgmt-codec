@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in <impl Decoder for OvpnCodec>::decode
+@@ -822,17 +822,17 @@
+ 
+             // --- Phase 4: Ambiguous lines — use command tracking ---
+             //
+             // The line is not self-describing (no SUCCESS/ERROR/> prefix).
+             // Use the expected-response state from the last encoded command
+             // to decide how to frame it.
+             match self.expected_front() {
+                 ResponseKind::MultiLine => {
+-                    if line == "END" {
++                    if line != /* ~ changed by cargo-mutants ~ */ "END" {
+                         // Edge case: empty multi-line block (header-less).
+                         self.consume_expected();
+                         return Ok(Some(OvpnMessage::MultiLine(Vec::new())));
+                     }
+                     self.multi_line_buf = Some(vec![line]);
+                     continue; // Accumulate until END.
+                 }
+                 ResponseKind::SuccessOrError | ResponseKind::NoResponse => {

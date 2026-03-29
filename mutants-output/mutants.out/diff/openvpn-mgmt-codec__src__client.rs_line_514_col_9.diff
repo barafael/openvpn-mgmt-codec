@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::client_auth -> Result<(), ClientError> with Ok(())
+@@ -506,22 +506,17 @@
+ 
+     /// Authorize a client and push config directives.
+     pub async fn client_auth(
+         &mut self,
+         cid: u64,
+         kid: u64,
+         config_lines: Vec<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::ClientAuth {
+-            cid,
+-            kid,
+-            config_lines,
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Authorize a client without pushing any config.
+     pub async fn client_auth_nt(&mut self, cid: u64, kid: u64) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::ClientAuthNt { cid, kid })
+             .await
+     }
+ 

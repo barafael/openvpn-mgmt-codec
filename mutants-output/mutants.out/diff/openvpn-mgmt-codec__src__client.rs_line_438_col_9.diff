@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::cr_response -> Result<(), ClientError> with Ok(())
+@@ -430,20 +430,17 @@
+             password_b64: Redacted::new(password_b64.into()),
+             response_b64: Redacted::new(response_b64.into()),
+         })
+         .await
+     }
+ 
+     /// Respond to a CR_TEXT challenge.
+     pub async fn cr_response(&mut self, response: impl Into<String>) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::CrResponse {
+-            response: Redacted::new(response.into()),
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Interactive prompts --
+ 
+     /// Respond to a `>NEED-OK:` prompt.
+     pub async fn need_ok(
+         &mut self,
+         name: impl Into<String>,

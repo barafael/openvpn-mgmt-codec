@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/timestamp.rs
++++ replace + with * in days_to_ymd
+@@ -65,17 +65,17 @@
+     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+     let month_offset = (5 * doy + 2) / 153;
+     let day = doy - (153 * month_offset + 2) / 5 + 1;
+     let month = if month_offset < 10 {
+         month_offset + 3
+     } else {
+         month_offset - 9
+     };
+-    let year = if month <= 2 { year + 1 } else { year };
++    let year = if month <= 2 { year * /* ~ changed by cargo-mutants ~ */ 1 } else { year };
+     (year, month, day)
+ }
+ 
+ /// A Unix timestamp that implements [`Display`](fmt::Display) using
+ /// [`format_utc`].
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub struct UtcTimestamp(pub u64);
+ 

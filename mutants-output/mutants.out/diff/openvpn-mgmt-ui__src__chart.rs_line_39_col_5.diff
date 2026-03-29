@@ -1,0 +1,25 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace to_rgb -> RGBColor with Default::default()
+@@ -31,21 +31,17 @@
+             green: to_rgb(palette.success.base.color),
+             blue: to_rgb(palette.primary.base.color),
+             grid: to_rgb(style::mix(background, foreground, 0.08)),
+         }
+     }
+ }
+ 
+ fn to_rgb(c: Color) -> RGBColor {
+-    RGBColor(
+-        (c.r * 255.0) as u8,
+-        (c.g * 255.0) as u8,
+-        (c.b * 255.0) as u8,
+-    )
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ // -------------------------------------------------------------------
+ // Throughput history
+ // -------------------------------------------------------------------
+ 
+ /// A single throughput sample (bytes per second in each direction).
+ #[derive(Debug, Clone, Copy, Default)]

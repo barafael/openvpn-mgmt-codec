@@ -1,0 +1,32 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "verb" in <impl FromStr for OvpnCommand>::from_str
+@@ -615,28 +615,17 @@
+             "state" => match args {
+                 "" => Ok(Self::State),
+                 other => Ok(Self::StateStream(other.parse::<StreamMode>()?)),
+             },
+ 
+             "log" => Ok(Self::Log(args.parse::<StreamMode>()?)),
+             "echo" => Ok(Self::Echo(args.parse::<StreamMode>()?)),
+ 
+-            "verb" => {
+-                if args.is_empty() {
+-                    Ok(Self::Verb(None))
+-                } else {
+-                    args.parse::<u8>()
+-                        .map(|level| Self::Verb(Some(level)))
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "verbosity",
+-                            input: args.to_string(),
+-                        })
+-                }
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "mute" => {
+                 if args.is_empty() {
+                     Ok(Self::Mute(None))
+                 } else {
+                     args.parse::<u32>()
+                         .map(|threshold| Self::Mute(Some(threshold)))
+                         .map_err(|_| CommandParseError::InvalidNumber {

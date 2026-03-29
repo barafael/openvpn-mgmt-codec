@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::bytecount -> Result<(), ClientError> with Ok(())
+@@ -328,17 +328,17 @@
+     pub async fn echo(&mut self, mode: StreamMode) -> Result<Option<Vec<String>>, ClientError> {
+         self.send_stream_command(mode, OvpnCommand::Echo(mode))
+             .await
+     }
+ 
+     /// Enable or disable byte count notifications at N-second intervals.
+     /// Pass 0 to disable.
+     pub async fn bytecount(&mut self, interval: u32) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::ByteCount(interval)).await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Connection control --
+ 
+     /// Send a signal to the OpenVPN daemon.
+     pub async fn signal(&mut self, signal: Signal) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::Signal(signal)).await
+     }

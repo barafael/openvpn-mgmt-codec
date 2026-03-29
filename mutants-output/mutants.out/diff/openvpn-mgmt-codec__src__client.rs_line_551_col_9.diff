@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::client_pending_auth -> Result<(), ClientError> with Ok(())
+@@ -543,23 +543,17 @@
+     /// Defer authentication for a client.
+     pub async fn client_pending_auth(
+         &mut self,
+         cid: u64,
+         kid: u64,
+         extra: impl Into<String>,
+         timeout: u32,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::ClientPendingAuth {
+-            cid,
+-            kid,
+-            extra: extra.into(),
+-            timeout,
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Remote / Proxy override --
+ 
+     /// Respond to a `>REMOTE:` notification.
+     pub async fn remote(&mut self, action: RemoteAction) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::Remote(action)).await
+     }

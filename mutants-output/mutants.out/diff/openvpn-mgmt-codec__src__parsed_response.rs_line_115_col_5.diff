@@ -1,0 +1,46 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ replace parse_load_stats -> Result<LoadStats, ParseResponseError> with Ok(Default::default())
+@@ -107,42 +107,17 @@
+ /// ```
+ /// use openvpn_mgmt_codec::parsed_response::parse_load_stats;
+ /// let stats = parse_load_stats("nclients=5,bytesin=1000,bytesout=2000").unwrap();
+ /// assert_eq!(stats.nclients, 5);
+ /// assert_eq!(stats.bytesin, 1000);
+ /// assert_eq!(stats.bytesout, 2000);
+ /// ```
+ pub fn parse_load_stats(payload: &str) -> Result<LoadStats, ParseResponseError> {
+-    let mut nclients = None;
+-    let mut bytesin = None;
+-    let mut bytesout = None;
+-
+-    for part in payload.split(',') {
+-        if let Some((key, val)) = part.split_once('=') {
+-            let parsed = |field| {
+-                val.parse().map_err(|_| ParseResponseError::InvalidInteger {
+-                    field,
+-                    value: val.to_string(),
+-                })
+-            };
+-            match key {
+-                "nclients" => nclients = Some(parsed("nclients")?),
+-                "bytesin" => bytesin = Some(parsed("bytesin")?),
+-                "bytesout" => bytesout = Some(parsed("bytesout")?),
+-                other => return Err(ParseResponseError::UnexpectedField(other.to_string())),
+-            }
+-        }
+-    }
+-
+-    Ok(LoadStats {
+-        nclients: nclients.ok_or(ParseResponseError::MissingField("nclients"))?,
+-        bytesin: bytesin.ok_or(ParseResponseError::MissingField("bytesin"))?,
+-        bytesout: bytesout.ok_or(ParseResponseError::MissingField("bytesout"))?,
+-    })
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse the `SUCCESS:` payload from a `hold` query.
+ ///
+ /// Expects the format `hold=0` or `hold=1`. Returns `true` when the hold
+ /// flag is enabled (`--management-hold`). Note: this reflects the
+ /// **configuration**, not whether the server is currently blocked — after
+ /// `hold release` the flag stays on but the server is no longer waiting.

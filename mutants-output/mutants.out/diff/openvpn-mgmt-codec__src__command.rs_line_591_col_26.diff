@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace match guard args.is_empty() with true in <impl FromStr for OvpnCommand>::from_str
+@@ -583,17 +583,17 @@
+         let line = line.trim();
+         let (cmd, args) = line
+             .split_once(char::is_whitespace)
+             .map(|(c, a)| (c, a.trim()))
+             .unwrap_or((line, ""));
+ 
+         match cmd {
+             // --- Informational ---
+-            "version" if args.is_empty() => Ok(Self::Version),
++            "version" if true /* ~ changed by cargo-mutants ~ */ => Ok(Self::Version),
+             "version" => Ok(Self::SetVersion(args.parse().map_err(|_| {
+                 CommandParseError::InvalidChoice {
+                     field: "version number",
+                     input: args.to_string(),
+                     hint: "expected a positive integer (e.g. version 2)",
+                 }
+             })?)),
+             "pid" => Ok(Self::Pid),

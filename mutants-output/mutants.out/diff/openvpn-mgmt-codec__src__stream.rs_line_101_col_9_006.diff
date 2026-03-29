@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/stream.rs
++++ replace <impl Stream for Classified<S>>::poll_next -> Poll<Option<Self::Item>> with Poll::from(Some(Default::default()))
+@@ -93,20 +93,17 @@
+ 
+ impl<S> Stream for Classified<S>
+ where
+     S: Stream<Item = Result<OvpnMessage, io::Error>>,
+ {
+     type Item = Result<ManagementEvent, io::Error>;
+ 
+     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+-        self.project()
+-            .inner
+-            .poll_next(cx)
+-            .map(|opt| opt.map(|result| result.map(ManagementEvent::from)))
++        Poll::from(Some(Default::default())) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     fn size_hint(&self) -> (usize, Option<usize>) {
+         self.inner.size_hint()
+     }
+ }
+ 
+ /// Extension trait that adds [`.classify()`](ClassifyExt::classify) to

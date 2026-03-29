@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/timestamp.rs
++++ replace format_utc -> String with String::new()
+@@ -28,21 +28,17 @@
+     let (year, month, day) = days_to_ymd(days_total);
+     (year, month, day, hours, mins, secs)
+ }
+ 
+ /// Format a Unix timestamp as ISO 8601 UTC: `2024-03-21T14:30:00Z`.
+ ///
+ /// Returns an empty string for timestamp `0` (unset).
+ pub fn format_utc(ts: u64) -> String {
+-    if ts == 0 {
+-        return String::new();
+-    }
+-    let (year, month, day, hours, mins, secs) = decompose(ts);
+-    format!("{year:04}-{month:02}-{day:02}T{hours:02}:{mins:02}:{secs:02}Z")
++    String::new() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Format a Unix timestamp with a space separator: `2024-03-21 14:30:00`.
+ ///
+ /// Returns an empty string for timestamp `0` (unset).
+ pub fn format_timestamp(ts: u64) -> String {
+     if ts == 0 {
+         return String::new();

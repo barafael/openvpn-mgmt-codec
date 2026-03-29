@@ -1,5 +1,5 @@
 /// Response to a `>NEED-OK:` prompt.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum NeedOkResponse {
     /// Accept the prompt.

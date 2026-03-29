@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm ["socks" | "SOCKS", host, port] in <impl FromStr for OvpnCommand>::from_str
+@@ -904,22 +904,17 @@
+                 })),
+                 ["http" | "HTTP", host, port, "nct"] => Ok(Self::Proxy(ProxyAction::Http {
+                     host: host.to_string(),
+                     port: port
+                         .parse()
+                         .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+                     non_cleartext_only: true,
+                 })),
+-                ["socks" | "SOCKS", host, port] => Ok(Self::Proxy(ProxyAction::Socks {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                })),
++                 /* ~ changed by cargo-mutants ~ */
+                 _ => cmd_err("usage: proxy none|http <host> <port> [nct]|socks <host> <port>"),
+             },
+ 
+             // --- ENV filter ---
+             "env-filter" => {
+                 let level = if args.is_empty() {
+                     0
+                 } else {

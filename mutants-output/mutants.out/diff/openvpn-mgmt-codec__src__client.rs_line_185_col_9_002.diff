@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::send_expect_multi_line -> Result<Vec<String>, ClientError> with Ok(vec!["xyzzy".into()])
+@@ -177,21 +177,17 @@
+         }
+     }
+ 
+     /// Send a command that expects a multi-line response.
+     async fn send_expect_multi_line(
+         &mut self,
+         cmd: OvpnCommand,
+     ) -> Result<Vec<String>, ClientError> {
+-        match self.send_and_recv(cmd).await? {
+-            OvpnMessage::MultiLine(lines) => Ok(lines),
+-            OvpnMessage::Error(msg) => Err(ClientError::ServerError(msg)),
+-            other => Err(ClientError::UnexpectedResponse(other)),
+-        }
++        Ok(vec!["xyzzy".into()]) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Send a command that expects `SUCCESS:` and discard the payload.
+     async fn send_expect_ok(&mut self, cmd: OvpnCommand) -> Result<(), ClientError> {
+         self.send_expect_success(cmd).await?;
+         Ok(())
+     }
+ 

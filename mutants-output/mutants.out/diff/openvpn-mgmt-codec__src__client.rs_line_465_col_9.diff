@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::need_str -> Result<(), ClientError> with Ok(())
+@@ -457,21 +457,17 @@
+     }
+ 
+     /// Respond to a `>NEED-STR:` prompt.
+     pub async fn need_str(
+         &mut self,
+         name: impl Into<String>,
+         value: impl Into<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::NeedStr {
+-            name: name.into(),
+-            value: value.into(),
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- PKCS#11 --
+ 
+     /// Query available PKCS#11 certificate count.
+     pub async fn pkcs11_id_count(&mut self) -> Result<String, ClientError> {
+         self.send_expect_success(OvpnCommand::Pkcs11IdCount).await
+     }

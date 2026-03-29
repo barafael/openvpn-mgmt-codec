@@ -325,10 +325,10 @@ fn crlf_notification() {
     assert_eq!(msgs.len(), 1);
     assert!(matches!(
         &msgs[0],
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             name: OpenVpnState::Connected,
             ..
-        })
+        }))
     ));
 }
 
@@ -455,8 +455,8 @@ fn classify_pkcs11_id_entry() {
 
 #[test]
 fn classify_notification_state() {
-    let event = ManagementEvent::from(OvpnMessage::Notification(Notification::State {
-        timestamp: 0,
+    let event = ManagementEvent::from(OvpnMessage::Notification(Notification::State(StateEntry {
+        timestamp: UtcTimestamp(0),
         name: OpenVpnState::Connected,
         description: String::new(),
         local_ip: String::new(),
@@ -465,10 +465,10 @@ fn classify_notification_state() {
         local_addr: String::new(),
         local_port: None,
         local_ipv6: String::new(),
-    }));
+    })));
     assert!(matches!(
         event,
-        ManagementEvent::Notification(Notification::State { .. })
+        ManagementEvent::Notification(Notification::State(..))
     ));
 }
 

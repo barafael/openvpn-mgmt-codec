@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace check_accumulation_limit -> Result<(), io::Error> with Ok(())
+@@ -268,22 +268,17 @@
+     max: usize,
+ }
+ 
+ fn check_accumulation_limit(
+     current_len: usize,
+     limit: AccumulationLimit,
+     what: &'static str,
+ ) -> Result<(), io::Error> {
+-    if let AccumulationLimit::Max(max) = limit
+-        && current_len >= max
+-    {
+-        return Err(io::Error::other(AccumulationLimitExceeded { what, max }));
+-    }
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ // --- Encoder ---
+ 
+ impl Encoder<OvpnCommand> for OvpnCodec {
+     type Error = io::Error;
+ 
+     fn encode(&mut self, item: OvpnCommand, dst: &mut BytesMut) -> Result<(), Self::Error> {

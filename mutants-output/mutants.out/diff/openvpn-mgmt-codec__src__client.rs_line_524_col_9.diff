@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::client_auth_nt -> Result<(), ClientError> with Ok(())
+@@ -516,18 +516,17 @@
+             kid,
+             config_lines,
+         })
+         .await
+     }
+ 
+     /// Authorize a client without pushing any config.
+     pub async fn client_auth_nt(&mut self, cid: u64, kid: u64) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::ClientAuthNt { cid, kid })
+-            .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Deny a client connection.
+     pub async fn client_deny(&mut self, deny: ClientDeny) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::ClientDeny(deny)).await
+     }
+ 
+     /// Kill a client session by CID.

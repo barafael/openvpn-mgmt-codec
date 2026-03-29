@@ -1,0 +1,23 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ delete match arm "post-decompress bytes" in parse_client_statistics
+@@ -534,19 +534,17 @@
+                 stats.pre_compress_bytes = Some(parse_u64(val, "pre_compress_bytes")?);
+             }
+             "post-compress bytes" => {
+                 stats.post_compress_bytes = Some(parse_u64(val, "post_compress_bytes")?);
+             }
+             "pre-decompress bytes" => {
+                 stats.pre_decompress_bytes = Some(parse_u64(val, "pre_decompress_bytes")?);
+             }
+-            "post-decompress bytes" => {
+-                stats.post_decompress_bytes = Some(parse_u64(val, "post_decompress_bytes")?);
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             _ => {} // Forward-compat: ignore unknown keys
+         }
+     }
+ 
+     if !found_tun_read {
+         return Err(ParseStatusError::MissingStatisticsKey("TUN/TAP read bytes"));
+     }
+     if !found_tun_write {

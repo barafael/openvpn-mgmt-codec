@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ replace < with > in parse_state_entry
+@@ -232,17 +232,17 @@
+ /// assert_eq!(entry.name.to_string(), "CONNECTED");
+ /// assert!(entry.description.is_empty());
+ ///
+ /// // Invalid state name:
+ /// assert!(parse_state_entry("1711234567,BOGUS").is_err());
+ /// ```
+ pub fn parse_state_entry(line: &str) -> Result<StateEntry, ParseResponseError> {
+     let fields: Vec<&str> = line.splitn(9, ',').collect();
+-    if fields.len() < 2 {
++    if fields.len() > /* ~ changed by cargo-mutants ~ */ 2 {
+         return Err(ParseResponseError::StateTooFewFields(fields.len()));
+     }
+ 
+     let timestamp = fields[0]
+         .parse::<u64>()
+         .map_err(|_| ParseResponseError::InvalidTimestamp(fields[0].to_string()))?;
+     let name = fields[1].parse::<OpenVpnState>()?;
+ 

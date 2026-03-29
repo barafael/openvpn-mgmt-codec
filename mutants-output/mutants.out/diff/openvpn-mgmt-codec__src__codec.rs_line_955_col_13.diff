@@ -1,0 +1,23 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete match arm "INFOMSG" in OvpnCodec::parse_notification
+@@ -947,19 +947,17 @@
+             }),
+             "PKCS11ID-COUNT" => parse_pkcs11id_count(payload),
+             "NEED-OK" => parse_need_ok(payload),
+             "NEED-STR" => parse_need_str(payload),
+             "RSA_SIGN" => Some(Notification::RsaSign {
+                 data: payload.to_string(),
+             }),
+             "PK_SIGN" => parse_pk_sign(payload),
+-            "INFOMSG" => Some(Notification::InfoMsg {
+-                extra: payload.to_string(),
+-            }),
++             /* ~ changed by cargo-mutants ~ */
+             "NEED-CERTIFICATE" => Some(Notification::NeedCertificate {
+                 hint: payload.to_string(),
+             }),
+             "REMOTE" => parse_remote(payload),
+             "PROXY" => parse_proxy(payload),
+             "PASSWORD" => parse_password(payload),
+             "PKCS11ID-ENTRY" => {
+                 return parse_pkcs11id_entry_notif(payload).or_else(|| {

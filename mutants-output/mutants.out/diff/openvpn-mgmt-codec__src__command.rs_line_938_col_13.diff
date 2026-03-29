@@ -1,0 +1,49 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "remote-entry-get" in <impl FromStr for OvpnCommand>::from_str
+@@ -930,45 +930,17 @@
+                         })?
+                 };
+                 Ok(Self::EnvFilter(level))
+             }
+ 
+             // --- Remote entry queries ---
+             "remote-entry-count" => Ok(Self::RemoteEntryCount),
+ 
+-            "remote-entry-get" => {
+-                if args.is_empty() {
+-                    return cmd_err("usage: remote-entry-get i|all [j]");
+-                }
+-                let range = if args == "all" {
+-                    RemoteEntryRange::All
+-                } else {
+-                    let mut parts = args.splitn(2, char::is_whitespace);
+-                    let from = parts.next().unwrap().parse::<u32>().map_err(|_| {
+-                        CommandParseError::InvalidNumber {
+-                            field: "remote-entry-get index",
+-                            input: args.to_string(),
+-                        }
+-                    })?;
+-                    match parts.next() {
+-                        Some(to_str) => {
+-                            let end = to_str.trim().parse::<u32>().map_err(|_| {
+-                                CommandParseError::InvalidNumber {
+-                                    field: "remote-entry-get end index",
+-                                    input: to_str.to_string(),
+-                                }
+-                            })?;
+-                            RemoteEntryRange::Range { from, end }
+-                        }
+-                        None => RemoteEntryRange::Single(from),
+-                    }
+-                };
+-                Ok(Self::RemoteEntryGet(range))
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Push updates ---
+             // Wire format per management-notes.txt:
+             //   push-update-broad "options"
+             //   push-update-cid <cid> "options"
+             // Options are quoted+escaped on the wire.
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+             "push-update-broad" => {

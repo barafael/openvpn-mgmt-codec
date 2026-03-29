@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/signal.rs
++++ replace <impl FromStr for Signal>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -26,23 +26,17 @@
+     SigUsr2,
+ }
+ 
+ impl FromStr for Signal {
+     type Err = ParseSignalError;
+ 
+     /// Parse a signal name: `SIGHUP`, `SIGTERM`, `SIGUSR1`, or `SIGUSR2`.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {
+-        match input {
+-            "SIGHUP" => Ok(Self::SigHup),
+-            "SIGTERM" => Ok(Self::SigTerm),
+-            "SIGUSR1" => Ok(Self::SigUsr1),
+-            "SIGUSR2" => Ok(Self::SigUsr2),
+-            other => Err(ParseSignalError(other.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use test_case::test_case;
+ 

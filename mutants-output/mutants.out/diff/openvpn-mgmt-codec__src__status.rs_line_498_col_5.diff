@@ -1,0 +1,92 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace parse_client_statistics -> Result<ClientStatistics, ParseStatusError> with Ok(Default::default())
+@@ -490,88 +490,17 @@
+ /// ].into_iter().map(String::from).collect();
+ ///
+ /// let stats = parse_client_statistics(&lines).unwrap();
+ /// assert_eq!(stats.tun_tap_read_bytes, 1548576);
+ /// assert_eq!(stats.tcp_udp_write_bytes, 1020000);
+ /// assert!(stats.pre_compress_bytes.is_none());
+ /// ```
+ pub fn parse_client_statistics(lines: &[String]) -> Result<ClientStatistics, ParseStatusError> {
+-    let mut stats = ClientStatistics::default();
+-    let mut found_tun_read = false;
+-    let mut found_tun_write = false;
+-    let mut found_tcp_read = false;
+-    let mut found_tcp_write = false;
+-    let mut found_auth_read = false;
+-
+-    for line in lines {
+-        if line == "OpenVPN STATISTICS" || line.starts_with("Updated,") {
+-            continue;
+-        }
+-        let Some((key, val)) = line.split_once(',') else {
+-            continue;
+-        };
+-        match key {
+-            "TUN/TAP read bytes" => {
+-                stats.tun_tap_read_bytes = parse_u64(val, "tun_tap_read_bytes")?;
+-                found_tun_read = true;
+-            }
+-            "TUN/TAP write bytes" => {
+-                stats.tun_tap_write_bytes = parse_u64(val, "tun_tap_write_bytes")?;
+-                found_tun_write = true;
+-            }
+-            "TCP/UDP read bytes" => {
+-                stats.tcp_udp_read_bytes = parse_u64(val, "tcp_udp_read_bytes")?;
+-                found_tcp_read = true;
+-            }
+-            "TCP/UDP write bytes" => {
+-                stats.tcp_udp_write_bytes = parse_u64(val, "tcp_udp_write_bytes")?;
+-                found_tcp_write = true;
+-            }
+-            "Auth read bytes" => {
+-                stats.auth_read_bytes = parse_u64(val, "auth_read_bytes")?;
+-                found_auth_read = true;
+-            }
+-            "pre-compress bytes" => {
+-                stats.pre_compress_bytes = Some(parse_u64(val, "pre_compress_bytes")?);
+-            }
+-            "post-compress bytes" => {
+-                stats.post_compress_bytes = Some(parse_u64(val, "post_compress_bytes")?);
+-            }
+-            "pre-decompress bytes" => {
+-                stats.pre_decompress_bytes = Some(parse_u64(val, "pre_decompress_bytes")?);
+-            }
+-            "post-decompress bytes" => {
+-                stats.post_decompress_bytes = Some(parse_u64(val, "post_decompress_bytes")?);
+-            }
+-            _ => {} // Forward-compat: ignore unknown keys
+-        }
+-    }
+-
+-    if !found_tun_read {
+-        return Err(ParseStatusError::MissingStatisticsKey("TUN/TAP read bytes"));
+-    }
+-    if !found_tun_write {
+-        return Err(ParseStatusError::MissingStatisticsKey(
+-            "TUN/TAP write bytes",
+-        ));
+-    }
+-    if !found_tcp_read {
+-        return Err(ParseStatusError::MissingStatisticsKey("TCP/UDP read bytes"));
+-    }
+-    if !found_tcp_write {
+-        return Err(ParseStatusError::MissingStatisticsKey(
+-            "TCP/UDP write bytes",
+-        ));
+-    }
+-    if !found_auth_read {
+-        return Err(ParseStatusError::MissingStatisticsKey("Auth read bytes"));
+-    }
+-
+-    Ok(stats)
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     // --- V3 (tab-separated) ---
+ 

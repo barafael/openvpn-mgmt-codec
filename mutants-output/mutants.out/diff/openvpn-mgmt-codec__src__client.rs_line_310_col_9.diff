@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::mute -> Result<String, ClientError> with Ok(String::new())
+@@ -302,17 +302,17 @@
+ 
+     /// Query or set the log verbosity level.
+     pub async fn verb(&mut self, level: Option<u8>) -> Result<String, ClientError> {
+         self.send_expect_success(OvpnCommand::Verb(level)).await
+     }
+ 
+     /// Query or set the mute threshold.
+     pub async fn mute(&mut self, threshold: Option<u32>) -> Result<String, ClientError> {
+-        self.send_expect_success(OvpnCommand::Mute(threshold)).await
++        Ok(String::new()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// (Windows) Show network adapter list.
+     pub async fn net(&mut self) -> Result<Vec<String>, ClientError> {
+         self.send_expect_multi_line(OvpnCommand::Net).await
+     }
+ 
+     // -- Notification control --

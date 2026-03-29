@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ delete match arm "0" in parse_hold
+@@ -153,17 +153,17 @@
+ /// assert_eq!(parse_hold("hold=0"), Ok(false));
+ /// ```
+ pub fn parse_hold(payload: &str) -> Result<bool, ParseResponseError> {
+     let val = payload
+         .strip_prefix("hold=")
+         .ok_or_else(|| ParseResponseError::MissingHoldPrefix(payload.to_string()))?;
+     match val {
+         "1" => Ok(true),
+-        "0" => Ok(false),
++         /* ~ changed by cargo-mutants ~ */
+         _ => Err(ParseResponseError::InvalidHoldValue(val.to_string())),
+     }
+ }
+ 
+ /// Parse the multi-line response from a `version` command into a
+ /// [`VersionInfo`].
+ ///
+ /// This is a convenience wrapper around [`VersionInfo::parse`].

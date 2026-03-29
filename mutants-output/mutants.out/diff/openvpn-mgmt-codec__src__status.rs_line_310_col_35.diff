@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace == with != in parse_status_v1
+@@ -302,17 +302,17 @@
+             continue;
+         }
+ 
+         let fields: Vec<&str> = line.split(',').collect();
+ 
+         // Skip header rows (V1 has a "Common Name,Real Address,..." header)
+         match section {
+             Section::Header => {
+-                if fields.first() == Some(&"Common Name") {
++                if fields.first() != /* ~ changed by cargo-mutants ~ */ Some(&"Common Name") {
+                     section = Section::ClientList;
+                     continue;
+                 }
+             }
+             Section::ClientList => {
+                 // V1 CLIENT_LIST: CN, Real Address, Bytes Received, Bytes Sent, Connected Since
+                 if fields.len() < 5 {
+                     return Err(ParseStatusError::ClientListTooFewFields(fields.len()));

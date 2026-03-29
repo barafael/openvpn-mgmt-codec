@@ -1,0 +1,23 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ delete match arm "TITLE" in parse_status_v2v3
+@@ -372,19 +372,17 @@
+         global_stats: Vec::new(),
+     };
+ 
+     for line in lines {
+         let fields: Vec<&str> = line.split(sep).collect();
+         let tag = fields.first().copied().unwrap_or("");
+ 
+         match tag {
+-            "TITLE" => {
+-                status.title = fields.get(1).map(|val| val.to_string());
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             "TIME" => {
+                 status.updated = fields.get(1).map(|val| val.to_string());
+                 status.timestamp = fields.get(2).and_then(|val| {
+                     val.parse()
+                         .inspect_err(|error| {
+                             tracing::warn!(%error, value = val, "non-numeric timestamp in TIME row")
+                         })
+                         .ok()

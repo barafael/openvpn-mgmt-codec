@@ -13,7 +13,7 @@ pub struct ParseAuthRetryModeError(String);
 /// Authentication credential type. OpenVPN identifies credential requests
 /// by a quoted type string — usually `"Auth"` or `"Private Key"`, but
 /// plugins can define custom types.
-#[derive(Debug, Clone, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum::Display)]
 pub enum AuthType {
     /// Standard `--auth-user-pass` credentials. Wire: `"Auth"`.
     Auth,
@@ -55,7 +55,7 @@ impl FromStr for AuthType {
 }
 
 /// Controls how OpenVPN retries after authentication failure.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum AuthRetryMode {
     /// Don't retry — exit on auth failure.

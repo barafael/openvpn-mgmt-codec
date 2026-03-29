@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/timestamp.rs
++++ replace - with + in days_to_ymd
+@@ -54,17 +54,17 @@
+ /// Convert days since Unix epoch to `(year, month, day)`.
+ ///
+ /// Uses the [civil_from_days algorithm by Howard Hinnant][algo].
+ ///
+ /// [algo]: http://howardhinnant.github.io/date_algorithms.html
+ pub fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
+     days += 719_468;
+     let era = days / 146_097;
+-    let doe = days - era * 146_097;
++    let doe = days + /* ~ changed by cargo-mutants ~ */ era * 146_097;
+     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+     let year = yoe + era * 400;
+     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+     let month_offset = (5 * doy + 2) / 153;
+     let day = doy - (153 * month_offset + 2) / 5 + 1;
+     let month = if month_offset < 10 {
+         month_offset + 3
+     } else {

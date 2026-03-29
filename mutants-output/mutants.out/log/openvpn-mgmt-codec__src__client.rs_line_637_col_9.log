@@ -1,0 +1,1310 @@
+
+*** openvpn-mgmt-codec/src/client.rs:637:9: replace ManagementClient<T>::management_password -> Result<(), ClientError> with Ok(())
+
+*** mutation diff:
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::management_password -> Result<(), ClientError> with Ok(())
+@@ -629,20 +629,17 @@
+ 
+     // -- Management interface auth --
+ 
+     /// Authenticate to the management interface.
+     pub async fn management_password(
+         &mut self,
+         password: impl Into<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::ManagementPassword(Redacted::new(
+-            password.into(),
+-        )))
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Session lifecycle --
+ 
+     /// Close the management session. Consumes the client since the
+     /// connection is no longer usable.
+     pub async fn exit(mut self) -> Result<(), ClientError> {
+         self.framed.send(OvpnCommand::Exit).await?;
+
+
+*** C:\\workspace\\tools\\rustup\\toolchains\\nightly-x86_64-pc-windows-msvc\\bin\\cargo.exe test --no-run --verbose --package=openvpn-mgmt-codec@1.0.0-rc.1
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh quote v1.0.45
+       Fresh syn v2.0.117
+       Fresh windows-link v0.2.1
+       Fresh windows-sys v0.61.2
+       Fresh cfg-if v1.0.4
+       Fresh once_cell v1.21.4
+       Fresh pin-project-lite v0.2.17
+       Fresh fnv v1.0.7
+       Fresh strsim v0.11.1
+       Fresh futures-core v0.3.32
+       Fresh ident_case v1.0.1
+       Fresh futures-sink v0.3.32
+       Fresh darling_core v0.21.3
+       Fresh getrandom v0.3.4
+       Fresh tracing-core v0.1.36
+       Fresh regex-syntax v0.8.10
+       Fresh heck v0.5.0
+       Fresh rand_core v0.9.5
+       Fresh darling_macro v0.21.3
+       Fresh futures-channel v0.3.32
+       Fresh futures-macro v0.3.32
+       Fresh tracing-attributes v0.1.31
+       Fresh futures-task v0.3.32
+       Fresh memchr v2.8.0
+       Fresh slab v0.4.12
+       Fresh autocfg v1.5.0
+       Fresh utf8parse v0.2.2
+       Fresh once_cell_polyfill v1.70.2
+       Fresh futures-io v0.3.32
+       Fresh anstyle v1.0.14
+       Fresh anstyle-wincon v3.0.11
+       Fresh futures-util v0.3.32
+       Fresh anstyle-parse v1.0.0
+       Fresh tracing v0.1.44
+       Fresh darling v0.21.3
+       Fresh getrandom v0.4.2
+       Fresh rustversion v1.0.22
+       Fresh zerocopy v0.8.48
+       Fresh prettyplease v0.2.37
+       Fresh regex-automata v0.4.14
+       Fresh socket2 v0.6.3
+       Fresh mio v1.2.0
+       Fresh anstyle-query v1.1.5
+       Fresh tokio-macros v2.6.1
+       Fresh is_terminal_polyfill v1.70.2
+       Fresh log v0.4.29
+       Fresh colorchoice v1.0.5
+       Fresh lazy_static v1.5.0
+       Fresh unicode-xid v0.2.6
+       Fresh bytes v1.11.1
+       Fresh fastrand v2.3.0
+       Fresh tokio v1.50.0
+       Fresh tempfile v3.27.0
+       Fresh sharded-slab v0.1.7
+       Fresh derive_more-impl v1.0.0
+       Fresh anstream v1.0.0
+       Fresh tracing-log v0.2.0
+       Fresh matchers v0.2.0
+       Fresh bon-macros v3.9.1
+       Fresh ppv-lite86 v0.2.21
+       Fresh strum_macros v0.27.2
+       Fresh thread_local v1.1.9
+       Fresh test-case-core v3.3.1
+       Fresh nu-ansi-term v0.50.3
+       Fresh thiserror-impl v2.0.18
+       Fresh smallvec v1.15.1
+       Fresh wait-timeout v0.2.1
+       Fresh bit-vec v0.8.0
+       Fresh quick-error v1.2.3
+       Fresh clap_lex v1.1.0
+       Fresh clap_builder v4.6.0
+       Fresh rusty-fork v0.3.1
+       Fresh bit-set v0.8.0
+       Fresh tracing-subscriber v0.3.23
+       Fresh thiserror v2.0.18
+       Fresh test-case-macros v3.3.1
+       Fresh num-traits v0.2.19
+       Fresh strum v0.27.2
+       Fresh bon v3.9.1
+       Fresh rand_chacha v0.9.0
+       Fresh derive_more v1.0.0
+       Fresh tokio-util v0.7.18
+       Fresh futures-executor v0.3.32
+       Fresh rand v0.9.2
+       Fresh rand_xorshift v0.4.0
+       Fresh clap_derive v4.6.0
+       Fresh tracing-test-macro v0.2.6
+       Fresh better_default v1.0.5
+       Fresh unarray v0.1.4
+       Fresh base64 v0.22.1
+       Fresh bitflags v2.11.0
+       Fresh proptest v1.11.0
+       Fresh clap v4.6.0
+       Fresh tracing-test v0.2.6
+       Fresh futures v0.3.32
+       Fresh test-case v3.3.1
+       Fresh anyhow v1.0.102
+       Dirty openvpn-mgmt-codec v1.0.0-rc.1 (C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\openvpn-mgmt-codec): the file `openvpn-mgmt-codec\src\client.rs` has changed (13419254958.156650200s, 13s after last build at 13419254945.985516000s)
+   Compiling openvpn-mgmt-codec v1.0.0-rc.1 (C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\openvpn-mgmt-codec)
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=282ab4b98e7fb711 -C extra-filename=-200b94a0a24d68d8 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=58618598a94def4d -C extra-filename=-af921328b0c6dc1c --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rmeta' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rmeta' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rmeta' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rmeta' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rmeta' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rmeta' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rmeta' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rmeta' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rmeta' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rmeta' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rmeta' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rmeta'`
+warning: unused variable: `password`
+   --> openvpn-mgmt-codec\src\client.rs:635:9
+    |
+635 |         password: impl Into<String>,
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_password`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `openvpn-mgmt-codec` (lib) generated 1 warning (run `cargo fix --lib -p openvpn-mgmt-codec` to apply 1 suggestion)
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name server_mode --edition=2024 'openvpn-mgmt-codec\examples\server_mode.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=fa469e8f55eb0f76 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\examples' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name notification_edge_cases --edition=2024 'openvpn-mgmt-codec\tests\notification_edge_cases.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=3b5404fe50f6cc95 -C extra-filename=-2c5e236cefafce52 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name decoder_recovery --edition=2024 'openvpn-mgmt-codec\tests\decoder_recovery.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=6b01f85849f58f2b -C extra-filename=-4b0d89796ba094ef --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name protocol_test --edition=2024 'openvpn-mgmt-codec\tests\protocol_test.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=4e253e68df11a360 -C extra-filename=-d42d48ac37e3f42e --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name boundary_conditions --edition=2024 'openvpn-mgmt-codec\tests\boundary_conditions.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=39e40ca865b9abac -C extra-filename=-84eccffaa4835698 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name stateful_sequences --edition=2024 'openvpn-mgmt-codec\tests\stateful_sequences.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=7df0fa3d7b7f2529 -C extra-filename=-804baeea5d8915f4 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name conformance_wire_format --edition=2024 'openvpn-mgmt-codec\tests\conformance_wire_format.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=f3f4d10f4e066a51 -C extra-filename=-53c27b276d8dd79c --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name adversarial_roundtrip --edition=2024 'openvpn-mgmt-codec\tests\adversarial_roundtrip.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=e0ca4c7d2b607f9b -C extra-filename=-b1f3bb7ccec775ba --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name framed_integration --edition=2024 'openvpn-mgmt-codec\tests\framed_integration.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=bb61bfe7db38a3e1 -C extra-filename=-293e1f2d127404b4 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name conformance_remote --edition=2024 'openvpn-mgmt-codec\tests\conformance_remote.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=a61897533b646e7c -C extra-filename=-0bbb6bf3a320279c --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name conformance_server --edition=2024 'openvpn-mgmt-codec\tests\conformance_server.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=cd84348da1fce189 -C extra-filename=-7385727dceca80ae --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name conformance --edition=2024 'openvpn-mgmt-codec\tests\conformance.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=47a3cd4b21c5c0bb -C extra-filename=-90d7d8dbe43ca744 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name proptest_roundtrip --edition=2024 'openvpn-mgmt-codec\tests\proptest_roundtrip.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=ceb7448de1ff6c6c -C extra-filename=-d059a27db61e2385 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name client_mode --edition=2024 'openvpn-mgmt-codec\examples\client_mode.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=233e1ee6d23e961f --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\examples' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name defensive --edition=2024 'openvpn-mgmt-codec\tests\defensive\main.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=971164c9f0a0f0fa -C extra-filename=-dd97bbeac407ba8a --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name conformance_password --edition=2024 'openvpn-mgmt-codec\tests\conformance_password.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=ed8076e20d99cf1d -C extra-filename=-bb093767c27aba2c --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+warning: `openvpn-mgmt-codec` (lib test) generated 1 warning (1 duplicate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 9.62s
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\openvpn_mgmt_codec-200b94a0a24d68d8.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\adversarial_roundtrip-b1f3bb7ccec775ba.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\boundary_conditions-84eccffaa4835698.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance-90d7d8dbe43ca744.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance_password-bb093767c27aba2c.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance_remote-0bbb6bf3a320279c.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance_server-7385727dceca80ae.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance_wire_format-53c27b276d8dd79c.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\decoder_recovery-4b0d89796ba094ef.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\defensive-dd97bbeac407ba8a.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\framed_integration-293e1f2d127404b4.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\notification_edge_cases-2c5e236cefafce52.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\proptest_roundtrip-d059a27db61e2385.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\protocol_test-d42d48ac37e3f42e.exe`
+  Executable `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\stateful_sequences-804baeea5d8915f4.exe`
+
+*** result: Success
+
+*** C:\\workspace\\tools\\rustup\\toolchains\\nightly-x86_64-pc-windows-msvc\\bin\\cargo.exe test --verbose --package=openvpn-mgmt-codec@1.0.0-rc.1
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh quote v1.0.45
+       Fresh syn v2.0.117
+       Fresh windows-link v0.2.1
+       Fresh windows-sys v0.61.2
+       Fresh cfg-if v1.0.4
+       Fresh once_cell v1.21.4
+       Fresh pin-project-lite v0.2.17
+       Fresh strsim v0.11.1
+       Fresh fnv v1.0.7
+       Fresh futures-sink v0.3.32
+       Fresh futures-core v0.3.32
+       Fresh ident_case v1.0.1
+       Fresh darling_core v0.21.3
+       Fresh getrandom v0.3.4
+       Fresh tracing-core v0.1.36
+       Fresh regex-syntax v0.8.10
+       Fresh heck v0.5.0
+       Fresh rand_core v0.9.5
+       Fresh darling_macro v0.21.3
+       Fresh futures-channel v0.3.32
+       Fresh futures-macro v0.3.32
+       Fresh tracing-attributes v0.1.31
+       Fresh futures-task v0.3.32
+       Fresh once_cell_polyfill v1.70.2
+       Fresh slab v0.4.12
+       Fresh utf8parse v0.2.2
+       Fresh anstyle v1.0.14
+       Fresh memchr v2.8.0
+       Fresh autocfg v1.5.0
+       Fresh futures-io v0.3.32
+       Fresh futures-util v0.3.32
+       Fresh anstyle-wincon v3.0.11
+       Fresh anstyle-parse v1.0.0
+       Fresh tracing v0.1.44
+       Fresh darling v0.21.3
+       Fresh rustversion v1.0.22
+       Fresh getrandom v0.4.2
+       Fresh prettyplease v0.2.37
+       Fresh zerocopy v0.8.48
+       Fresh regex-automata v0.4.14
+       Fresh mio v1.2.0
+       Fresh socket2 v0.6.3
+       Fresh anstyle-query v1.1.5
+       Fresh tokio-macros v2.6.1
+       Fresh colorchoice v1.0.5
+       Fresh unicode-xid v0.2.6
+       Fresh fastrand v2.3.0
+       Fresh lazy_static v1.5.0
+       Fresh is_terminal_polyfill v1.70.2
+       Fresh bytes v1.11.1
+       Fresh log v0.4.29
+       Fresh tracing-log v0.2.0
+       Fresh tokio v1.50.0
+       Fresh anstream v1.0.0
+       Fresh sharded-slab v0.1.7
+       Fresh tempfile v3.27.0
+       Fresh derive_more-impl v1.0.0
+       Fresh matchers v0.2.0
+       Fresh ppv-lite86 v0.2.21
+       Fresh bon-macros v3.9.1
+       Fresh strum_macros v0.27.2
+       Fresh thread_local v1.1.9
+       Fresh test-case-core v3.3.1
+       Fresh nu-ansi-term v0.50.3
+       Fresh thiserror-impl v2.0.18
+       Fresh smallvec v1.15.1
+       Fresh wait-timeout v0.2.1
+       Fresh clap_lex v1.1.0
+       Fresh bit-vec v0.8.0
+       Fresh quick-error v1.2.3
+       Fresh rusty-fork v0.3.1
+       Fresh bit-set v0.8.0
+       Fresh clap_builder v4.6.0
+       Fresh tracing-subscriber v0.3.23
+       Fresh thiserror v2.0.18
+       Fresh test-case-macros v3.3.1
+       Fresh strum v0.27.2
+       Fresh num-traits v0.2.19
+       Fresh bon v3.9.1
+       Fresh rand_chacha v0.9.0
+       Fresh derive_more v1.0.0
+       Fresh tokio-util v0.7.18
+       Fresh futures-executor v0.3.32
+       Fresh rand v0.9.2
+       Fresh rand_xorshift v0.4.0
+       Fresh clap_derive v4.6.0
+       Fresh tracing-test-macro v0.2.6
+       Fresh better_default v1.0.5
+       Fresh unarray v0.1.4
+       Fresh base64 v0.22.1
+       Fresh bitflags v2.11.0
+       Fresh proptest v1.11.0
+       Fresh tracing-test v0.2.6
+       Fresh clap v4.6.0
+       Fresh futures v0.3.32
+       Fresh test-case v3.3.1
+       Fresh anyhow v1.0.102
+warning: unused variable: `password`
+   --> openvpn-mgmt-codec\src\client.rs:635:9
+    |
+635 |         password: impl Into<String>,
+    |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_password`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `openvpn-mgmt-codec` (lib) generated 1 warning (run `cargo fix --lib -p openvpn-mgmt-codec` to apply 1 suggestion)
+       Fresh openvpn-mgmt-codec v1.0.0-rc.1 (C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\openvpn-mgmt-codec)
+warning: `openvpn-mgmt-codec` (lib test) generated 1 warning (1 duplicate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.24s
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\openvpn_mgmt_codec-200b94a0a24d68d8.exe`
+
+running 361 tests
+test auth::tests::auth_retry_invalid ... ok
+test auth::tests::auth_retry_roundtrip::authretrymode_interact_expects ... ok
+test auth::tests::auth_retry_roundtrip::authretrymode_nointeract_expects ... ok
+test auth::tests::auth_type_roundtrip::authtype_auth_expects ... ok
+test auth::tests::auth_retry_roundtrip::authretrymode_none_expects ... ok
+test auth::tests::auth_type_phantom_aliases_are_rejected ... ok
+test auth::tests::auth_type_roundtrip::authtype_privatekey_expects ... ok
+test auth::tests::auth_type_roundtrip::authtype_httpproxy_expects ... ok
+test auth::tests::auth_type_roundtrip::authtype_socksproxy_expects ... ok
+test auth::tests::auth_type_unknown_is_err ... ok
+test client::tests::forget_passwords_ok ... ok
+test client::tests::auth_retry_ok ... ok
+test client::tests::client_kill_ok ... ok
+test client::tests::cr_response_ok ... ok
+test client::tests::client_auth_ok ... ok
+test client::tests::client_auth_nt_ok ... ok
+test client::tests::certificate_ok ... ok
+test client::tests::current_state_returns_single_entry ... ok
+test client::tests::client_deny_ok ... ok
+test client::tests::hold_on_ok ... ok
+test client::tests::hold_off_ok ... ok
+test client::tests::echo_off_returns_none ... ok
+test client::tests::hold_query_parsed ... ok
+test client::tests::help_returns_lines ... ok
+test client::tests::bytecount_ok ... ok
+test client::tests::exit_consumes_client ... ok
+test client::tests::env_filter_ok ... ok
+test client::tests::client_pending_auth_ok ... ok
+test client::tests::connection_closed_returns_error ... ok
+test client::tests::hold_release_ok ... ok
+test client::tests::hold_query_returns_false ... ok
+test client::tests::into_framed_recovers_transport ... ok
+test client::tests::kill_ok ... ok
+test client::tests::load_stats_parsed ... ok
+test client::tests::log_all_returns_history ... ok
+test client::tests::log_on_returns_none ... ok
+test client::tests::challenge_response_ok ... ok
+test client::tests::management_password_ok ... ok
+test client::tests::mute_returns_payload ... ok
+test client::tests::multiple_notification_subscribers ... ok
+test client::tests::need_ok_ok ... ok
+test client::tests::need_str_ok ... ok
+test client::tests::net_returns_lines ... ok
+test client::tests::notifications_forwarded_during_command ... ok
+test client::tests::parse_error_for_malformed_load_stats ... ok
+test client::tests::parse_error_for_malformed_pid ... ok
+test client::tests::password_ok ... ok
+test client::tests::pid_returns_parsed_value ... ok
+test client::tests::pk_sig_ok ... ok
+test client::tests::pkcs11_id_count_returns_payload ... ok
+test client::tests::pkcs11_id_get_returns_payload ... ok
+test client::tests::proxy_ok ... ok
+test client::tests::push_update_broad_ok ... ok
+test client::tests::push_update_cid_ok ... ok
+test client::tests::raw_multi_line_returns_lines ... ok
+test client::tests::raw_returns_success_payload ... ok
+test client::tests::raw_server_error ... ok
+test client::tests::remote_entry_count_returns_lines ... ok
+test client::tests::remote_entry_get_returns_lines ... ok
+test client::tests::remote_ok ... ok
+test client::tests::rsa_sig_ok ... ok
+test client::tests::server_error_maps_to_client_error ... ok
+test client::tests::set_version_4_expects_success ... ok
+test client::tests::set_version_below_4_sends_without_response ... ok
+test client::tests::signal_ok ... ok
+test client::tests::state_returns_parsed_entries ... ok
+test client::tests::state_stream_all_returns_parsed_history ... ok
+test client::tests::state_stream_on_returns_none ... ok
+test client::tests::static_challenge_response_ok ... ok
+test client::tests::status_raw_returns_lines ... ok
+test client::tests::unexpected_response_for_multi_line_command ... ok
+test client::tests::unexpected_response_for_success_command ... ok
+test client::tests::username_ok ... ok
+test client::tests::verb_query_returns_payload ... ok
+test client_event::tests::cr_response_not_recognised_by_from_str ... ok
+test client::tests::verb_set_returns_payload ... ok
+test client_event::tests::display_cr_response ... ok
+test client_event::tests::display_roundtrip ... ok
+test client_event::tests::display_unknown ... ok
+test client_event::tests::parse_all_known_variants ... ok
+test client_event::tests::unknown_string_is_err ... ok
+test codec::tests::decode_bare_state_multiline ... ok
+test codec::tests::decode_client_address_single_line ... ok
+test codec::tests::decode_empty_multiline ... ok
+test codec::tests::decode_error ... ok
+test codec::tests::decode_hold_notification ... ok
+test codec::tests::decode_hold_query_success ... ok
+test codec::tests::decode_info_notification ... ok
+test codec::tests::decode_multiline_with_command_tracking ... ok
+test codec::tests::decode_need_ok_notification ... ok
+test codec::tests::decode_notification_during_multiline ... ok
+test codec::tests::decode_client_disconnect ... ok
+test codec::tests::decode_client_connect_multiline_notification ... ok
+test codec::tests::client_env_limit_exceeded ... ok
+test codec::tests::decode_password_notification ... ok
+test codec::tests::decode_password_prompt_no_newline_with_cr ... ok
+test codec::tests::decode_password_prompt_no_newline_without_cr ... ok
+test codec::tests::decode_password_prompt_with_cr_fully_consumes_buffer ... ok
+test codec::tests::decode_state_notification ... ok
+test codec::tests::decode_success ... ok
+test codec::tests::decode_success_bare ... ok
+test codec::tests::encode_client_auth_empty_config ... ok
+test codec::tests::encode_client_auth_with_config ... ok
+test codec::tests::default_accumulation_limit_allows_reasonable_responses ... ok
+test codec::tests::encode_client_pending_auth ... ok
+test codec::tests::encode_client_deny_with_client_reason ... ok
+test codec::tests::encode_echo_on_all ... ok
+test codec::tests::encode_env_filter ... ok
+test codec::tests::encode_forget_passwords ... ok
+test codec::tests::encode_hold_query ... ok
+test codec::tests::encode_needok ... ok
+test codec::tests::encode_needstr ... ok
+test codec::tests::encode_password_escaping ... ok
+test codec::tests::encode_password_simple ... ok
+test codec::tests::encode_pk_sig ... ok
+test codec::tests::encode_proxy_http_nct ... ok
+test codec::tests::encode_push_update_broad ... ok
+test codec::tests::encode_push_update_cid ... ok
+test codec::tests::encode_raw_multiline ... ok
+test codec::tests::encode_remote_entry_count ... ok
+test codec::tests::encode_remote_entry_get ... ok
+test codec::tests::encode_remote_modify ... ok
+test codec::tests::encode_remote_skip_n ... ok
+test codec::tests::encode_rsa_sig ... ok
+test codec::tests::encode_set_version ... ok
+test codec::tests::encode_signal ... ok
+test codec::tests::encode_state_on_all ... ok
+test codec::tests::encode_state_recent ... ok
+test codec::tests::encode_client_pending_auth_at_limit_no_warning ... ok
+test codec::tests::encode_client_pending_auth_long_extra_warns ... ok
+test codec::tests::encode_during_multiline_accumulation_warns_but_succeeds ... ok
+test codec::tests::encode_during_client_notif_accumulation_warns_but_succeeds ... ok
+test codec::tests::encode_status_v1 ... ok
+test codec::tests::encode_status_v3 ... ok
+test codec::tests::escape_and_quote_special_chars ... ok
+test codec::tests::multi_line_limit_exact_boundary_passes ... ok
+test codec::tests::multi_line_limit_exceeded ... ok
+test codec::tests::pipelined_commands_decode_correctly ... ok
+test codec::tests::raw_multiline_expects_multiline_response ... ok
+test codec::tests::raw_multiline_sanitizes_newlines ... ok
+test codec::tests::raw_multiline_strict_rejects_newlines ... ok
+test codec::tests::utf8_error_resets_client_notif_state ... ok
+test codec::tests::utf8_error_resets_multiline_state ... ok
+test command::tests::connection_sequence_with_bytecount ... ok
+test command::tests::connection_sequence_without_bytecount ... ok
+test command::tests::exit_quit_expect_no_response ... ok
+test command::tests::into_static_str_labels ... ok
+test command::tests::next_token_empty ... ok
+test command::tests::next_token_last_token_no_trailing ... ok
+test command::tests::next_token_quoted_simple ... ok
+test command::tests::next_token_quoted_with_escapes ... ok
+test command::tests::next_token_unclosed_quote_returns_none ... ok
+test command::tests::next_token_unquoted ... ok
+test command::tests::parse_auth_retry ... ok
+test command::tests::parse_bytecount_non_numeric ... ok
+test command::tests::parse_bytecount ... ok
+test command::tests::parse_client_auth ... ok
+test command::tests::parse_client_auth_non_numeric_cid ... ok
+test command::tests::parse_client_auth_non_numeric_kid ... ok
+test command::tests::parse_client_auth_nt ... ok
+test command::tests::parse_client_auth_nt_non_numeric_kid ... ok
+test command::tests::parse_client_auth_with_config ... ok
+test command::tests::parse_client_deny ... ok
+test command::tests::parse_client_deny_missing_args ... ok
+test command::tests::parse_client_deny_non_numeric_ids ... ok
+test command::tests::parse_client_kill ... ok
+test command::tests::parse_client_pending_auth ... ok
+test command::tests::parse_client_pending_auth_missing_args ... ok
+test command::tests::parse_client_pending_auth_non_numeric ... ok
+test command::tests::parse_cr_response ... ok
+test command::tests::parse_echo_invalid_stream_mode ... ok
+test command::tests::parse_cr_response_missing_arg ... ok
+test command::tests::parse_env_filter ... ok
+test command::tests::parse_hold ... ok
+test command::tests::parse_kill_address ... ok
+test command::tests::parse_kill_empty_is_err ... ok
+test command::tests::parse_kill_common_name ... ok
+test command::tests::parse_log_and_echo ... ok
+test command::tests::parse_kill_unknown_protocol_falls_back ... ok
+test command::tests::parse_log_invalid_stream_mode ... ok
+test command::tests::parse_mute ... ok
+test command::tests::parse_needok ... ok
+test command::tests::parse_needstr ... ok
+test command::tests::parse_needstr_missing_value ... ok
+test command::tests::parse_password_missing_value_is_err ... ok
+test command::tests::parse_password ... ok
+test command::tests::parse_password_quoted_http_proxy ... ok
+test command::tests::parse_password_quoted_spaced_auth_type ... ok
+test command::tests::parse_password_quoted_socks_proxy ... ok
+test command::tests::parse_password_roundtrip_spaced_auth_types ... ok
+test command::tests::parse_password_unknown_auth_type_falls_back ... ok
+test command::tests::parse_pkcs11_id_get ... ok
+test command::tests::parse_pkcs11_id_get_missing_arg ... ok
+test command::tests::parse_proxy ... ok
+test command::tests::parse_proxy_non_numeric_port ... ok
+test command::tests::parse_push_update_broad ... ok
+test command::tests::parse_push_update_cid ... ok
+test command::tests::parse_raw_ml ... ok
+test command::tests::parse_remote ... ok
+test command::tests::parse_remote_entry_count ... ok
+test command::tests::parse_remote_entry_get ... ok
+test command::tests::parse_remote_non_numeric_port ... ok
+test command::tests::parse_signal ... ok
+test command::tests::parse_simple_commands ... ok
+test command::tests::parse_state_bare ... ok
+test command::tests::parse_state_invalid_stream_mode ... ok
+test command::tests::parse_state_stream_modes ... ok
+test command::tests::parse_status ... ok
+test command::tests::parse_trims_whitespace ... ok
+test command::tests::parse_unrecognized_falls_through_to_raw ... ok
+test command::tests::parse_username ... ok
+test command::tests::parse_username_missing_value_is_err ... ok
+test command::tests::parse_username_quoted_spaced_auth_type ... ok
+test command::tests::parse_username_unknown_auth_type_falls_back ... ok
+test command::tests::parse_verb ... ok
+test crv1_challenge::tests::display_produces_valid_crv1_string ... ok
+test crv1_challenge::tests::empty_fields ... ok
+test crv1_challenge::tests::roundtrip_with_special_characters ... ok
+test log_level::tests::display_unknown_uses_strum_default ... ok
+test log_level::tests::label_known_variants ... ok
+test log_level::tests::label_unknown_returns_inner ... ok
+test log_level::tests::parse_invalid ... ok
+test log_level::tests::parse_roundtrip::_d_expects_loglevel_debug ... ok
+test log_level::tests::parse_roundtrip::_f_expects_loglevel_fatal ... ok
+test log_level::tests::parse_roundtrip::_i_expects_loglevel_info ... ok
+test log_level::tests::parse_roundtrip::_n_expects_loglevel_nonfatal ... ok
+test log_level::tests::parse_roundtrip::_w_expects_loglevel_warning ... ok
+test message::tests::debug_bytecount ... ok
+test message::tests::debug_bytecount_cli ... ok
+test message::tests::debug_client_address ... ok
+test message::tests::debug_does_not_redact_non_sensitive_keys ... ok
+test message::tests::debug_echo ... ok
+test message::tests::debug_fatal ... ok
+test message::tests::debug_hold ... ok
+test message::tests::debug_info_notification ... ok
+test message::tests::debug_log ... ok
+test message::tests::debug_pk_sign_with_algorithm ... ok
+test message::tests::debug_pk_sign_without_algorithm ... ok
+test message::tests::debug_proxy ... ok
+test message::tests::debug_redacts_password_env_key ... ok
+test message::tests::debug_remote ... ok
+test message::tests::debug_simple_fallback ... ok
+test message::tests::debug_state_notification ... ok
+test message::tests::ovpn_message_eq ... ok
+test message::tests::ovpn_message_password_prompt ... ok
+test message::tests::ovpn_message_unrecognized ... ok
+test message::tests::ovpn_message_pkcs11_entry ... ok
+test message::tests::password_notification_debug_redacts_token ... ok
+test message::tests::password_notification_dynamic_challenge_fields ... ok
+test message::tests::password_notification_eq ... ok
+test message::tests::password_notification_static_challenge_fields ... ok
+test need_ok::tests::display_cancel ... ok
+test need_ok::tests::display_ok ... ok
+test openvpn_state::tests::display_roundtrip ... ok
+test openvpn_state::tests::display_unknown ... ok
+test openvpn_state::tests::error_preserves_input ... ok
+test openvpn_state::tests::parse_all_known_states ... ok
+test openvpn_state::tests::unknown_state_is_err ... ok
+test parsed_response::tests::current_state_empty_history ... ok
+test parsed_response::tests::current_state_returns_last ... ok
+test parsed_response::tests::hold_inactive ... ok
+test parsed_response::tests::hold_invalid_value ... ok
+test parsed_response::tests::hold_active ... ok
+test parsed_response::tests::hold_missing_prefix ... ok
+test parsed_response::tests::load_stats_missing_field ... ok
+test parsed_response::tests::load_stats_non_numeric_value ... ok
+test parsed_response::tests::load_stats_normal ... ok
+test parsed_response::tests::load_stats_reordered ... ok
+test parsed_response::tests::load_stats_unexpected_field ... ok
+test parsed_response::tests::pid_missing_prefix ... ok
+test parsed_response::tests::pid_normal ... ok
+test parsed_response::tests::pid_not_a_number ... ok
+test parsed_response::tests::pid_zero ... ok
+test parsed_response::tests::state_entry_bad_state_name ... ok
+test parsed_response::tests::state_entry_bad_timestamp ... ok
+test parsed_response::tests::state_entry_full ... ok
+test parsed_response::tests::state_entry_minimal ... ok
+test parsed_response::tests::state_entry_optional_ports_empty ... ok
+test parsed_response::tests::state_entry_too_few_fields ... ok
+test parsed_response::tests::state_history_roundtrip ... ok
+test parsed_response::tests::version_roundtrip ... ok
+test redacted::tests::debug_is_redacted ... ok
+test redacted::tests::display_is_redacted ... ok
+test redacted::tests::equality ... ok
+test redacted::tests::expose_returns_inner ... ok
+test redacted::tests::from_str ... ok
+test redacted::tests::from_string ... ok
+test redacted::tests::into_inner_returns_owned ... ok
+test signal::tests::parse_invalid ... ok
+test signal::tests::parse_roundtrip::signal_sighup_expects ... ok
+test signal::tests::parse_roundtrip::signal_sigterm_expects ... ok
+test signal::tests::parse_roundtrip::signal_sigusr1_expects ... ok
+test signal::tests::parse_roundtrip::signal_sigusr2_expects ... ok
+test status::tests::client_statistics_basic ... ok
+test status::tests::client_statistics_invalid_number ... ok
+test status::tests::client_statistics_missing_key ... ok
+test status::tests::client_statistics_with_compression ... ok
+test status::tests::detect_separator_each_tab_prefix ... ok
+test status::tests::detect_separator_falls_back_to_comma ... ok
+test status::tests::empty_input ... ok
+test status::tests::parse_optional_u64_empty ... ok
+test status::tests::parse_optional_u64_undef ... ok
+test status::tests::parse_optional_u64_valid ... ok
+test status::tests::v1_client_list_exactly_five_fields ... ok
+test status::tests::v1_client_list_too_few_fields ... ok
+test status::tests::v1_routing_table_exactly_four_fields ... ok
+test status::tests::v1_routing_table_too_few_fields ... ok
+test status::tests::v1_server_empty ... ok
+test status::tests::v1_server_many_clients ... ok
+test status::tests::v1_server_two_clients ... ok
+test status::tests::v2_full_multiple_clients ... ok
+test status::tests::v2_old_openvpn_23 ... ok
+test status::tests::v2_single_client ... ok
+test status::tests::v2v3_client_list_old_layout_exactly_five_fields ... ok
+test status::tests::v2v3_client_list_old_layout_too_few_fields ... ok
+test status::tests::v2v3_global_stats_exactly_three_fields ... ok
+test status::tests::v2v3_global_stats_with_only_key_is_ignored ... ok
+test status::tests::v2v3_routing_table_exactly_four_fields ... ok
+test status::tests::v2v3_routing_table_too_few_fields ... ok
+test status::tests::v2v3_unknown_lines_ignored ... ok
+test status::tests::v3_single_client ... ok
+test status_format::tests::display_roundtrip::statusformat_v1_expects ... ok
+test status_format::tests::display_roundtrip::statusformat_v2_expects ... ok
+test status_format::tests::display_roundtrip::statusformat_v3_expects ... ok
+test status_format::tests::display_values ... ok
+test status_format::tests::parse_invalid ... ok
+test stream::tests::info_maps_to_response ... ok
+test stream::tests::notification_maps_to_notification ... ok
+test stream::tests::success_maps_to_response ... ok
+test stream_mode::tests::parse_invalid ... ok
+test stream_mode::tests::parse_roundtrip::streammode_all_expects ... ok
+test stream_mode::tests::parse_roundtrip::streammode_off_expects ... ok
+test stream_mode::tests::parse_roundtrip::streammode_on_expects ... ok
+test stream_mode::tests::parse_roundtrip::streammode_onall_expects ... ok
+test stream_mode::tests::parse_roundtrip::streammode_recent_42_expects ... ok
+test timestamp::tests::days_to_ymd_dec_31 ... ok
+test timestamp::tests::days_to_ymd_epoch ... ok
+test timestamp::tests::days_to_ymd_jan_1_2000 ... ok
+test timestamp::tests::days_to_ymd_known_date ... ok
+test timestamp::tests::days_to_ymd_leap_day ... ok
+test timestamp::tests::format_timestamp_known_date ... ok
+test timestamp::tests::format_utc_epoch_plus_one ... ok
+test timestamp::tests::format_utc_known_date ... ok
+test timestamp::tests::format_utc_leap_day ... ok
+test timestamp::tests::format_utc_y2k ... ok
+test timestamp::tests::format_utc_zero ... ok
+test timestamp::tests::utc_timestamp_display ... ok
+test transport_protocol::tests::display_roundtrip ... ok
+test transport_protocol::tests::display_unknown ... ok
+test transport_protocol::tests::error_preserves_input ... ok
+test transport_protocol::tests::mixed_case_is_err ... ok
+test transport_protocol::tests::parse_lowercase ... ok
+test transport_protocol::tests::parse_uppercase ... ok
+test transport_protocol::tests::unknown_protocol_is_err ... ok
+test unrecognized::tests::malformed_notification_display ... ok
+test unrecognized::tests::unexpected_line_display ... ok
+test version_info::tests::parse_empty_response ... ok
+test version_info::tests::parse_hypothetical_future_format ... ok
+test version_info::tests::parse_old_version_without_management_line ... ok
+test version_info::tests::parse_short_management_version_header ... ok
+test version_info::tests::parse_typical_version_output ... ok
+
+test result: ok. 361 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\adversarial_roundtrip-b1f3bb7ccec775ba.exe`
+
+running 16 tests
+test client_deny_without_client_reason ... ok
+test password_with_spaces ... ok
+test password_with_unicode ... ok
+test password_with_backslashes_and_quotes ... ok
+test roundtrip_cr_response ... ok
+test roundtrip_needstr_with_special_chars ... ok
+test roundtrip_proxy_http_with_nct ... ok
+test custom_auth_type_with_spaces ... ok
+test roundtrip_client_pending_auth ... ok
+test roundtrip_remote_mod ... ok
+test password_empty_string ... ok
+test self_decode_multiline_command_body_becomes_multiline_response ... ok
+test password_with_only_special_chars ... ok
+test self_decode_simple_commands_produce_success_or_unrecognized ... ok
+test very_long_config_lines_encode_successfully ... ok
+test very_long_password_encodes_successfully ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\boundary_conditions-84eccffaa4835698.exe`
+
+running 40 tests
+test auth_type_custom_empty_string ... ok
+test auth_type_display_roundtrip_including_custom ... ok
+test auth_retry_mode_display_roundtrip ... ok
+test classify_multiline ... ok
+test classify_notification_client ... ok
+test classify_notification_fatal ... ok
+test classify_notification_hold ... ok
+test classify_notification_password ... ok
+test classify_notification_simple_fallback ... ok
+test classify_password_prompt ... ok
+test classify_pkcs11_id_entry ... ok
+test classify_unrecognized ... ok
+test client_env_limit_zero_rejects_any_entry ... ok
+test client_env_limit_exact_boundary_succeeds ... ok
+test crlf_client_notification ... ok
+test classify_info ... ok
+test classify_notification_state ... ok
+test client_env_limit_one_over_boundary_fails ... ok
+test classify_error ... ok
+test classify_success ... ok
+test crlf_error_response ... ok
+test crlf_multiline_response ... ok
+test crlf_notification ... ok
+test crlf_password_prompt ... ok
+test crlf_success_response ... ok
+test empty_multiline_response ... ok
+test mixed_lf_and_crlf_in_same_stream ... ok
+test multiline_limit_exact_boundary_succeeds ... ok
+test multiline_limit_one_allows_single_line ... ok
+test multiline_limit_one_over_boundary_fails ... ok
+test multiline_limit_zero_allows_first_line_but_rejects_second ... ok
+test ovpn_command_from_str_basic_commands ... ok
+test ovpn_command_from_str_state_stream_modes ... ok
+test ovpn_command_from_str_status_variants ... ok
+test ovpn_command_from_str_unknown_falls_to_raw ... ok
+test signal_display_roundtrip ... ok
+test status_format_display_roundtrip_all ... ok
+test stream_mode_display_roundtrip_all ... ok
+test stream_mode_recent_zero ... ok
+test unlimited_accumulation_handles_large_response ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance-90d7d8dbe43ca744.exe`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance_password-bb093767c27aba2c.exe`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance_remote-0bbb6bf3a320279c.exe`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance_server-7385727dceca80ae.exe`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\conformance_wire_format-53c27b276d8dd79c.exe`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\decoder_recovery-4b0d89796ba094ef.exe`
+
+running 14 tests
+test alternating_utf8_errors_and_valid_messages ... ok
+test empty_line_does_not_break_subsequent_decoding ... ok
+test malformed_notification_does_not_break_subsequent_decoding ... ok
+test client_env_limit_error_then_next_notification_works ... ok
+test multiline_limit_error_leaves_multi_line_buf_active ... ok
+test unrecognized_line_does_not_break_subsequent_decoding ... ok
+test partial_client_notification_then_complete ... ok
+test utf8_error_during_client_env_accumulation_resets_state ... ok
+test utf8_error_during_multiline_accumulation_resets_state ... ok
+test multiple_utf8_errors_then_recovery ... ok
+test partial_multiline_then_complete ... ok
+test partial_line_then_complete_line ... ok
+test utf8_error_followed_by_valid_success ... ok
+test error_response_does_not_break_subsequent_decoding ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\defensive-dd97bbeac407ba8a.exe`
+
+running 133 tests
+test challenge_response_newline_must_not_inject_command ... ok
+test block_body_null_byte_must_be_stripped ... ok
+test cr_response_newline_must_not_inject_command ... ok
+test certificate_end_in_pem_must_not_split_block ... ok
+test client_deny_client_reason_newline_must_not_inject_command ... ok
+test client_deny_reason_newline_must_not_inject_command ... ok
+test client_auth_end_in_config_lines_must_not_split_block ... ok
+test custom_auth_type_with_newline_must_not_inject_command ... ok
+test client_pending_auth_extra_newline_must_not_inject_command ... ok
+test kill_address_ip_newline_must_not_inject_command ... ok
+test kill_common_name_bare_cr_must_be_stripped ... ok
+test client_auth_newline_in_config_line_must_not_inject ... ok
+test kill_common_name_null_byte_must_be_stripped ... ok
+test kill_injection_roundtrip_must_produce_single_message ... ok
+test kill_common_name_newline_must_not_inject_command ... ok
+test management_password_newline_must_not_inject_command ... ok
+test client_deny_reason_null_byte_must_be_stripped ... ok
+test custom_auth_type_with_quote_must_not_break_framing ... ok
+test password_bare_cr_must_be_stripped ... ok
+test client_auth_end_injection_roundtrip ... ok
+test management_password_null_byte_must_be_stripped ... ok
+test needstr_name_newline_must_not_inject_command ... ok
+test needstr_value_newline_must_not_inject_command ... ok
+test needok_name_newline_must_not_inject_command ... ok
+test password_newline_must_not_inject_command ... ok
+test password_null_byte_must_be_stripped ... ok
+test proxy_http_host_newline_must_not_inject_command ... ok
+test password_injection_roundtrip_must_produce_single_message ... ok
+test proxy_socks_host_newline_must_not_inject_command ... ok
+test raw_newline_must_not_inject_command ... ok
+test real_world::blank_line_between_notifications_skipped ... ok
+test real_world::bytecount_cli_realistic_server_data ... ok
+test real_world::bytecount_large_u64_values ... ok
+test real_world::challenge_response_crlf_in_state_id_stripped ... ok
+test real_world::client_address_ipv6 ... ok
+test real_world::client_cr_response_with_full_env ... ok
+test real_world::client_deny_reason_with_multibyte_utf8 ... ok
+test real_world::client_disconnect_with_completely_empty_env ... ok
+test real_world::client_env_key_with_no_equals ... ok
+test real_world::client_env_missing_common_name_entirely ... ok
+test real_world::client_env_undef_common_name ... ok
+test real_world::client_env_value_with_multiple_equals ... ok
+test real_world::client_established_has_no_kid ... ok
+test real_world::client_pending_auth_numeric_field_injection ... ok
+test real_world::client_reauth_parsed_distinctly_from_connect ... ok
+test real_world::client_unknown_event_type_still_accumulates_env ... ok
+test real_world::decoder_handles_null_byte_in_notification ... ok
+test real_world::decoder_handles_null_byte_in_success ... ok
+test real_world::dynamic_challenge_with_colons_in_challenge_text ... ok
+test real_world::dynamic_challenge_with_empty_flags ... ok
+test real_world::empty_line_is_silently_skipped ... ok
+test real_world::fatal_tap_driver_error ... ok
+test real_world::first_info_is_banner_subsequent_are_notifications ... ok
+test real_world::hold_notification_with_counter ... ok
+test real_world::hold_notification_with_nonzero_counter ... ok
+test real_world::incomplete_client_env_block_buffers_correctly ... ok
+test real_world::incomplete_line_returns_none_not_error ... ok
+test real_world::decoder_handles_very_long_notification_line ... ok
+test real_world::infomsg_web_auth_is_first_class ... ok
+test real_world::invalid_utf8_returns_error_not_panic ... ok
+test real_world::kill_common_name_that_looks_like_command_argument ... ok
+test real_world::kill_common_name_with_cjk_characters ... ok
+test real_world::kill_common_name_with_multibyte_utf8 ... ok
+test real_world::kill_common_name_with_spaces ... ok
+test real_world::management_password_prompt_parsed ... ok
+test real_world::need_ok_with_colon_in_message ... ok
+test real_world::need_ok_with_smartcard_prompt ... ok
+test real_world::notification_with_no_colon_becomes_unrecognized ... ok
+test real_world::notify_notification_degrades_to_simple ... ok
+test real_world::password_auth_token_parsed ... ok
+test real_world::password_verification_failed_custom_type ... ok
+test real_world::password_with_backslash_and_quotes ... ok
+test real_world::password_with_literal_backslash_n_sequence ... ok
+test real_world::password_with_multibyte_utf8 ... ok
+test real_world::pk_sign_empty_payload_degrades_to_simple ... ok
+test real_world::pk_sign_with_algorithm_parsed ... ok
+test real_world::pk_sign_with_ecdsa_algorithm ... ok
+test real_world::pk_sign_with_large_base64_payload ... ok
+test real_world::pk_sign_with_pss_padding_and_hash_params ... ok
+test real_world::pk_sign_without_algorithm_parsed ... ok
+test real_world::pkcs11id_entry_with_realistic_token_data ... ok
+test real_world::set_version_3_expects_no_response ... ok
+test real_world::set_version_4_expects_success_response ... ok
+test real_world::state_all_fields_empty_trailing_commas ... ok
+test real_world::state_only_four_fields_old_openvpn ... ok
+test real_world::state_reconnecting_with_reason ... ok
+test real_world::state_string_timestamp_degrades_to_simple ... ok
+test real_world::state_with_hostname_as_remote ... ok
+test real_world::state_with_ipv6_local_address ... ok
+test real_world::static_challenge_flag_3_echo_and_concat ... ok
+test real_world::static_challenge_no_double_escape_of_base64 ... ok
+test real_world::static_challenge_response_crlf_in_base64_stripped ... ok
+test real_world::static_challenge_with_colon_in_challenge_text ... ok
+test real_world::status_v2_interleaved_with_notification ... ok
+test real_world::status_v3_interleaved_with_notification ... ok
+test real_world::strict_challenge_response_crlf_in_state_id_rejected ... ok
+test real_world::strict_static_challenge_response_crlf_in_base64_rejected ... ok
+test real_world::truncated_multiline_block_returns_none ... ok
+test real_world::unknown_notification_type_degrades_to_simple ... ok
+test remote_mod_host_newline_must_not_inject_command ... ok
+test rsa_sig_end_in_base64_must_not_split_block ... ok
+test static_challenge_response_newline_must_not_inject_command ... ok
+test strict_certificate_end_in_pem_rejected ... ok
+test strict_challenge_response_newline_rejected ... ok
+test strict_clean_client_auth_accepted ... ok
+test strict_clean_password_accepted ... ok
+test strict_client_auth_end_in_config_lines_rejected ... ok
+test strict_client_auth_newline_in_config_line_rejected ... ok
+test strict_client_deny_client_reason_newline_rejected ... ok
+test strict_client_deny_reason_newline_rejected ... ok
+test strict_client_pending_auth_extra_newline_rejected ... ok
+test strict_cr_response_newline_rejected ... ok
+test strict_custom_auth_type_with_newline_rejected ... ok
+test strict_kill_address_ip_newline_rejected ... ok
+test strict_kill_common_name_bare_cr_rejected ... ok
+test strict_kill_common_name_newline_rejected ... ok
+test strict_management_password_newline_rejected ... ok
+test strict_needok_name_newline_rejected ... ok
+test strict_needstr_name_newline_rejected ... ok
+test strict_needstr_value_newline_rejected ... ok
+test strict_password_bare_cr_rejected ... ok
+test strict_password_newline_rejected ... ok
+test strict_password_null_byte_rejected ... ok
+test strict_proxy_http_host_newline_rejected ... ok
+test strict_proxy_socks_host_newline_rejected ... ok
+test strict_raw_newline_rejected ... ok
+test strict_remote_mod_host_newline_rejected ... ok
+test strict_rsa_sig_end_in_base64_rejected ... ok
+test strict_static_challenge_response_newline_rejected ... ok
+test strict_username_newline_rejected ... ok
+test username_newline_must_not_inject_command ... ok
+test username_null_byte_must_be_stripped ... ok
+test real_world::encoder_handles_very_long_password ... ok
+
+test result: ok. 133 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\framed_integration-293e1f2d127404b4.exe`
+
+running 11 tests
+test framed_stream_ends_cleanly_on_server_close ... ok
+test framed_incremental_byte_delivery ... ok
+test framed_encode_pid_and_decode_success ... ok
+test framed_client_notification_accumulation ... ok
+test framed_classify_stream_adapter ... ok
+test framed_multiple_messages_in_single_write ... ok
+test framed_notification_before_command ... ok
+test framed_multiline_response ... ok
+test framed_password_prompt_and_management_auth ... ok
+test framed_notification_interleaved_in_multiline ... ok
+test framed_full_session_lifecycle ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\notification_edge_cases-2c5e236cefafce52.exe`
+
+running 59 tests
+test bytecount_cli_valid ... ok
+test bytecount_large_values ... ok
+test bytecount_missing_second_field_falls_back_to_simple ... ok
+test log_missing_fields_falls_back ... ok
+test client_address_notification ... ok
+test bytecount_empty_falls_back_to_simple ... ok
+test echo_empty_param ... ok
+test echo_with_commas ... ok
+test bytecount_zero_values ... ok
+test log_with_commas_in_message ... ok
+test info_banner_is_separate_variant ... ok
+test log_empty_message ... ok
+test bytecount_non_numeric_falls_back_to_simple ... ok
+test bytecount_negative_falls_back_to_simple ... ok
+test bytecount_cli_missing_field_falls_back ... ok
+test client_address_not_primary ... ok
+test client_disconnect_no_kid ... ok
+test client_env_key_without_value ... ok
+test log_non_numeric_timestamp_falls_back ... ok
+test client_env_with_equals_in_value ... ok
+test log_unknown_level ... ok
+test fatal_preserves_message ... ok
+test need_ok_valid ... ok
+test client_cr_response_event ... ok
+test need_ok_no_quote_falls_back ... ok
+test hold_preserves_full_text ... ok
+test notification_with_empty_payload ... ok
+test need_ok_missing_msg_falls_back ... ok
+test need_str_valid ... ok
+test notification_with_no_colon_is_unrecognized ... ok
+test password_auth_token ... ok
+test password_auth_token_empty ... ok
+test password_custom_auth_type ... ok
+test password_dynamic_challenge_crv1 ... ok
+test password_need_auth_all_known_types ... ok
+test password_need_password_private_key ... ok
+test password_need_with_unknown_suffix_falls_back ... ok
+test password_static_challenge_echo_and_concat_flags ... ok
+test password_unrecognized_format_falls_back_to_simple ... ok
+test password_verification_failed ... ok
+test pkcs11_id_count_non_numeric_falls_back ... ok
+test pkcs11_id_count_valid ... ok
+test pkcs11_id_count_zero ... ok
+test pkcs11_id_entry_malformed_falls_back ... ok
+test pkcs11_id_entry_valid ... ok
+test proxy_non_numeric_index_falls_back ... ok
+test proxy_valid ... ok
+test remote_missing_protocol_falls_back ... ok
+test remote_non_numeric_port_falls_back ... ok
+test remote_valid ... ok
+test rsa_sign_preserves_data ... ok
+test state_empty_optional_fields ... ok
+test state_empty_payload_falls_back_to_simple ... ok
+test state_minimal_fields ... ok
+test state_non_numeric_timestamp_falls_back_to_simple ... ok
+test state_too_few_fields_falls_back_to_simple ... ok
+test state_unknown_state_name ... ok
+test state_with_all_nine_fields ... ok
+test unknown_notification_type_becomes_simple ... ok
+
+test result: ok. 59 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\proptest_roundtrip-d059a27db61e2385.exe`
+
+running 35 tests
+test roundtrip_notif_bytecount_cli ... ok
+test roundtrip_notif_bytecount ... ok
+test byte_at_a_time_matches_bulk_decode ... ok
+test roundtrip_info ... ok
+test roundtrip_notif_client_address ... ok
+test roundtrip_error ... ok
+test roundtrip_notif_echo ... ok
+test roundtrip_notif_fatal ... ok
+test encoded_output_is_well_formed ... ok
+test encoded_line_count_matches_structure ... ok
+test roundtrip_notif_pkcs11id_count ... ok
+test roundtrip_notif_hold ... ok
+test encoding_is_deterministic ... ok
+test command_encode_parse_roundtrip ... ok
+test roundtrip_notif_log ... ok
+test roundtrip_password_prompt ... ok
+test roundtrip_notif_proxy ... ok
+test roundtrip_notif_rsa_sign ... ok
+test roundtrip_notif_password ... ok
+test roundtrip_notif_need_str ... ok
+test roundtrip_notif_remote ... ok
+test roundtrip_notif_need_ok ... ok
+test decoder_never_panics_on_arbitrary_input ... ok
+test roundtrip_success ... ok
+test roundtrip_notif_simple ... ok
+test roundtrip_multiline ... ok
+test decoder_always_makes_progress ... ok
+test roundtrip_pkcs11id_entry ... ok
+test notification_interleaved_in_multiline_is_safe ... ok
+test roundtrip_notif_client ... ok
+test byte_at_a_time_client_notification ... ok
+test self_describing_messages_ignore_codec_state ... ok
+test roundtrip_notif_state ... ok
+test client_notification_has_exact_env_count ... ok
+test multiline_block_has_exact_line_count ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\protocol_test-d42d48ac37e3f42e.exe`
+
+running 202 tests
+test bytecount_client_mode ... ok
+test bytecount_cli_multiple_clients ... ok
+test bytecount_cli_server_mode ... ok
+test bytecount_large_values ... ok
+test challenge_response_dynamic_crv1 ... ok
+test bytecount_enable_disable_roundtrip ... ok
+test bytecount_interleaved_in_version_response ... ok
+test challenge_response_static_scrv1 ... ok
+test challenge_response_with_special_chars_in_state_id ... ok
+test client_address_notification ... ok
+test client_connect_full_env ... ok
+test client_connect_tls_rich_env ... ok
+test client_cr_response_event ... ok
+test client_disconnect_with_stats ... ok
+test client_established ... ok
+test client_notification_interleaved_in_multiline_response ... ok
+test client_mode_auth_with_challenge_session ... ok
+test client_notification_no_comma_in_payload ... ok
+test client_reauth ... ok
+test bytecount_zero_values ... ok
+test connection_banner ... ok
+test crlf_in_client_notification ... ok
+test crlf_in_multiline_response ... ok
+test crlf_line_endings ... ok
+test decode_password_prompt ... ok
+test echo_forget_passwords ... ok
+test echo_history_dump ... ok
+test echo_notification ... ok
+test empty_success_and_error ... ok
+test encode_all_hold_variants ... ok
+test encode_all_signals ... ok
+test encode_all_stream_modes ... ok
+test encode_all_simple_commands ... ok
+test encode_auth_retry_modes ... ok
+test encode_certificate ... ok
+test encode_certificate_real_pem ... ok
+test encode_challenge_response_crv1 ... ok
+test encode_client_auth_empty_config_real ... ok
+test encode_client_auth_nt ... ok
+test encode_client_auth_with_multiple_push_directives ... ok
+test encode_client_deny_no_client_reason ... ok
+test encode_client_deny_with_both_reasons ... ok
+test encode_client_kill ... ok
+test encode_client_pending_auth ... ok
+test encode_client_pending_auth_web_auth ... ok
+test encode_cr_response ... ok
+test encode_kill_by_address ... ok
+test encode_kill_by_common_name ... ok
+test encode_load_stats ... ok
+test encode_management_password ... ok
+test encode_mute_get_and_set ... ok
+test encode_needok_cancel ... ok
+test encode_needstr_with_quotes ... ok
+test encode_needstr_with_spaces ... ok
+test encode_password_http_proxy ... ok
+test encode_password_socks_proxy ... ok
+test encode_password_with_backslash_and_quote_combo ... ok
+test encode_password_with_unicode ... ok
+test encode_pkcs11_id_get ... ok
+test encode_proxy_http_with_nct ... ok
+test encode_proxy_http_without_nct ... ok
+test encode_proxy_none ... ok
+test encode_proxy_socks ... ok
+test encode_proxy_socks_ipv6 ... ok
+test encode_raw_command ... ok
+test encode_remote_accept_and_skip ... ok
+test encode_remote_modify ... ok
+test encode_remote_skip_n ... ok
+test encode_rsa_sig_real_base64 ... ok
+test encode_set_version ... ok
+test encode_static_challenge_response_scrv1 ... ok
+test encode_username ... ok
+test encode_username_http_proxy ... ok
+test encode_username_with_special_chars ... ok
+test encode_verb_get_and_set ... ok
+test env_key_with_no_value ... ok
+test env_value_containing_equals ... ok
+test error_command_not_allowed ... ok
+test error_client_pending_auth_too_long ... ok
+test error_command_not_available ... ok
+test error_responses ... ok
+test error_signal_ignored ... ok
+test error_signal_unknown ... ok
+test error_unknown_command_full ... ok
+test error_verb_out_of_range ... ok
+test fatal_all_adapters_in_use ... ok
+test fatal_connection_timeout ... ok
+test fatal_notification ... ok
+test fatal_tun_tap_device ... ok
+test full_connection_lifecycle_from_capture ... ok
+test full_session_sequence ... ok
+test full_state_transition_sequence ... ok
+test help_response ... ok
+test help_response_2_6_9_with_newer_commands ... ok
+test hold_query_returns_one ... ok
+test hold_query_returns_zero ... ok
+test hold_waiting_with_seconds ... ok
+test infomsg_cr_text ... ok
+test hold_waiting ... ok
+test infomsg_open_url ... ok
+test infomsg_notification_is_first_class ... ok
+test infomsg_web_auth ... ok
+test load_stats_success_response ... ok
+test log_history_dump ... ok
+test log_history_real_server_output ... ok
+test log_recent_n ... ok
+test log_notifications_all_flags ... ok
+test log_with_management_cmd_echo ... ok
+test malformed_bytecount_cli_falls_back_to_simple ... ok
+test malformed_echo_falls_back_to_simple ... ok
+test malformed_bytecount_falls_back_to_simple ... ok
+test malformed_log_falls_back_to_simple ... ok
+test malformed_need_ok_falls_back_to_simple ... ok
+test malformed_need_str_falls_back_to_simple ... ok
+test malformed_notification_no_colon_produces_unrecognized ... ok
+test malformed_password_verification_falls_back_to_simple ... ok
+test malformed_pkcs11id_count_falls_back_to_simple ... ok
+test malformed_proxy_falls_back_to_simple ... ok
+test malformed_remote_falls_back_to_simple ... ok
+test malformed_state_falls_back_to_simple ... ok
+test malformed_state_too_few_fields_falls_back_to_simple ... ok
+test management_password_handshake ... ok
+test management_password_wrong ... ok
+test multiple_client_events_sequential ... ok
+test multiple_notifications_before_any_command ... ok
+test multiple_notifications_interleaved_in_status ... ok
+test need_certificate_empty_hint ... ok
+test need_certificate_notification ... ok
+test need_ok_notification ... ok
+test need_str_notification ... ok
+test notification_interleaved_in_multiline_status ... ok
+test notification_storm_between_commands ... ok
+test partial_client_env_block ... ok
+test partial_line_buffering ... ok
+test partial_multiline_client_env_split ... ok
+test partial_multiline_response ... ok
+test partial_state_notification_split_at_comma ... ok
+test partial_success_split_mid_word ... ok
+test password_custom_auth_type ... ok
+test password_need_auth ... ok
+test password_need_http_proxy ... ok
+test password_need_private_key ... ok
+test password_need_socks_proxy ... ok
+test password_verification_failed ... ok
+test password_verification_failed_http_proxy ... ok
+test password_verification_failed_private_key ... ok
+test password_verification_failed_socks_proxy ... ok
+test pk_sign_notification_with_algorithm ... ok
+test pk_sign_notification_without_algorithm ... ok
+test pk_sign_rsa_no_padding ... ok
+test pk_sign_rsa_pss_with_digest_saltlen ... ok
+test pk_sign_rsa_pss_with_params ... ok
+test pkcs11_id_count_from_notification ... ok
+test pkcs11_id_count_success ... ok
+test pkcs11_id_count_zero ... ok
+test pkcs11_id_get_malformed_falls_back ... ok
+test pkcs11_id_get_parsed ... ok
+test proxy_notification ... ok
+test proxy_notification_tcp ... ok
+test reconnecting_and_exiting_states ... ok
+test remote_notification ... ok
+test remote_notification_tcp ... ok
+test remote_skip_n_from_str ... ok
+test rsa_sign_notification ... ok
+test server_mode_client_auth_session ... ok
+test server_mode_deny_then_accept_session ... ok
+test set_version_from_str ... ok
+test set_version_v2_no_response ... ok
+test set_version_v4_returns_success ... ok
+test state_all_known_names ... ok
+test state_auth_pending_with_timeout ... ok
+test state_connected_with_all_fields_populated ... ok
+test state_history_on_all ... ok
+test state_ipv6_connection ... ok
+test state_reconnecting_various_reasons ... ok
+test state_stream_on_off ... ok
+test static_challenge_no_echo ... ok
+test status_v1_client_full_with_compression_stats ... ok
+test status_v1_client_mode ... ok
+test status_v1_server_empty_no_clients ... ok
+test status_v1_server_many_clients ... ok
+test status_v1_server_with_clients ... ok
+test status_v2_full_with_title_time_dco ... ok
+test status_v2_old_format_fewer_columns ... ok
+test status_v2_with_headers ... ok
+test status_v3_tab_delimited ... ok
+test success_auth_retry_changed ... ok
+test success_forget_passwords_real ... ok
+test success_hold_on_off ... ok
+test success_kill_by_address_real_format ... ok
+test success_load_stats_real_format ... ok
+test success_mute_level_changed ... ok
+test success_mute_query ... ok
+test success_password_is_correct ... ok
+test success_responses ... ok
+test success_verb_level_changed ... ok
+test success_verb_query ... ok
+test unrecognized_notification_falls_back_to_simple ... ok
+test unrecognized_password_subformat_falls_back_to_simple ... ok
+test version_response ... ok
+test version_response_2_6_9 ... ok
+test version_response_old_2_3 ... ok
+
+test result: ok. 202 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running `C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\stateful_sequences-804baeea5d8915f4.exe`
+
+running 19 tests
+test auth_sequence_password_then_username_then_auth_retry ... ok
+test alternating_multiline_and_singleline_commands ... ok
+test hold_query_then_hold_release_then_state_stream ... ok
+test notification_interleaved_in_multiline_preserves_sequence ... ok
+test raw_multiline_command_then_normal_command ... ok
+test bytecount_enable_then_notifications_then_disable ... ok
+test exit_expects_no_response ... ok
+test management_password_then_banner_then_commands ... ok
+test log_stream_recent_produces_multiline ... ok
+test multiple_multiline_commands_in_sequence ... ok
+test client_notification_between_two_commands ... ok
+test notifications_between_commands_do_not_corrupt_state ... ok
+test status_then_signal_then_status ... ok
+test error_response_does_not_corrupt_subsequent_commands ... ok
+test stream_mode_all_produces_multiline ... ok
+test pid_then_version_sequence ... ok
+test ten_sequential_pid_commands ... ok
+test client_auth_then_client_deny_sequence ... ok
+test stream_mode_on_off_produces_success ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests openvpn_mgmt_codec
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustdoc.exe --edition=2024 --crate-type lib --color auto --crate-name openvpn_mgmt_codec --test 'openvpn-mgmt-codec\src\lib.rs' --test-run-directory 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\openvpn-mgmt-codec' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'openvpn_mgmt_codec=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libopenvpn_mgmt_codec-af921328b0c6dc1c.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C embed-bitcode=no --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' --error-format human`
+
+running 29 tests
+test openvpn-mgmt-codec\src\../README.md - (line 129) - compile ... ok
+test openvpn-mgmt-codec\src\lib.rs - stream (line 62) - compile ... ok
+test openvpn-mgmt-codec\src\../README.md - (line 43) - compile ... ok
+test openvpn-mgmt-codec\src\../README.md - (line 92) - compile ... ok
+test openvpn-mgmt-codec\src\command.rs - command::connection_sequence (line 1112) - compile ... ok
+test openvpn-mgmt-codec\src\lib.rs - client (line 20) - compile ... ok
+test openvpn-mgmt-codec\src\stream.rs - stream::ClassifyExt (line 117) - compile ... ok
+test openvpn-mgmt-codec\src\stream.rs - stream::ClassifyExt (line 143) - compile ... ok
+test openvpn-mgmt-codec\src\stream.rs - stream::ClassifyExt (line 176) - compile ... ok
+test openvpn-mgmt-codec\src\parsed_response.rs - parsed_response::parse_current_state (line 304) ... ok
+test openvpn-mgmt-codec\src\command.rs - command::connection_sequence (line 1102) ... ok
+test openvpn-mgmt-codec\src\lib.rs - parsed_response (line 39) ... ok
+test openvpn-mgmt-codec\src\command.rs - command::server_connection_sequence (line 1160) ... ok
+test openvpn-mgmt-codec\src\lib.rs - crv1_challenge (line 35) ... ok
+test openvpn-mgmt-codec\src\parsed_response.rs - parsed_response::parse_hold (line 150) ... ok
+test openvpn-mgmt-codec\src\parsed_response.rs - parsed_response::parse_state_entry (line 227) ... ok
+test openvpn-mgmt-codec\src\lib.rs - timestamp (line 56) ... ok
+test openvpn-mgmt-codec\src\lib.rs - status (line 62) ... ok
+test openvpn-mgmt-codec\src\client_deny.rs - client_deny::ClientDeny (line 7) ... ok
+test openvpn-mgmt-codec\src\parsed_response.rs - parsed_response::StateEntry (line 191) ... ok
+test openvpn-mgmt-codec\src\command.rs - command::OvpnCommand::from_str (line 568) ... ok
+test openvpn-mgmt-codec\src\parsed_response.rs - parsed_response::parse_load_stats (line 107) ... ok
+test openvpn-mgmt-codec\src\parsed_response.rs - parsed_response::parse_pid (line 88) ... ok
+test openvpn-mgmt-codec\src\parsed_response.rs - parsed_response::parse_state_history (line 283) ... ok
+test openvpn-mgmt-codec\src\parsed_response.rs - parsed_response::parse_version (line 171) ... ok
+test openvpn-mgmt-codec\src\redacted.rs - redacted::Redacted (line 15) ... ok
+test openvpn-mgmt-codec\src\status.rs - status::parse_client_statistics (line 479) ... ok
+test openvpn-mgmt-codec\src\status.rs - status::parse_status (line 233) ... ok
+test openvpn-mgmt-codec\src\version_info.rs - version_info::VersionInfo (line 20) ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+all doctests ran in 2.91s; merged doctests compilation took 0.88s
+
+*** result: Success

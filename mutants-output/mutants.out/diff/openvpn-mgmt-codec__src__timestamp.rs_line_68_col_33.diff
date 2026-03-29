@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/timestamp.rs
++++ replace < with == in days_to_ymd
+@@ -60,17 +60,17 @@
+     days += 719_468;
+     let era = days / 146_097;
+     let doe = days - era * 146_097;
+     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+     let year = yoe + era * 400;
+     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+     let month_offset = (5 * doy + 2) / 153;
+     let day = doy - (153 * month_offset + 2) / 5 + 1;
+-    let month = if month_offset < 10 {
++    let month = if month_offset == /* ~ changed by cargo-mutants ~ */ 10 {
+         month_offset + 3
+     } else {
+         month_offset - 9
+     };
+     let year = if month <= 2 { year + 1 } else { year };
+     (year, month, day)
+ }
+ 

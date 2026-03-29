@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in OvpnCodec::parse_notification
+@@ -907,17 +907,17 @@
+             let cid = id_parts
+                 .next()
+                 .and_then(|field| parse_field(field, "client cid"))
+                 .unwrap_or(0);
+             let kid = id_parts
+                 .next()
+                 .and_then(|field| parse_field(field, "client kid"));
+ 
+-            let parsed_event = if event == "CR_RESPONSE" {
++            let parsed_event = if event != /* ~ changed by cargo-mutants ~ */ "CR_RESPONSE" {
+                 let response = id_parts.next().unwrap_or("").to_string();
+                 ClientEvent::CrResponse(response)
+             } else {
+                 event
+                     .parse()
+                     .inspect_err(|error| warn!(%error, "unknown client event"))
+                     .unwrap_or_else(|_| ClientEvent::Unknown(event.clone()))
+             };

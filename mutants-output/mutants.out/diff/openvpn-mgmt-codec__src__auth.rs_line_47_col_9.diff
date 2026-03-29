@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/auth.rs
++++ replace <impl FromStr for AuthType>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -39,23 +39,17 @@
+     type Err = ParseAuthTypeError;
+ 
+     /// Parse a recognized auth type string.
+     ///
+     /// Recognized values: `Auth`, `Private Key`, `HTTP Proxy`, `SOCKS Proxy`.
+     /// Returns `Err` for anything else — use [`AuthType::Unknown`] explicitly
+     /// if forward-compatible fallback is desired.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {
+-        match input {
+-            "Auth" => Ok(Self::Auth),
+-            "Private Key" => Ok(Self::PrivateKey),
+-            "HTTP Proxy" => Ok(Self::HttpProxy),
+-            "SOCKS Proxy" => Ok(Self::SocksProxy),
+-            other => Err(ParseAuthTypeError(other.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// Controls how OpenVPN retries after authentication failure.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, strum::Display)]
+ #[strum(serialize_all = "lowercase")]
+ pub enum AuthRetryMode {
+     /// Don't retry — exit on auth failure.

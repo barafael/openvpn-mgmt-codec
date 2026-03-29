@@ -1,0 +1,21 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace ThroughputHistory::samples -> &VecDeque<Sample> with Box::leak(Box::new(VecDeque::new()))
+@@ -102,17 +102,17 @@
+ 
+         if self.samples.len() >= MAX_SAMPLES {
+             self.samples.pop_front();
+         }
+         self.samples.push_back(sample);
+     }
+ 
+     pub(crate) fn samples(&self) -> &VecDeque<Sample> {
+-        &self.samples
++        Box::leak(Box::new(VecDeque::new())) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     pub(crate) fn reset(&mut self) {
+         *self = Self::default();
+     }
+ }
+ 
+ // -------------------------------------------------------------------

@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm ["skip" | "SKIP"] in <impl FromStr for OvpnCommand>::from_str
+@@ -871,17 +871,17 @@
+                         input: cid_str.to_string(),
+                     })?;
+                 Ok(Self::ClientKill { cid, message })
+             }
+ 
+             // --- Remote/Proxy override ---
+             "remote" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+                 ["accept" | "ACCEPT"] => Ok(Self::Remote(RemoteAction::Accept)),
+-                ["skip" | "SKIP"] => Ok(Self::Remote(RemoteAction::Skip)),
++                 /* ~ changed by cargo-mutants ~ */
+                 ["skip" | "SKIP", n] => Ok(Self::Remote(RemoteAction::SkipN(n.parse().map_err(
+                     |_| CommandParseError::InvalidChoice {
+                         field: "remote skip count",
+                         input: n.to_string(),
+                         hint: "expected a positive integer (e.g. remote SKIP 3)",
+                     },
+                 )?))),
+                 ["mod" | "MOD", host, port] => Ok(Self::Remote(RemoteAction::Modify {

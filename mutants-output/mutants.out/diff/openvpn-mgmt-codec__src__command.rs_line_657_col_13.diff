@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "signal" in <impl FromStr for OvpnCommand>::from_str
+@@ -649,17 +649,17 @@
+             "bytecount" => args.parse::<u32>().map(Self::ByteCount).map_err(|_| {
+                 CommandParseError::InvalidNumber {
+                     field: "bytecount interval",
+                     input: args.to_string(),
+                 }
+             }),
+ 
+             // --- Connection control ---
+-            "signal" => Ok(Self::Signal(args.parse::<Signal>()?)),
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "kill" => {
+                 if args.is_empty() {
+                     return cmd_err("kill requires a target (common name or proto:ip:port)");
+                 }
+                 let parts: Vec<&str> = args.splitn(3, ':').collect();
+                 if parts.len() == 3
+                     && let Ok(port) = parts[2].parse::<u16>()

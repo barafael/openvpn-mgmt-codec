@@ -1,0 +1,30 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "status" in <impl FromStr for OvpnCommand>::from_str
+@@ -596,26 +596,17 @@
+                     hint: "expected a positive integer (e.g. version 2)",
+                 }
+             })?)),
+             "pid" => Ok(Self::Pid),
+             "help" => Ok(Self::Help),
+             "net" => Ok(Self::Net),
+             "load-stats" => Ok(Self::LoadStats),
+ 
+-            "status" => match args {
+-                "" | "1" => Ok(Self::Status(StatusFormat::V1)),
+-                "2" => Ok(Self::Status(StatusFormat::V2)),
+-                "3" => Ok(Self::Status(StatusFormat::V3)),
+-                _ => Err(CommandParseError::InvalidChoice {
+-                    field: "status format",
+-                    input: args.to_string(),
+-                    hint: "use 1, 2, or 3",
+-                }),
+-            },
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "state" => match args {
+                 "" => Ok(Self::State),
+                 other => Ok(Self::StateStream(other.parse::<StreamMode>()?)),
+             },
+ 
+             "log" => Ok(Self::Log(args.parse::<StreamMode>()?)),
+             "echo" => Ok(Self::Echo(args.parse::<StreamMode>()?)),

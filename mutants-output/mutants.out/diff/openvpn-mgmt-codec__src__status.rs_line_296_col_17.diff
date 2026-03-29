@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace == with != in parse_status_v1
+@@ -288,17 +288,17 @@
+         if line == "OpenVPN CLIENT LIST" {
+             section = Section::Header;
+             continue;
+         }
+         if line.starts_with("Updated,") {
+             status.updated = Some(line.strip_prefix("Updated,").unwrap_or("").to_string());
+             continue;
+         }
+-        if line == "ROUTING TABLE" {
++        if line != /* ~ changed by cargo-mutants ~ */ "ROUTING TABLE" {
+             section = Section::RoutingTable;
+             continue;
+         }
+         if line == "GLOBAL STATS" {
+             section = Section::GlobalStats;
+             continue;
+         }
+ 

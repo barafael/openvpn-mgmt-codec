@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm Self::Status(_) | Self::Version | Self::Help | Self::Net | Self::RemoteEntryCount | Self::RemoteEntryGet(_) in OvpnCommand::expected_response
+@@ -511,22 +511,17 @@
+ }
+ 
+ impl OvpnCommand {
+     /// Determine what kind of response this command produces, so the
+     /// decoder knows how to frame the next incoming bytes.
+     pub(crate) fn expected_response(&self) -> ResponseKind {
+         match self {
+             // These always produce multi-line (END-terminated) responses.
+-            Self::Status(_)
+-            | Self::Version
+-            | Self::Help
+-            | Self::Net
+-            | Self::RemoteEntryCount
+-            | Self::RemoteEntryGet(_) => ResponseKind::MultiLine,
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // state/log/echo: depends on the specific sub-mode.
+             Self::StateStream(mode) | Self::Log(mode) | Self::Echo(mode) => match mode {
+                 StreamMode::All | StreamMode::OnAll | StreamMode::Recent(_) => {
+                     ResponseKind::MultiLine
+                 }
+                 StreamMode::On | StreamMode::Off => ResponseKind::SuccessOrError,
+             },

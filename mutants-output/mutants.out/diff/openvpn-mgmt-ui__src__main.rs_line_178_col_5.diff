@@ -1,0 +1,37 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace main -> iced::Result with Ok(Default::default())
+@@ -170,33 +170,17 @@
+     rate_out: f64,
+ }
+ 
+ // -------------------------------------------------------------------
+ // Entry point
+ // -------------------------------------------------------------------
+ 
+ fn main() -> iced::Result {
+-    tracing_subscriber::fmt()
+-        .with_env_filter(
+-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+-        )
+-        .init();
+-
+-    tracing::info!("openvpn-mgmt-ui starting");
+-    iced::application(App::new, App::update, App::view)
+-        .title("OpenVPN Management UI")
+-        .font(lucide_icons::LUCIDE_FONT_BYTES)
+-        .font(include_bytes!("../fonts/SpaceMono-Regular.ttf"))
+-        .default_font(SPACE_MONO)
+-        .theme(|app: &App| app.theme.clone())
+-        .subscription(|app: &App| app.subscription())
+-        .scale_factor(|_| 0.9)
+-        .antialiasing(true)
+-        .run()
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ // -------------------------------------------------------------------
+ // Initialisation
+ // -------------------------------------------------------------------
+ 
+ impl App {
+     fn new() -> (Self, Task<Message>) {

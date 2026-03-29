@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/stream_mode.rs
++++ replace <impl fmt::Display for StreamMode>::fmt -> fmt::Result with Ok(Default::default())
+@@ -34,23 +34,17 @@
+     /// simple `SUCCESS:` acknowledgement.
+     pub fn returns_history(self) -> bool {
+         matches!(self, Self::All | Self::OnAll | Self::Recent(_))
+     }
+ }
+ 
+ impl fmt::Display for StreamMode {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        match self {
+-            Self::On => f.write_str("on"),
+-            Self::Off => f.write_str("off"),
+-            Self::All => f.write_str("all"),
+-            Self::OnAll => f.write_str("on all"),
+-            Self::Recent(n) => write!(f, "{n}"),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl FromStr for StreamMode {
+     type Err = ParseStreamModeError;
+ 
+     /// Parse a stream mode string: `on`, `off`, `all`, `on all`, or a number.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {

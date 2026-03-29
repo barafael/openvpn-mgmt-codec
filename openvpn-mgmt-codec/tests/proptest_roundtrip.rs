@@ -143,7 +143,7 @@ fn arb_password_notification() -> BoxedStrategy<PasswordNotification> {
 
 fn notification_to_wire(notification: &Notification) -> String {
     match notification {
-        Notification::State {
+        Notification::State(StateEntry {
             timestamp,
             name,
             description,
@@ -153,11 +153,12 @@ fn notification_to_wire(notification: &Notification) -> String {
             local_addr,
             local_port,
             local_ipv6,
-        } => {
+        }) => {
             let rport = remote_port.map(|port| port.to_string()).unwrap_or_default();
             let lport = local_port.map(|port| port.to_string()).unwrap_or_default();
+            let ts = timestamp.0;
             format!(
-                ">STATE:{timestamp},{name},{description},{local_ip},\
+                ">STATE:{ts},{name},{description},{local_ip},\
                      {remote_ip},{rport},{local_addr},{lport},{local_ipv6}\n"
             )
         }
@@ -174,8 +175,8 @@ fn notification_to_wire(notification: &Notification) -> String {
             timestamp,
             level,
             message,
-        } => format!(">LOG:{timestamp},{level},{message}\n"),
-        Notification::Echo { timestamp, param } => format!(">ECHO:{timestamp},{param}\n"),
+        } => format!(">LOG:{},{level},{message}\n", timestamp.0),
+        Notification::Echo { timestamp, param } => format!(">ECHO:{},{param}\n", timestamp.0),
         Notification::Hold { text } => format!(">HOLD:{text}\n"),
         Notification::Fatal { message } => format!(">FATAL:{message}\n"),
         Notification::Pkcs11IdCount { count } => format!(">PKCS11ID-COUNT:{count}\n"),
@@ -347,8 +348,8 @@ proptest! {
         local_port in proptest::option::of(any::<u16>()),
         local_ipv6 in safe_field(),
     ) {
-        let notification= Notification::State {
-            timestamp,
+        let notification= Notification::State(StateEntry {
+            timestamp: UtcTimestamp(timestamp),
             name,
             description,
             local_ip,
@@ -357,7 +358,7 @@ proptest! {
             local_addr,
             local_port,
             local_ipv6,
-        };
+        });
         let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
@@ -395,7 +396,7 @@ proptest! {
         level in arb_log_level(),
         message in safe_text(),
     ) {
-        let notification= Notification::Log { timestamp, level, message };
+        let notification= Notification::Log { timestamp: UtcTimestamp(timestamp), level, message };
         let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
@@ -407,7 +408,7 @@ proptest! {
         timestamp in any::<u64>(),
         param in safe_text(),
     ) {
-        let notification= Notification::Echo { timestamp, param };
+        let notification= Notification::Echo { timestamp: UtcTimestamp(timestamp), param };
         let wire = notification_to_wire(&notification);
         let msgs = decode_all(&wire);
         prop_assert_eq!(msgs.len(), 1);
@@ -722,8 +723,8 @@ fn arb_ovpn_command_with(s: BoxedStrategy<String>) -> BoxedStrategy<OvpnCommand>
             .boxed(),
         (s.clone(), s.clone())
             .prop_map(|(p, r)| OvpnCommand::StaticChallengeResponse {
-                password_b64: Redacted::new(p),
-                response_b64: Redacted::new(r),
+                password: Redacted::new(p),
+                response: Redacted::new(r),
             })
             .boxed(),
         (s.clone(), arb_need_ok_response())
@@ -984,8 +985,8 @@ fn arb_single_line_notification() -> BoxedStrategy<Notification> {
             safe_field(),
         )
             .prop_map(|(ts, name, desc, lip, rip, rport, laddr, lport, lipv6)| {
-                Notification::State {
-                    timestamp: ts,
+                Notification::State(StateEntry {
+                    timestamp: UtcTimestamp(ts),
                     name,
                     description: desc,
                     local_ip: lip,
@@ -994,7 +995,7 @@ fn arb_single_line_notification() -> BoxedStrategy<Notification> {
                     local_addr: laddr,
                     local_port: lport,
                     local_ipv6: lipv6,
-                }
+                })
             }),
         (any::<u64>(), any::<u64>()).prop_map(|(bi, bo)| Notification::ByteCount {
             bytes_in: bi,
@@ -1009,13 +1010,13 @@ fn arb_single_line_notification() -> BoxedStrategy<Notification> {
         }),
         (any::<u64>(), arb_log_level(), safe_text()).prop_map(|(ts, level, msg)| {
             Notification::Log {
-                timestamp: ts,
+                timestamp: UtcTimestamp(ts),
                 level,
                 message: msg,
             }
         }),
         (any::<u64>(), safe_text())
-            .prop_map(|(timestamp, param)| Notification::Echo { timestamp, param }),
+            .prop_map(|(timestamp, param)| Notification::Echo { timestamp: UtcTimestamp(timestamp), param }),
         safe_text().prop_map(|text| Notification::Hold { text }),
         safe_text().prop_map(|message| Notification::Fatal { message }),
         any::<u32>().prop_map(|count| Notification::Pkcs11IdCount { count }),

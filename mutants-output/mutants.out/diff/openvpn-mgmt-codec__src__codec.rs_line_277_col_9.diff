@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace && with || in check_accumulation_limit
+@@ -269,17 +269,17 @@
+ }
+ 
+ fn check_accumulation_limit(
+     current_len: usize,
+     limit: AccumulationLimit,
+     what: &'static str,
+ ) -> Result<(), io::Error> {
+     if let AccumulationLimit::Max(max) = limit
+-        && current_len >= max
++        || /* ~ changed by cargo-mutants ~ */ current_len >= max
+     {
+         return Err(io::Error::other(AccumulationLimitExceeded { what, max }));
+     }
+     Ok(())
+ }
+ 
+ // --- Encoder ---
+ 

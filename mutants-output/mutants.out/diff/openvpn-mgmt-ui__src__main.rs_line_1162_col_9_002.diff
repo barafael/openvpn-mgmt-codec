@@ -1,0 +1,27 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::console_entry_text -> Option<String> with Some("xyzzy".into())
+@@ -1154,23 +1154,17 @@
+             }
+         }
+     }
+ 
+     /// Return the full text of a console entry by reverse index.
+     ///
+     /// Joins the command line and all response lines into a single string.
+     fn console_entry_text(&self, rev_index: usize) -> Option<String> {
+-        let entry = self.command_history.iter().rev().nth(rev_index)?;
+-        let mut text = format!("❯ {}", entry.command);
+-        for line in &entry.response_lines {
+-            text.push('\n');
+-            text.push_str(line);
+-        }
+-        Some(text)
++        Some("xyzzy".into()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Append text to the most recent command-history entry (if awaiting).
+     /// Append a single response line (Success / Error).
+     fn append_command_response(&mut self, line: String) {
+         if self.awaiting_command_response {
+             if let Some(entry) = self.command_history.last_mut() {
+                 entry.response_lines.push(line);

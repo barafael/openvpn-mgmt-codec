@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace - with + in <impl Decoder for OvpnCodec>::decode
+@@ -680,17 +680,17 @@
+                     if src.get(consume) == Some(&b'\r') {
+                         consume += 1;
+                     }
+                     src.advance(consume);
+                     return Ok(Some(OvpnMessage::PasswordPrompt));
+                 }
+                 // Hint to Framed: reserve enough for a typical management
+                 // protocol line so the next read_buf doesn't micro-allocate.
+-                if src.capacity() - src.len() < 256 {
++                if src.capacity() + /* ~ changed by cargo-mutants ~ */ src.len() < 256 {
+                     src.reserve(256);
+                 }
+                 return Ok(None); // Need more data.
+             };
+ 
+             // Extract the line and advance the buffer past the newline.
+             let line_bytes = src.split_to(newline_pos + 1);
+             let line = match std::str::from_utf8(&line_bytes) {

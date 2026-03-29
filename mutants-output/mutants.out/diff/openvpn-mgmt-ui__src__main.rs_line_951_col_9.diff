@@ -1,0 +1,155 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::handle_ops -> Result<(), ActorGone> with Ok(())
+@@ -943,151 +943,17 @@
+         mode: StartupStreamMode,
+         make_cmd: fn(StreamMode) -> OvpnCommand,
+     ) -> Result<(), ActorGone> {
+         let stream = mode.to_stream_mode();
+         self.send_if_connected(label, make_cmd(stream))
+     }
+ 
+     fn handle_ops(&mut self, msg: OpsMsg) -> Result<(), ActorGone> {
+-        match msg {
+-            // -- Query -----------------------------------------------------------
+-            OpsMsg::Version => self.send_and_record("version", OvpnCommand::Version)?,
+-            OpsMsg::Status1 => {
+-                self.send_and_record("status 1", OvpnCommand::Status(StatusFormat::V1))?;
+-            }
+-            OpsMsg::Status2 => {
+-                self.send_and_record("status 2", OvpnCommand::Status(StatusFormat::V2))?;
+-            }
+-            OpsMsg::Status3 => {
+-                self.send_and_record("status 3", OvpnCommand::Status(StatusFormat::V3))?;
+-            }
+-            OpsMsg::Pid => self.send_and_record("pid", OvpnCommand::Pid)?,
+-            OpsMsg::LoadStats => self.send_and_record("load-stats", OvpnCommand::LoadStats)?,
+-            OpsMsg::Net => self.send_and_record("net", OvpnCommand::Net)?,
+-
+-            // -- Signals ---------------------------------------------------------
+-            OpsMsg::SignalHup => {
+-                self.send_and_record("signal SIGHUP", OvpnCommand::Signal(Signal::SigHup))?;
+-            }
+-            OpsMsg::SignalTerm => {
+-                self.send_and_record("signal SIGTERM", OvpnCommand::Signal(Signal::SigTerm))?;
+-            }
+-            OpsMsg::SignalUsr1 => {
+-                self.send_and_record("signal SIGUSR1", OvpnCommand::Signal(Signal::SigUsr1))?;
+-            }
+-            OpsMsg::SignalUsr2 => {
+-                self.send_and_record("signal SIGUSR2", OvpnCommand::Signal(Signal::SigUsr2))?;
+-            }
+-
+-            // -- Hold ------------------------------------------------------------
+-            OpsMsg::HoldQuery => self.send_and_record("hold", OvpnCommand::HoldQuery)?,
+-            OpsMsg::HoldOn => self.send_and_record("hold on", OvpnCommand::HoldOn)?,
+-            OpsMsg::HoldOff => self.send_and_record("hold off", OvpnCommand::HoldOff)?,
+-            OpsMsg::HoldRelease => {
+-                self.send_and_record("hold release", OvpnCommand::HoldRelease)?;
+-            }
+-
+-            // -- Verbosity -------------------------------------------------------
+-            OpsMsg::VerbInputChanged(value) => self.ops.verb_input = value,
+-            OpsMsg::VerbGet => self.send_and_record("verb", OvpnCommand::Verb(None))?,
+-            OpsMsg::VerbSet => {
+-                if let Ok(level) = self.ops.verb_input.parse::<u8>() {
+-                    self.send_and_record(&format!("verb {level}"), OvpnCommand::Verb(Some(level)))?;
+-                }
+-            }
+-            OpsMsg::VerbReset => unreachable!("handled in update()"),
+-            OpsMsg::MuteInputChanged(value) => self.ops.mute_input = value,
+-            OpsMsg::MuteGet => self.send_and_record("mute", OvpnCommand::Mute(None))?,
+-            OpsMsg::MuteSet => {
+-                if let Ok(threshold) = self.ops.mute_input.parse::<u32>() {
+-                    self.send_and_record(
+-                        &format!("mute {threshold}"),
+-                        OvpnCommand::Mute(Some(threshold)),
+-                    )?;
+-                }
+-            }
+-
+-            // -- Auth ------------------------------------------------------------
+-            OpsMsg::AuthRetryNone => {
+-                self.send_and_record(
+-                    "auth-retry none",
+-                    OvpnCommand::AuthRetry(AuthRetryMode::None),
+-                )?;
+-            }
+-            OpsMsg::AuthRetryInteract => {
+-                self.send_and_record(
+-                    "auth-retry interact",
+-                    OvpnCommand::AuthRetry(AuthRetryMode::Interact),
+-                )?;
+-            }
+-            OpsMsg::AuthRetryNoInteract => {
+-                self.send_and_record(
+-                    "auth-retry nointeract",
+-                    OvpnCommand::AuthRetry(AuthRetryMode::NoInteract),
+-                )?;
+-            }
+-            OpsMsg::ForgetPasswords => {
+-                self.send_and_record("forget-passwords", OvpnCommand::ForgetPasswords)?;
+-            }
+-
+-            // -- Kill ------------------------------------------------------------
+-            OpsMsg::KillInputChanged(value) => self.ops.kill_input = value,
+-            OpsMsg::KillSend => {
+-                let target = self.ops.kill_input.trim().to_string();
+-                if !target.is_empty() {
+-                    self.send_and_record(
+-                        &format!("kill {target}"),
+-                        OvpnCommand::Kill(KillTarget::CommonName(target)),
+-                    )?;
+-                }
+-            }
+-
+-            // -- Client management -----------------------------------------------
+-            OpsMsg::ClientCidChanged(value) => self.ops.client_cid = value,
+-            OpsMsg::ClientKidChanged(value) => self.ops.client_kid = value,
+-            OpsMsg::ClientDenyReasonChanged(value) => self.ops.client_deny_reason = value,
+-            OpsMsg::ClientAuthNt => {
+-                if let (Ok(cid), Ok(kid)) = (
+-                    self.ops.client_cid.parse::<u64>(),
+-                    self.ops.client_kid.parse::<u64>(),
+-                ) {
+-                    self.send_and_record(
+-                        &format!("client-auth-nt {cid} {kid}"),
+-                        OvpnCommand::ClientAuthNt { cid, kid },
+-                    )?;
+-                }
+-            }
+-            OpsMsg::ClientDeny => {
+-                if let (Ok(cid), Ok(kid)) = (
+-                    self.ops.client_cid.parse::<u64>(),
+-                    self.ops.client_kid.parse::<u64>(),
+-                ) {
+-                    let reason = self.ops.client_deny_reason.clone();
+-                    self.send_and_record(
+-                        &format!("client-deny {cid} {kid} {reason}"),
+-                        OvpnCommand::ClientDeny(ClientDeny {
+-                            cid,
+-                            kid,
+-                            reason,
+-                            client_reason: None,
+-                        }),
+-                    )?;
+-                }
+-            }
+-            OpsMsg::ClientKill => {
+-                if let Ok(cid) = self.ops.client_cid.parse::<u64>() {
+-                    self.send_and_record(
+-                        &format!("client-kill {cid}"),
+-                        OvpnCommand::ClientKill { cid, message: None },
+-                    )?;
+-                }
+-            }
+-        }
+-        Ok(())
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Try to extract structured data from a `SUCCESS:` payload.
+     fn ingest_success(&mut self, payload: &str) {
+         // `pid` response: "pid=12345"
+         if let Some(rest) = payload.strip_prefix("pid=")
+             && let Ok(pid) = rest.parse::<u32>()
+         {

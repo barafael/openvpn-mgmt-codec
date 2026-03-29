@@ -1,0 +1,33 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "client-kill" in <impl FromStr for OvpnCommand>::from_str
+@@ -854,29 +854,17 @@
+                 Ok(Self::ClientDeny(ClientDeny {
+                     cid,
+                     kid,
+                     reason,
+                     client_reason,
+                 }))
+             }
+ 
+-            "client-kill" => {
+-                let (cid_str, message) = match args.split_once(char::is_whitespace) {
+-                    Some((c, m)) => (c, Some(m.trim().to_string())),
+-                    None => (args, None),
+-                };
+-                let cid = cid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::InvalidNumber {
+-                        field: "client-kill CID",
+-                        input: cid_str.to_string(),
+-                    })?;
+-                Ok(Self::ClientKill { cid, message })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Remote/Proxy override ---
+             "remote" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+                 ["accept" | "ACCEPT"] => Ok(Self::Remote(RemoteAction::Accept)),
+                 ["skip" | "SKIP"] => Ok(Self::Remote(RemoteAction::Skip)),
+                 ["skip" | "SKIP", n] => Ok(Self::Remote(RemoteAction::SkipN(n.parse().map_err(
+                     |_| CommandParseError::InvalidChoice {
+                         field: "remote skip count",

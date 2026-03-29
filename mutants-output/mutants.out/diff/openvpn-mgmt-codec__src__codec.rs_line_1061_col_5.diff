@@ -1,0 +1,29 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_bytecount_cli -> Option<Notification> with None
+@@ -1053,25 +1053,17 @@
+     let (a, b) = payload.split_once(',')?;
+     Some(Notification::ByteCount {
+         bytes_in: parse_field(a, "bytecount bytes_in")?,
+         bytes_out: parse_field(b, "bytecount bytes_out")?,
+     })
+ }
+ 
+ fn parse_bytecount_cli(payload: &str) -> Option<Notification> {
+-    let mut parts = payload.splitn(3, ',');
+-    let cid = parse_field(parts.next()?, "bytecount_cli cid")?;
+-    let bytes_in = parse_field(parts.next()?, "bytecount_cli bytes_in")?;
+-    let bytes_out = parse_field(parts.next()?, "bytecount_cli bytes_out")?;
+-    Some(Notification::ByteCountCli {
+-        cid,
+-        bytes_in,
+-        bytes_out,
+-    })
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_log(payload: &str) -> Option<Notification> {
+     let (ts_str, rest) = payload.split_once(',')?;
+     let timestamp = parse_field(ts_str, "log timestamp")?;
+     let (level_str, message) = rest.split_once(',')?;
+     Some(Notification::Log {
+         timestamp,

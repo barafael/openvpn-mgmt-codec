@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm Self::RawMultiLine(_) in OvpnCommand::expected_response
+@@ -530,17 +530,17 @@
+                 }
+                 StreamMode::On | StreamMode::Off => ResponseKind::SuccessOrError,
+             },
+ 
+             // Bare `state` returns state history (END-terminated).
+             Self::State => ResponseKind::MultiLine,
+ 
+             // Raw multi-line expects END-terminated response.
+-            Self::RawMultiLine(_) => ResponseKind::MultiLine,
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // exit/quit close the connection.
+             Self::Exit | Self::Quit => ResponseKind::NoResponse,
+ 
+             // `version N` for N < 4 produces no response; N >= 4 returns SUCCESS:.
+             Self::SetVersion(n) if *n < 4 => ResponseKind::NoResponse,
+ 
+             // Everything else (including Raw) produces SUCCESS: or ERROR:.

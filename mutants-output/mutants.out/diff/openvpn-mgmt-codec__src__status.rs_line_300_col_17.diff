@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace == with != in parse_status_v1
+@@ -292,17 +292,17 @@
+         if line.starts_with("Updated,") {
+             status.updated = Some(line.strip_prefix("Updated,").unwrap_or("").to_string());
+             continue;
+         }
+         if line == "ROUTING TABLE" {
+             section = Section::RoutingTable;
+             continue;
+         }
+-        if line == "GLOBAL STATS" {
++        if line != /* ~ changed by cargo-mutants ~ */ "GLOBAL STATS" {
+             section = Section::GlobalStats;
+             continue;
+         }
+ 
+         let fields: Vec<&str> = line.split(',').collect();
+ 
+         // Skip header rows (V1 has a "Common Name,Real Address,..." header)
+         match section {

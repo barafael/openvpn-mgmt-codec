@@ -1,0 +1,21 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace * with / in to_rgb
+@@ -32,17 +32,17 @@
+             blue: to_rgb(palette.primary.base.color),
+             grid: to_rgb(style::mix(background, foreground, 0.08)),
+         }
+     }
+ }
+ 
+ fn to_rgb(c: Color) -> RGBColor {
+     RGBColor(
+-        (c.r * 255.0) as u8,
++        (c.r / /* ~ changed by cargo-mutants ~ */ 255.0) as u8,
+         (c.g * 255.0) as u8,
+         (c.b * 255.0) as u8,
+     )
+ }
+ 
+ // -------------------------------------------------------------------
+ // Throughput history
+ // -------------------------------------------------------------------

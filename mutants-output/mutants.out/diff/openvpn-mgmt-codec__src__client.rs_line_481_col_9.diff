@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::pkcs11_id_get -> Result<String, ClientError> with Ok(String::new())
+@@ -473,18 +473,17 @@
+ 
+     /// Query available PKCS#11 certificate count.
+     pub async fn pkcs11_id_count(&mut self) -> Result<String, ClientError> {
+         self.send_expect_success(OvpnCommand::Pkcs11IdCount).await
+     }
+ 
+     /// Retrieve a PKCS#11 certificate by index.
+     pub async fn pkcs11_id_get(&mut self, index: u32) -> Result<String, ClientError> {
+-        self.send_expect_success(OvpnCommand::Pkcs11IdGet(index))
+-            .await
++        Ok(String::new()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- External key / signatures --
+ 
+     /// Provide an RSA signature in response to `>RSA_SIGN:`.
+     pub async fn rsa_sig(&mut self, base64_lines: Vec<String>) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::RsaSig { base64_lines })
+             .await

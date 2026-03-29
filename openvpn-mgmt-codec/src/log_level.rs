@@ -6,7 +6,7 @@ use std::str::FromStr;
 pub struct ParseLogLevelError(String);
 
 /// Log severity level from `>LOG:` notifications.
-#[derive(Debug, Clone, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum::Display)]
 pub enum LogLevel {
     /// Informational message (`I`).
     #[strum(to_string = "I")]

@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace OvpnCodec::consume_expected with ()
+@@ -251,17 +251,17 @@
+             .front()
+             .copied()
+             .unwrap_or(ResponseKind::SuccessOrError)
+     }
+ 
+     /// Pop the front response kind after a complete response has been
+     /// decoded (Success, Error, MultiLine, or NoResponse).
+     fn consume_expected(&mut self) {
+-        self.expected_queue.pop_front();
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// The decoder accumulated more items than its configured limit allows.
+ #[derive(Debug, thiserror::Error)]
+ #[error("{what} accumulation limit exceeded ({max})")]
+ struct AccumulationLimitExceeded {
+     what: &'static str,

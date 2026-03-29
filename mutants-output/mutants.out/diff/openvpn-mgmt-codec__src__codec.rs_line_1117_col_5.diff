@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_need_ok -> Option<Notification> with None
+@@ -1109,23 +1109,17 @@
+         id: id.to_string(),
+         blob: blob.to_string(),
+     })
+ }
+ 
+ /// Parse `Need 'name' ... MSG:message` from NEED-OK payload.
+ fn parse_need_ok(payload: &str) -> Option<Notification> {
+     // Format: Need 'name' confirmation MSG:message
+-    let rest = payload.strip_prefix("Need '")?;
+-    let (name, rest) = rest.split_once('\'')?;
+-    let msg = rest.split_once("MSG:")?.1;
+-    Some(Notification::NeedOk {
+-        name: name.to_string(),
+-        message: msg.to_string(),
+-    })
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse `Need 'name' input MSG:message` from NEED-STR payload.
+ fn parse_need_str(payload: &str) -> Option<Notification> {
+     let rest = payload.strip_prefix("Need '")?;
+     let (name, rest) = rest.split_once('\'')?;
+     let msg = rest.split_once("MSG:")?.1;
+     Some(Notification::NeedStr {

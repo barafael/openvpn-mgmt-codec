@@ -92,7 +92,7 @@ pub async fn recv_response(framed: &mut Framed<TcpStream, OvpnCodec>) -> OvpnMes
     loop {
         let msg = recv(framed).await;
         match &msg {
-            OvpnMessage::Notification(Notification::State { .. })
+            OvpnMessage::Notification(Notification::State(..))
             | OvpnMessage::Notification(Notification::Log { .. })
             | OvpnMessage::Notification(Notification::ByteCount { .. })
             | OvpnMessage::Notification(Notification::ByteCountCli { .. }) => continue,

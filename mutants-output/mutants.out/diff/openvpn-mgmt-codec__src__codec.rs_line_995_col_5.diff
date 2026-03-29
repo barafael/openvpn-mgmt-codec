@@ -1,0 +1,30 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_optional_port -> Option<u16> with None
+@@ -987,26 +987,17 @@
+ // fall back to Simple". This is intentional — the protocol varies
+ // across OpenVPN versions and we never want a parse failure to
+ // produce an error.
+ 
+ /// Parse a port field that may be empty. Empty or whitespace-only strings
+ /// yield `None`; non-empty non-numeric strings also yield `None` (the STATE
+ /// notification degrades gracefully via the caller's `?` on other fields).
+ fn parse_optional_port(input: &str) -> Option<u16> {
+-    let trimmed = input.trim();
+-    if trimmed.is_empty() {
+-        return None;
+-    }
+-    trimmed
+-        .parse()
+-        .inspect_err(
+-            |error| warn!(%error, port = trimmed, "non-numeric port in STATE notification"),
+-        )
+-        .ok()
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse a string into `T`, logging a warning on failure and returning `None`.
+ ///
+ /// Used by the notification parsers that degrade to `Notification::Simple`
+ /// rather than failing hard.
+ fn parse_field<T: std::str::FromStr>(value: &str, field: &str) -> Option<T>
+ where

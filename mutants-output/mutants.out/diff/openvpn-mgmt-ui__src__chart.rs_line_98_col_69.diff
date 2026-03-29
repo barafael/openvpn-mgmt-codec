@@ -1,0 +1,21 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace / with % in ThroughputHistory::push
+@@ -90,17 +90,17 @@
+             self.prev_out = bytes_out;
+             self.seeded = true;
+             return;
+         }
+ 
+         let elapsed = interval_secs.max(1) as f64;
+         let sample = Sample {
+             in_bps: bytes_in.saturating_sub(self.prev_in) as f64 / elapsed,
+-            out_bps: bytes_out.saturating_sub(self.prev_out) as f64 / elapsed,
++            out_bps: bytes_out.saturating_sub(self.prev_out) as f64 % /* ~ changed by cargo-mutants ~ */ elapsed,
+         };
+         self.prev_in = bytes_in;
+         self.prev_out = bytes_out;
+ 
+         if self.samples.len() >= MAX_SAMPLES {
+             self.samples.pop_front();
+         }
+         self.samples.push_back(sample);

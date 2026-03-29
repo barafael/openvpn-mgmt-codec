@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/version_info.rs
++++ replace VersionInfo::openvpn_version_line -> Option<&str> with Some("")
+@@ -88,17 +88,17 @@
+     /// gate features: for instance, `client-pending-auth` requires
+     /// management version >= 5 (OpenVPN 2.5+).
+     pub fn management_version(&self) -> Option<u32> {
+         self.management_version
+     }
+ 
+     /// The full `OpenVPN Version:` line (e.g. `"OpenVPN Version: OpenVPN 2.6.9 ..."`).
+     pub fn openvpn_version_line(&self) -> Option<&str> {
+-        self.openvpn_version_line.as_deref()
++        Some("") /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// All raw lines from the response, for anything not explicitly parsed.
+     pub fn raw_lines(&self) -> &[String] {
+         &self.raw_lines
+     }
+ }
+ 

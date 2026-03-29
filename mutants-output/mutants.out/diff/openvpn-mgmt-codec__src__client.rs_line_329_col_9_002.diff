@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::echo -> Result<Option<Vec<String>>, ClientError> with Ok(Some(vec![String::new()]))
+@@ -321,18 +321,17 @@
+     ///
+     /// Streaming modes return accumulated log history. `On`/`Off` return `Ok(None)`.
+     pub async fn log(&mut self, mode: StreamMode) -> Result<Option<Vec<String>>, ClientError> {
+         self.send_stream_command(mode, OvpnCommand::Log(mode)).await
+     }
+ 
+     /// Control real-time echo notifications.
+     pub async fn echo(&mut self, mode: StreamMode) -> Result<Option<Vec<String>>, ClientError> {
+-        self.send_stream_command(mode, OvpnCommand::Echo(mode))
+-            .await
++        Ok(Some(vec![String::new()])) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Enable or disable byte count notifications at N-second intervals.
+     /// Pass 0 to disable.
+     pub async fn bytecount(&mut self, interval: u32) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::ByteCount(interval)).await
+     }
+ 

@@ -1,0 +1,56 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace next_token -> Option<(String, &str)> with Some(("xyzzy".into(), "xyzzy"))
+@@ -29,52 +29,17 @@
+ /// [parse_line]: https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/manage.c
+ ///
+ /// # Spec reference
+ ///
+ /// Escaping rules: [`management-notes.txt`][spec], "Command Parsing" section.
+ ///
+ /// [spec]: https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+ fn next_token(input: &str) -> Option<(String, &str)> {
+-    let input = input.trim_start();
+-    if input.is_empty() {
+-        return None;
+-    }
+-
+-    if let Some(quoted) = input.strip_prefix('"') {
+-        // Quoted token: consume until unescaped closing quote.
+-        let mut chars = quoted.chars();
+-        let mut token = String::new();
+-        let mut closed = false;
+-        loop {
+-            match chars.next() {
+-                None => break,
+-                Some('"') => {
+-                    closed = true;
+-                    break;
+-                }
+-                Some('\\') => match chars.next() {
+-                    Some(escaped) => token.push(escaped),
+-                    None => break,
+-                },
+-                Some(plain) => token.push(plain),
+-            }
+-        }
+-        if !closed {
+-            return None;
+-        }
+-        let rest = chars.as_str().trim_start();
+-        Some((token, rest))
+-    } else {
+-        // Unquoted token: delimited by whitespace.
+-        match input.split_once(char::is_whitespace) {
+-            Some((tok, rest)) => Some((tok.to_string(), rest.trim_start())),
+-            None => Some((input.to_string(), "")),
+-        }
+-    }
++    Some(("xyzzy".into(), "xyzzy")) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Error returned when parsing a command string fails.
+ #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+ pub enum CommandParseError {
+     /// Unrecognized signal name.
+     #[error(transparent)]
+     Signal(#[from] ParseSignalError),

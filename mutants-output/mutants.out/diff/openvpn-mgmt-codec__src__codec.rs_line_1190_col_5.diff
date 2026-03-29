@@ -1,0 +1,23 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_auth_type -> AuthType with Default::default()
+@@ -1182,19 +1182,17 @@
+         index,
+         proxy_type,
+         host,
+     })
+ }
+ 
+ /// Map a wire auth-type string to the typed enum.
+ fn parse_auth_type(s: &str) -> AuthType {
+-    s.parse()
+-        .inspect_err(|error| warn!(%error, "unknown auth type"))
+-        .unwrap_or_else(|_| AuthType::Unknown(s.to_string()))
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_password(payload: &str) -> Option<Notification> {
+     // Auth-Token:{token}
+     // Source: manage.c management_auth_token()
+     if let Some(token) = payload.strip_prefix("Auth-Token:") {
+         return Some(Notification::Password(PasswordNotification::AuthToken {
+             token: Redacted::new(token),

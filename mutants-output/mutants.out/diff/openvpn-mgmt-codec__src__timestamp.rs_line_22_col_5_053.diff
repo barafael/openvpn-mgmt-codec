@@ -1,0 +1,28 @@
+--- openvpn-mgmt-codec/src/timestamp.rs
++++ replace decompose -> (u64, u64, u64, u64, u64, u64) with (1, 1, 0, 1, 0, 1)
+@@ -14,24 +14,17 @@
+ //! ```
+ 
+ use std::fmt;
+ 
+ /// Decompose a Unix timestamp into `(year, month, day, hour, minute, second)`.
+ ///
+ /// All values are UTC. No timezone handling is performed.
+ pub fn decompose(ts: u64) -> (u64, u64, u64, u64, u64, u64) {
+-    let secs = ts % 60;
+-    let mins_total = ts / 60;
+-    let mins = mins_total % 60;
+-    let hours_total = mins_total / 60;
+-    let hours = hours_total % 24;
+-    let days_total = hours_total / 24;
+-    let (year, month, day) = days_to_ymd(days_total);
+-    (year, month, day, hours, mins, secs)
++    (1, 1, 0, 1, 0, 1) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Format a Unix timestamp as ISO 8601 UTC: `2024-03-21T14:30:00Z`.
+ ///
+ /// Returns an empty string for timestamp `0` (unset).
+ pub fn format_utc(ts: u64) -> String {
+     if ts == 0 {
+         return String::new();

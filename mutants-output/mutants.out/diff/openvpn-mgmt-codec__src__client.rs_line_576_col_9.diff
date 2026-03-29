@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::load_stats -> Result<LoadStats, ClientError> with Ok(Default::default())
+@@ -568,18 +568,17 @@
+     pub async fn proxy(&mut self, action: ProxyAction) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::Proxy(action)).await
+     }
+ 
+     // -- Server statistics --
+ 
+     /// Request aggregated server stats.
+     pub async fn load_stats(&mut self) -> Result<LoadStats, ClientError> {
+-        let payload = self.send_expect_success(OvpnCommand::LoadStats).await?;
+-        Ok(parsed_response::parse_load_stats(&payload)?)
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- ENV filter --
+ 
+     /// Set the env-var filter level for `>CLIENT:ENV` blocks.
+     pub async fn env_filter(&mut self, level: u32) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::EnvFilter(level)).await
+     }

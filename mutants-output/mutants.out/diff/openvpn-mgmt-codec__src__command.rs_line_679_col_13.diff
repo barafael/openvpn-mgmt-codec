@@ -1,0 +1,31 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "hold" in <impl FromStr for OvpnCommand>::from_str
+@@ -671,27 +671,17 @@
+                             .unwrap_or_else(|_| TransportProtocol::Unknown(parts[0].to_string())),
+                         ip: parts[1].to_string(),
+                         port,
+                     }));
+                 }
+                 Ok(Self::Kill(KillTarget::CommonName(args.to_string())))
+             }
+ 
+-            "hold" => match args {
+-                "" => Ok(Self::HoldQuery),
+-                "on" => Ok(Self::HoldOn),
+-                "off" => Ok(Self::HoldOff),
+-                "release" => Ok(Self::HoldRelease),
+-                _ => Err(CommandParseError::InvalidChoice {
+-                    field: "hold argument",
+-                    input: args.to_string(),
+-                    hint: "use on, off, or release",
+-                }),
+-            },
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Authentication ---
+             // Wire format per management-notes.txt:
+             //   username "Auth" myuser
+             //   password "Private Key" "foo\"bar"
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+             //
+             // Auth types are quoted and may contain spaces ("HTTP Proxy",

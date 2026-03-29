@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace < with == in parse_status_v2v3
+@@ -439,17 +439,17 @@
+                         cid: None,
+                         peer_id: None,
+                         cipher: None,
+                     });
+                 }
+             }
+             "ROUTING_TABLE" => {
+                 let cols = &fields[1..];
+-                if cols.len() < 4 {
++                if cols.len() == /* ~ changed by cargo-mutants ~ */ 4 {
+                     return Err(ParseStatusError::RoutingTableTooFewFields(cols.len()));
+                 }
+                 status.routes.push(RoutingEntry {
+                     virtual_address: cols[0].to_string(),
+                     common_name: cols[1].to_string(),
+                     real_address: cols[2].to_string(),
+                     last_ref: cols[3].to_string(),
+                     last_ref_t: cols.get(4).and_then(|val| parse_optional_u64(val)),

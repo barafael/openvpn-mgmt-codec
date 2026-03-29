@@ -1,0 +1,35 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "username" in <impl FromStr for OvpnCommand>::from_str
+@@ -693,31 +693,17 @@
+             //   username "Auth" myuser
+             //   password "Private Key" "foo\"bar"
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+             //
+             // Auth types are quoted and may contain spaces ("HTTP Proxy",
+             // "SOCKS Proxy", "Private Key"), so we use quote-aware
+             // tokenization matching manage.c's parse_line() lexer.
+             // https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/manage.c
+-            "username" => {
+-                let (auth_type_str, rest) = next_token(args).ok_or(
+-                    CommandParseError::MissingArgs("usage: username <auth-type> <value>"),
+-                )?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: username <auth-type> <value>",
+-                ))?;
+-                Ok(Self::Username {
+-                    auth_type: auth_type_str
+-                        .parse()
+-                        .inspect_err(|error| warn!(%error, "unknown auth type"))
+-                        .unwrap_or(AuthType::Unknown(auth_type_str)),
+-                    value: value.into(),
+-                })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "password" => {
+                 let (auth_type_str, rest) = next_token(args).ok_or(
+                     CommandParseError::MissingArgs("usage: password <auth-type> <value>"),
+                 )?;
+                 let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+                     "usage: password <auth-type> <value>",
+                 ))?;

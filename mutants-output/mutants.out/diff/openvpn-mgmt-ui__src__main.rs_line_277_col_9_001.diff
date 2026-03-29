@@ -1,0 +1,376 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::update -> Task<Message> with Task::from_iter([Default::default()])
+@@ -269,372 +269,17 @@
+ }
+ 
+ // -------------------------------------------------------------------
+ // Update
+ // -------------------------------------------------------------------
+ 
+ impl App {
+     fn update(&mut self, msg: Message) -> Task<Message> {
+-        match msg {
+-            // -- Connection form -------------------------------------------------
+-            Message::HostChanged(value) => {
+-                self.host = value;
+-            }
+-            Message::PortChanged(value) => {
+-                self.port = value;
+-            }
+-            Message::PasswordChanged(value) => {
+-                self.management_password = value;
+-            }
+-            Message::Connect => {
+-                tracing::info!(host = %self.host, port = %self.port, "connect requested");
+-                self.connection_state = ConnectionState::Connecting;
+-                self.last_error = None;
+-                self.reset_session_data();
+-                let startup_commands = self.build_startup_commands();
+-                if self
+-                    .send_actor(ActorCommand::Connect {
+-                        host: self.host.clone(),
+-                        port: self.port.clone(),
+-                        startup_commands,
+-                    })
+-                    .is_err()
+-                {
+-                    self.on_actor_gone();
+-                }
+-            }
+-            Message::Disconnect => {
+-                tracing::info!("disconnect requested");
+-                if self.send_actor(ActorCommand::Disconnect).is_err() {
+-                    self.on_actor_gone();
+-                }
+-            }
+-            Message::VerbReset => {
+-                tracing::info!("verb reset: disconnect → reconnect with verb 4");
+-                if self.send_actor(ActorCommand::Disconnect).is_err() {
+-                    self.on_actor_gone();
+-                    return Task::none();
+-                }
+-                self.connection_state = ConnectionState::Connecting;
+-                self.last_error = None;
+-                self.reset_session_data();
+-                // Build startup commands with verb 4 injected before streaming.
+-                let mut startup_commands = Vec::new();
+-                if !self.management_password.is_empty() {
+-                    startup_commands.push(OvpnCommand::ManagementPassword(Redacted::new(
+-                        self.management_password.clone(),
+-                    )));
+-                }
+-                startup_commands.push(OvpnCommand::Verb(Some(4)));
+-                // Append the normal startup commands (which will include
+-                // log/state/etc. — now at safe verbosity).
+-                startup_commands.extend(self.build_startup_commands().into_iter().skip(
+-                    // Skip the password if already added above.
+-                    if self.management_password.is_empty() {
+-                        0
+-                    } else {
+-                        1
+-                    },
+-                ));
+-                let host = self.host.clone();
+-                let port = self.port.clone();
+-                return Task::perform(
+-                    async {
+-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+-                    },
+-                    move |()| Message::ReconnectReady {
+-                        host,
+-                        port,
+-                        startup_commands,
+-                    },
+-                );
+-            }
+-
+-            Message::Reconnect => {
+-                tracing::info!("reconnect requested");
+-                if self.send_actor(ActorCommand::Disconnect).is_err() {
+-                    self.on_actor_gone();
+-                    return Task::none();
+-                }
+-                self.connection_state = ConnectionState::Connecting;
+-                self.last_error = None;
+-                self.reset_session_data();
+-                let startup_commands = self.build_startup_commands();
+-                let host = self.host.clone();
+-                let port = self.port.clone();
+-                return Task::perform(
+-                    async {
+-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+-                    },
+-                    move |()| Message::ReconnectReady {
+-                        host,
+-                        port,
+-                        startup_commands,
+-                    },
+-                );
+-            }
+-
+-            Message::ReconnectReady {
+-                host,
+-                port,
+-                startup_commands,
+-            } => {
+-                if self
+-                    .send_actor(ActorCommand::Connect {
+-                        host,
+-                        port,
+-                        startup_commands,
+-                    })
+-                    .is_err()
+-                {
+-                    self.on_actor_gone();
+-                }
+-            }
+-
+-            // -- Actor events ----------------------------------------------------
+-            Message::Actor(event) => match event {
+-                ActorEvent::Connected => {
+-                    tracing::info!("connected");
+-                    self.connection_state = ConnectionState::Connected;
+-                    self.last_error = None;
+-                }
+-                ActorEvent::Disconnected(err) => {
+-                    if let Some(reason) = &err {
+-                        tracing::warn!(reason, "disconnected");
+-                    } else {
+-                        tracing::info!("disconnected");
+-                    }
+-                    self.connection_state = ConnectionState::Disconnected;
+-                    self.last_error = err;
+-                }
+-                ActorEvent::Message(ovpn_msg) => {
+-                    self.handle_ovpn_message(ovpn_msg);
+-                }
+-            },
+-
+-            // -- Tabs ------------------------------------------------------------
+-            Message::TabSelected(tab) => {
+-                self.active_tab = tab;
+-            }
+-
+-            // -- Startup options --------------------------------------------------
+-            Message::Startup(startup_msg) => {
+-                if self.handle_startup(startup_msg).is_err() {
+-                    self.on_actor_gone();
+-                }
+-            }
+-
+-            // -- Operations tab ---------------------------------------------------
+-            Message::Ops(OpsMsg::VerbReset) => {
+-                self.ops.verb_input = "4".to_string();
+-                return self.update(Message::VerbReset);
+-            }
+-            Message::Ops(ops_msg) => {
+-                if self.handle_ops(ops_msg).is_err() {
+-                    self.on_actor_gone();
+-                }
+-            }
+-
+-            // -- Commands page ---------------------------------------------------
+-            Message::CommandInputChanged(value) => {
+-                self.command_input = value;
+-            }
+-            Message::PickSuggestion(name) => {
+-                // Insert command name + trailing space so the user can
+-                // immediately start typing arguments.
+-                self.command_input = format!("{name} ");
+-                // Early return — revalidate here since the bottom call is skipped.
+-                self.revalidate_command();
+-                return iced::widget::operation::focus(view::COMMAND_INPUT_ID.clone());
+-            }
+-            Message::ToggleRawMode(enabled) => {
+-                self.raw_mode = enabled;
+-            }
+-            Message::SendCommand => {
+-                if !self.command_valid {
+-                    return Task::none();
+-                }
+-                let input = self.command_input.trim().to_string();
+-                self.command_input.clear();
+-
+-                match input.parse::<OvpnCommand>() {
+-                    Ok(command) => {
+-                        tracing::debug!(input, "command sent");
+-                        if self.send_and_record(&input, command).is_err() {
+-                            self.on_actor_gone();
+-                        }
+-                    }
+-                    Err(error) => {
+-                        tracing::warn!(input, %error, "command parse failed");
+-                        self.command_history.push(CommandHistoryEntry {
+-                            command: input,
+-                            response_lines: vec![format!("parse error: {error}")],
+-                        });
+-                    }
+-                }
+-            }
+-
+-            // -- Log tab ---------------------------------------------------------
+-            Message::SelectLogEntry(index) => {
+-                self.selected_log_index = Some(index);
+-            }
+-            Message::CopyLogEntry => {
+-                if let Some(index) = self.selected_log_index
+-                    && let Some(entry) = self.log_entries.get(index)
+-                {
+-                    let label = entry.level.label();
+-                    let line = if entry.timestamp.is_empty() {
+-                        format!("[{label}] {}", entry.message)
+-                    } else {
+-                        format!("[{label}] {} {}", entry.timestamp, entry.message)
+-                    };
+-                    self.log_flash_index = Some(index);
+-                    return Task::batch([
+-                        iced::clipboard::write(line),
+-                        flash_timer(Message::ClearLogFlash),
+-                    ]);
+-                }
+-            }
+-            Message::ClearLogFlash => {
+-                self.log_flash_index = None;
+-            }
+-
+-            // -- Console output --------------------------------------------------
+-            Message::SelectConsoleEntry(entry_index) => {
+-                self.selected_console_entry = Some(entry_index);
+-            }
+-            Message::CopyConsoleEntry => {
+-                if let Some(rev_idx) = self.selected_console_entry
+-                    && let Some(text) = self.console_entry_text(rev_idx)
+-                {
+-                    self.console_flash_entry = Some(rev_idx);
+-                    return Task::batch([
+-                        iced::clipboard::write(text),
+-                        flash_timer(Message::ClearConsoleFlash),
+-                    ]);
+-                }
+-            }
+-            Message::ClearConsoleFlash => {
+-                self.console_flash_entry = None;
+-            }
+-
+-            // -- Ctrl+C: dispatch to active tab --------------------------------
+-            Message::CopySelection => match self.active_tab {
+-                Tab::Log => return self.update(Message::CopyLogEntry),
+-                Tab::Console => return self.update(Message::CopyConsoleEntry),
+-                _ => {}
+-            },
+-
+-            // -- Arrow navigation ------------------------------------------------
+-            Message::SelectionUp => match self.active_tab {
+-                Tab::Log if !self.log_entries.is_empty() => {
+-                    // List is displayed newest-first; "up" visually = older = higher index.
+-                    let max = self.log_entries.len() - 1;
+-                    self.selected_log_index = Some(match self.selected_log_index {
+-                        Some(idx) => (idx + 1).min(max),
+-                        None => max, // start at top (newest) when nothing selected
+-                    });
+-                }
+-                Tab::Console if !self.command_history.is_empty() => {
+-                    // Displayed newest-first; index 0 = top. Up = lower index.
+-                    self.selected_console_entry = Some(match self.selected_console_entry {
+-                        Some(idx) if idx > 0 => idx - 1,
+-                        Some(_) => 0,
+-                        None => 0,
+-                    });
+-                }
+-                _ => {}
+-            },
+-            Message::SelectionDown => match self.active_tab {
+-                Tab::Log if !self.log_entries.is_empty() => {
+-                    self.selected_log_index = Some(match self.selected_log_index {
+-                        Some(idx) if idx > 0 => idx - 1,
+-                        Some(_) => 0,
+-                        None => self.log_entries.len() - 1,
+-                    });
+-                }
+-                Tab::Console if !self.command_history.is_empty() => {
+-                    let max = self.command_history.len() - 1;
+-                    self.selected_console_entry = Some(match self.selected_console_entry {
+-                        Some(idx) => (idx + 1).min(max),
+-                        None => 0,
+-                    });
+-                }
+-                _ => {}
+-            },
+-
+-            // -- Status refresh --------------------------------------------------
+-            Message::RefreshStatus => {
+-                let cmds = [
+-                    OvpnCommand::Version,
+-                    OvpnCommand::Pid,
+-                    OvpnCommand::State,
+-                    OvpnCommand::LoadStats,
+-                    OvpnCommand::Verb(None),
+-                    OvpnCommand::Mute(None),
+-                ];
+-                for cmd in cmds {
+-                    if self.send_actor(ActorCommand::Send(cmd)).is_err() {
+-                        self.on_actor_gone();
+-                        break;
+-                    }
+-                }
+-            }
+-
+-            // -- Keyboard modifiers ----------------------------------------------
+-            Message::ModifiersChanged(modifiers) => {
+-                self.ctrl_held = modifiers.control();
+-            }
+-
+-            // -- Theme -----------------------------------------------------------
+-            Message::ThemeSelected(theme) => {
+-                self.theme = theme;
+-            }
+-
+-            // -- Animation -------------------------------------------------------
+-            Message::ConnectingTick => {
+-                self.connecting_dots = (self.connecting_dots + 1) % 4;
+-            }
+-
+-            // -- Debug -----------------------------------------------------------
+-            #[cfg(debug_assertions)]
+-            Message::ToggleDemoChart => {
+-                self.demo_chart = !self.demo_chart;
+-                if self.demo_chart {
+-                    self.demo_state = DemoState {
+-                        rate_in: 200_000.0,
+-                        rate_out: 80_000.0,
+-                        ..DemoState::default()
+-                    };
+-                    self.throughput.reset();
+-                }
+-            }
+-            #[cfg(debug_assertions)]
+-            Message::DemoChartTick => {
+-                use rand::Rng;
+-                let mut rng = rand::rng();
+-                let ds = &mut self.demo_state;
+-                // Random walk with mean-reversion: rates drift smoothly.
+-                ds.rate_in +=
+-                    (200_000.0 - ds.rate_in) * 0.05 + rng.random_range(-40_000.0f64..40_000.0);
+-                ds.rate_out +=
+-                    (80_000.0 - ds.rate_out) * 0.05 + rng.random_range(-15_000.0f64..15_000.0);
+-                ds.rate_in = ds.rate_in.max(1000.0);
+-                ds.rate_out = ds.rate_out.max(500.0);
+-                ds.cumulative_in += ds.rate_in as u64;
+-                ds.cumulative_out += ds.rate_out as u64;
+-                self.throughput.push(ds.cumulative_in, ds.cumulative_out, 1);
+-                self.bytes_in = ds.cumulative_in;
+-                self.bytes_out = ds.cumulative_out;
+-            }
+-        }
+-
+-        self.revalidate_command();
+-        Task::none()
++        Task::from_iter([Default::default()]) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ // -------------------------------------------------------------------
+ // Message routing
+ // -------------------------------------------------------------------
+ 
+ impl App {

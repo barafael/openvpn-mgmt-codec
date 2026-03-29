@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "bytecount" in <impl FromStr for OvpnCommand>::from_str
+@@ -641,22 +641,17 @@
+                         .map(|threshold| Self::Mute(Some(threshold)))
+                         .map_err(|_| CommandParseError::InvalidNumber {
+                             field: "mute threshold",
+                             input: args.to_string(),
+                         })
+                 }
+             }
+ 
+-            "bytecount" => args.parse::<u32>().map(Self::ByteCount).map_err(|_| {
+-                CommandParseError::InvalidNumber {
+-                    field: "bytecount interval",
+-                    input: args.to_string(),
+-                }
+-            }),
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Connection control ---
+             "signal" => Ok(Self::Signal(args.parse::<Signal>()?)),
+ 
+             "kill" => {
+                 if args.is_empty() {
+                     return cmd_err("kill requires a target (common name or proto:ip:port)");
+                 }

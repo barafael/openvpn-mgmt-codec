@@ -1,0 +1,35 @@
+--- openvpn-mgmt-codec/src/openvpn_state.rs
++++ replace <impl FromStr for OpenVpnState>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -50,31 +50,17 @@
+     Unknown(String),
+ }
+ 
+ impl FromStr for OpenVpnState {
+     type Err = ParseOpenVpnStateError;
+ 
+     /// Parse a recognized state string.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {
+-        match input {
+-            "CONNECTING" => Ok(Self::Connecting),
+-            "WAIT" => Ok(Self::Wait),
+-            "AUTH" => Ok(Self::Auth),
+-            "GET_CONFIG" => Ok(Self::GetConfig),
+-            "ASSIGN_IP" => Ok(Self::AssignIp),
+-            "ADD_ROUTES" => Ok(Self::AddRoutes),
+-            "CONNECTED" => Ok(Self::Connected),
+-            "RECONNECTING" => Ok(Self::Reconnecting),
+-            "EXITING" => Ok(Self::Exiting),
+-            "TCP_CONNECT" => Ok(Self::TcpConnect),
+-            "RESOLVE" => Ok(Self::Resolve),
+-            "AUTH_PENDING" => Ok(Self::AuthPending),
+-            other => Err(ParseOpenVpnStateError(other.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     const ALL_KNOWN: &[(&str, OpenVpnState)] = &[

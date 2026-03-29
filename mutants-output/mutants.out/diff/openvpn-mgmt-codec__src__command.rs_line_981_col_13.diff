@@ -1,0 +1,32 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "push-update-cid" in <impl FromStr for OvpnCommand>::from_str
+@@ -973,28 +973,17 @@
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+             "push-update-broad" => {
+                 let (options, _) = next_token(args).ok_or(CommandParseError::MissingArgs(
+                     "usage: push-update-broad <options>",
+                 ))?;
+                 Ok(Self::PushUpdateBroad { options })
+             }
+ 
+-            "push-update-cid" => {
+-                let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-cid <cid> <options>",
+-                ))?;
+-                let cid = cid_str.parse::<u64>().map_err(|_| {
+-                    CommandParseError::MissingArgs("push-update-cid: cid must be a number")
+-                })?;
+-                let (options, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-cid <cid> <options>",
+-                ))?;
+-                Ok(Self::PushUpdateCid { cid, options })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Extended client management ---
+             // Wire format per management-notes.txt:
+             //   client-pending-auth <cid> <kid> <extra> <timeout>
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+             "client-pending-auth" => {
+                 let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+                     "usage: client-pending-auth <cid> <kid> <extra> <timeout>",

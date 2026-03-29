@@ -1,3 +1,11 @@
+/// Error returned when a `version` response cannot be parsed.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ParseVersionError {
+    /// The management version line was found but contained a non-numeric value.
+    #[error("non-numeric management version: {0:?}")]
+    InvalidManagementVersion(String),
+}
+
 /// Parsed output from the `version` command's multi-line response.
 ///
 /// The response from OpenVPN looks like:
@@ -24,7 +32,7 @@
 ///     "OpenVPN Version: OpenVPN 2.6.9 x86_64-pc-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [MH/PKTINFO] [AEAD]".to_string(),
 ///     "Management Interface Version: 5".to_string(),
 /// ];
-/// let info = VersionInfo::parse(&lines);
+/// let info = VersionInfo::parse(&lines).unwrap();
 /// assert_eq!(info.management_version(), Some(5));
 /// assert!(info.openvpn_version_line().unwrap().contains("2.6.9"));
 /// ```
@@ -41,9 +49,11 @@ pub struct VersionInfo {
 impl VersionInfo {
     /// Parse a `version` command's multi-line response into structured data.
     ///
-    /// Lines that don't match known prefixes are preserved in
-    /// [`raw_lines`](Self::raw_lines) for forward compatibility.
-    pub fn parse(lines: &[String]) -> Self {
+    /// Returns [`ParseVersionError::InvalidManagementVersion`] if a
+    /// management version line is found but its value is not a valid `u32`.
+    /// Missing lines are not an error — the corresponding accessor returns
+    /// `None`.
+    pub fn parse(lines: &[String]) -> Result<Self, ParseVersionError> {
         let mut management_version = None;
         let mut openvpn_version_line = None;
 
@@ -60,33 +70,33 @@ impl VersionInfo {
                 && lower.starts_with("management")
                 && lower.contains("version")
             {
-                management_version = line
+                let trailing = line
                     .rsplit(|chr: char| !chr.is_ascii_digit())
-                    .find(|part| !part.is_empty())
-                    .and_then(|part| {
-                        part.parse()
-                            .inspect_err(|error| {
-                                tracing::warn!(%error, part, "non-numeric management version")
-                            })
-                            .ok()
-                    });
+                    .find(|part| !part.is_empty());
+
+                management_version = match trailing {
+                    Some(part) => Some(Some(part.parse::<u32>().map_err(|_| {
+                        ParseVersionError::InvalidManagementVersion(part.to_string())
+                    })?)),
+                    None => Some(None),
+                };
             } else if lower.starts_with("openvpn version") {
                 openvpn_version_line = Some(line.clone());
             }
         }
 
-        Self {
-            management_version,
+        Ok(Self {
+            management_version: management_version.flatten(),
             openvpn_version_line,
             raw_lines: lines.to_vec(),
-        }
+        })
     }
 
     /// The management interface protocol version (e.g. `5`).
     ///
-    /// Returns `None` if the line was missing or unparseable. Use this to
-    /// gate features: for instance, `client-pending-auth` requires
-    /// management version >= 5 (OpenVPN 2.5+).
+    /// Returns `None` if the line was missing or had no trailing digits.
+    /// Use this to gate features: for instance, `client-pending-auth`
+    /// requires management version >= 5 (OpenVPN 2.5+).
     pub fn management_version(&self) -> Option<u32> {
         self.management_version
     }
@@ -112,7 +122,7 @@ mod tests {
             "OpenVPN Version: OpenVPN 2.6.9 x86_64-pc-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [MH/PKTINFO] [AEAD]".to_string(),
             "Management Interface Version: 5".to_string(),
         ];
-        let info = VersionInfo::parse(&lines);
+        let info = VersionInfo::parse(&lines).unwrap();
         assert_eq!(info.management_version(), Some(5));
         assert!(info.openvpn_version_line().unwrap().contains("2.6.9"));
         assert_eq!(info.raw_lines().len(), 2);
@@ -125,7 +135,7 @@ mod tests {
             "OpenVPN Version: OpenVPN 2.6.16 x86_64-alpine-linux-musl [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [MH/PKTINFO] [AEAD]".to_string(),
             "Management Version: 5".to_string(),
         ];
-        let info = VersionInfo::parse(&lines);
+        let info = VersionInfo::parse(&lines).unwrap();
         assert_eq!(info.management_version(), Some(5));
         assert!(info.openvpn_version_line().unwrap().contains("2.6.16"));
     }
@@ -133,14 +143,14 @@ mod tests {
     #[test]
     fn parse_old_version_without_management_line() {
         let lines = vec!["OpenVPN Version: OpenVPN 2.3.2 i686-pc-linux-gnu".to_string()];
-        let info = VersionInfo::parse(&lines);
+        let info = VersionInfo::parse(&lines).unwrap();
         assert_eq!(info.management_version(), None);
         assert!(info.openvpn_version_line().is_some());
     }
 
     #[test]
     fn parse_empty_response() {
-        let info = VersionInfo::parse(&[]);
+        let info = VersionInfo::parse(&[]).unwrap();
         assert_eq!(info.management_version(), None);
         assert_eq!(info.openvpn_version_line(), None);
         assert!(info.raw_lines().is_empty());
@@ -151,7 +161,23 @@ mod tests {
         // Resilient to wording changes as long as "management" and
         // "version" appear and a trailing number is present.
         let lines = vec!["Management Protocol Version: 6".to_string()];
-        let info = VersionInfo::parse(&lines);
+        let info = VersionInfo::parse(&lines).unwrap();
         assert_eq!(info.management_version(), Some(6));
+    }
+
+    #[test]
+    fn parse_non_numeric_management_version() {
+        // "Management Version: abc" — no trailing digits, so version is None.
+        let lines = vec!["Management Version: abc".to_string()];
+        let info = VersionInfo::parse(&lines).unwrap();
+        assert_eq!(info.management_version(), None);
+    }
+
+    #[test]
+    fn parse_overflow_management_version() {
+        // A number too large for u32 returns an error.
+        let lines = vec!["Management Version: 99999999999999999999".to_string()];
+        let err = VersionInfo::parse(&lines).unwrap_err();
+        assert!(matches!(err, ParseVersionError::InvalidManagementVersion(_)));
     }
 }

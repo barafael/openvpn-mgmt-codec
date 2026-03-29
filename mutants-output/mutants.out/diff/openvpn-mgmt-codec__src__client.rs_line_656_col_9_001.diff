@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::raw -> Result<String, ClientError> with Ok("xyzzy".into())
+@@ -648,18 +648,17 @@
+         self.framed.send(OvpnCommand::Exit).await?;
+         Ok(())
+     }
+ 
+     // -- Raw escape hatch --
+ 
+     /// Send a raw command expecting `SUCCESS:`/`ERROR:`.
+     pub async fn raw(&mut self, command: impl Into<String>) -> Result<String, ClientError> {
+-        self.send_expect_success(OvpnCommand::Raw(command.into()))
+-            .await
++        Ok("xyzzy".into()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Send a raw command expecting a multi-line response.
+     pub async fn raw_multi_line(
+         &mut self,
+         command: impl Into<String>,
+     ) -> Result<Vec<String>, ClientError> {
+         self.send_expect_multi_line(OvpnCommand::RawMultiLine(command.into()))

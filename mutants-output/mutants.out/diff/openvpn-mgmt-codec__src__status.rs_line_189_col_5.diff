@@ -1,0 +1,32 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace detect_separator -> char with Default::default()
+@@ -181,28 +181,17 @@
+     #[error("missing statistics key: {0:?}")]
+     MissingStatisticsKey(&'static str),
+ }
+ 
+ /// Detect the separator used in the status output.
+ ///
+ /// V3 uses tabs, V1/V2 use commas. We check the first line for a tab character.
+ fn detect_separator(lines: &[String]) -> char {
+-    for line in lines {
+-        if line.starts_with("TITLE\t")
+-            || line.starts_with("TIME\t")
+-            || line.starts_with("HEADER\t")
+-            || line.starts_with("CLIENT_LIST\t")
+-            || line.starts_with("ROUTING_TABLE\t")
+-            || line.starts_with("GLOBAL_STATS\t")
+-        {
+-            return '\t';
+-        }
+-    }
+-    ','
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_u64(s: &str, field: &'static str) -> Result<u64, ParseStatusError> {
+     s.parse().map_err(|_| ParseStatusError::InvalidInteger {
+         field,
+         value: s.to_string(),
+     })
+ }

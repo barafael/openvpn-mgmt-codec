@@ -1,0 +1,23 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace write_line with ()
+@@ -592,19 +592,17 @@
+         }
+ 
+         Ok(())
+     }
+ }
+ 
+ /// Write a single line followed by `\n`.
+ fn write_line(dst: &mut BytesMut, s: &str) {
+-    dst.reserve(s.len() + 1);
+-    dst.put_slice(s.as_bytes());
+-    dst.put_u8(b'\n');
++    () /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Write a multi-line block: header line, body lines, and a terminating `END`.
+ ///
+ /// In [`EncoderMode::Sanitize`] mode, body lines have `\n`, `\r`, and `\0`
+ /// stripped, and any line that would be exactly `"END"` is escaped to
+ /// `" END"` so the server does not treat it as the block terminator.
+ ///

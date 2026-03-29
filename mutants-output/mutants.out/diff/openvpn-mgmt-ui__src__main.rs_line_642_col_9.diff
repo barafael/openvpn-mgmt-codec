@@ -1,0 +1,54 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::handle_ovpn_message with ()
+@@ -634,50 +634,17 @@
+ }
+ 
+ // -------------------------------------------------------------------
+ // Message routing
+ // -------------------------------------------------------------------
+ 
+ impl App {
+     fn handle_ovpn_message(&mut self, msg: OvpnMessage) {
+-        match msg {
+-            OvpnMessage::Success(payload) => {
+-                self.ingest_success(&payload);
+-                self.append_command_response(format!("SUCCESS: {payload}"));
+-            }
+-            OvpnMessage::Error(payload) => {
+-                self.append_command_response(format!("ERROR: {payload}"));
+-            }
+-            OvpnMessage::MultiLine(lines) => {
+-                self.ingest_multiline(&lines);
+-                self.append_command_response_lines(
+-                    lines.iter().map(|line| format!("  {line}")).collect(),
+-                );
+-            }
+-            OvpnMessage::Notification(notification) => {
+-                self.handle_notification(notification);
+-            }
+-            OvpnMessage::Info(info) => {
+-                self.add_log(LogLevel::Info, "", &info);
+-            }
+-            OvpnMessage::PasswordPrompt => {
+-                self.add_log(LogLevel::Warning, "", "Management password required");
+-            }
+-            OvpnMessage::Pkcs11IdEntry { index, id, blob } => {
+-                self.append_command_response(format!("PKCS11: index={index} id={id} blob={blob}"));
+-            }
+-            OvpnMessage::Unrecognized { line, kind } => {
+-                self.add_log(
+-                    LogLevel::Warning,
+-                    "",
+-                    &format!("Unrecognized ({kind:?}): {line}"),
+-                );
+-            }
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     fn handle_notification(&mut self, notification: Notification) {
+         match notification {
+             Notification::State {
+                 timestamp,
+                 name,
+                 description,

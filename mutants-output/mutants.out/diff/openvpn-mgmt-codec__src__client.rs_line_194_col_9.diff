@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::send_expect_ok -> Result<(), ClientError> with Ok(())
+@@ -186,18 +186,17 @@
+             OvpnMessage::MultiLine(lines) => Ok(lines),
+             OvpnMessage::Error(msg) => Err(ClientError::ServerError(msg)),
+             other => Err(ClientError::UnexpectedResponse(other)),
+         }
+     }
+ 
+     /// Send a command that expects `SUCCESS:` and discard the payload.
+     async fn send_expect_ok(&mut self, cmd: OvpnCommand) -> Result<(), ClientError> {
+-        self.send_expect_success(cmd).await?;
+-        Ok(())
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Send a stream-mode command (`log`, `state`, `echo`).
+     ///
+     /// History-returning modes produce `Some(lines)`, on/off modes
+     /// produce `None`.
+     async fn send_stream_command(
+         &mut self,

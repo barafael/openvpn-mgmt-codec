@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "auth-retry" in <impl FromStr for OvpnCommand>::from_str
+@@ -725,17 +725,17 @@
+                     auth_type: auth_type_str
+                         .parse()
+                         .inspect_err(|error| warn!(%error, "unknown auth type"))
+                         .unwrap_or(AuthType::Unknown(auth_type_str)),
+                     value: value.into(),
+                 })
+             }
+ 
+-            "auth-retry" => Ok(Self::AuthRetry(args.parse::<AuthRetryMode>()?)),
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "forget-passwords" => Ok(Self::ForgetPasswords),
+ 
+             // --- Interactive prompts ---
+             "needok" => {
+                 let (name, resp) =
+                     args.rsplit_once(char::is_whitespace)
+                         .ok_or(CommandParseError::MissingArgs(

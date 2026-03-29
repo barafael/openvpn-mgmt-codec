@@ -107,7 +107,7 @@ async fn framed_classify_stream_adapter() {
     assert_eq!(events.len(), 2);
     assert!(matches!(
         &events[0],
-        ManagementEvent::Notification(Notification::State { .. })
+        ManagementEvent::Notification(Notification::State(..))
     ));
     assert!(matches!(
         &events[1],
@@ -192,7 +192,7 @@ async fn framed_multiple_messages_in_single_write() {
     ));
     assert!(matches!(
         msg3,
-        OvpnMessage::Notification(Notification::State { .. })
+        OvpnMessage::Notification(Notification::State(..))
     ));
 }
 
@@ -321,17 +321,17 @@ async fn framed_full_session_lifecycle() {
     let msg = framed.next().await.unwrap().unwrap();
     assert!(matches!(
         &msg,
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             name: OpenVpnState::Connecting,
             ..
-        })
+        }))
     ));
     let msg = framed.next().await.unwrap().unwrap();
     assert!(matches!(
         &msg,
-        OvpnMessage::Notification(Notification::State {
+        OvpnMessage::Notification(Notification::State(StateEntry {
             name: OpenVpnState::Connected,
             ..
-        })
+        }))
     ));
 }

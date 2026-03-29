@@ -1,0 +1,240 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::handle_notification with ()
+@@ -671,236 +671,17 @@
+                     "",
+                     &format!("Unrecognized ({kind:?}): {line}"),
+                 );
+             }
+         }
+     }
+ 
+     fn handle_notification(&mut self, notification: Notification) {
+-        match notification {
+-            Notification::State {
+-                timestamp,
+-                name,
+-                description,
+-                local_ip,
+-                remote_ip,
+-                remote_port,
+-                ..
+-            } => {
+-                tracing::info!(%name, %description, "vpn state changed");
+-                let log_line = format!("State → {name} — {description}");
+-                self.vpn_state = Some(name);
+-                self.vpn_state_description = Some(description.clone());
+-                self.local_ip = (!local_ip.is_empty()).then_some(local_ip);
+-                self.remote_addr = (!remote_ip.is_empty()).then(|| {
+-                    remote_port
+-                        .map(|port| format!("{remote_ip}:{port}"))
+-                        .unwrap_or(remote_ip)
+-                });
+-                self.add_log(LogLevel::Info, &format_timestamp(timestamp), &log_line);
+-            }
+-            Notification::ByteCount {
+-                bytes_in,
+-                bytes_out,
+-            } => {
+-                // Feed the throughput chart before overwriting the totals.
+-                self.throughput
+-                    .push(bytes_in, bytes_out, self.startup.bytecount_interval);
+-                self.bytes_in = bytes_in;
+-                self.bytes_out = bytes_out;
+-            }
+-            Notification::ByteCountCli {
+-                cid,
+-                bytes_in,
+-                bytes_out,
+-            } => {
+-                self.add_log(
+-                    LogLevel::Debug,
+-                    "",
+-                    &format!("ByteCount cid={cid} in={bytes_in} out={bytes_out}"),
+-                );
+-            }
+-            Notification::Log {
+-                timestamp,
+-                level,
+-                message,
+-            } => {
+-                self.add_log(level, &format_timestamp(timestamp), &message);
+-            }
+-            Notification::Echo { timestamp, param } => {
+-                self.add_log(
+-                    LogLevel::Info,
+-                    &format_timestamp(timestamp),
+-                    &format!("Echo: {param}"),
+-                );
+-            }
+-            Notification::Hold { text } => {
+-                tracing::warn!(text, "hold");
+-                self.add_log(LogLevel::Warning, "", &format!("Hold: {text}"));
+-            }
+-            Notification::Fatal { message } => {
+-                tracing::error!(message, "fatal from openvpn");
+-                self.add_log(LogLevel::Fatal, "", &format!("FATAL: {message}"));
+-            }
+-            Notification::Client {
+-                event,
+-                cid,
+-                kid,
+-                env,
+-            } => {
+-                // Extract common_name from env if present.
+-                let common_name = env
+-                    .get("common_name")
+-                    .cloned()
+-                    .unwrap_or_else(|| format!("{event}"));
+-                let address = env
+-                    .get("untrusted_ip")
+-                    .or_else(|| env.get("IV_IP"))
+-                    .cloned()
+-                    .unwrap_or_default();
+-
+-                let kid_label = kid.map_or(String::new(), |kid_val| format!(" kid={kid_val}"));
+-                self.add_log(
+-                    LogLevel::Info,
+-                    "",
+-                    &format!("Client {event} cid={cid}{kid_label} cn={common_name}"),
+-                );
+-
+-                // Track client connects / disconnects.
+-                match event.to_string().as_str() {
+-                    "CONNECT" | "REAUTH" | "ESTABLISHED"
+-                        if !self.clients.iter().any(|client| client.cid == cid) =>
+-                    {
+-                        self.clients.push(ClientInfo {
+-                            cid,
+-                            common_name,
+-                            address,
+-                        });
+-                    }
+-                    "DISCONNECT" => {
+-                        self.clients.retain(|client| client.cid != cid);
+-                    }
+-                    _ => {}
+-                }
+-            }
+-            Notification::ClientAddress { cid, addr, primary } => {
+-                self.add_log(
+-                    LogLevel::Debug,
+-                    "",
+-                    &format!("Client address cid={cid} addr={addr} primary={primary}"),
+-                );
+-            }
+-            Notification::Password(password_notification) => match password_notification {
+-                PasswordNotification::NeedAuth { auth_type } => {
+-                    self.add_log(
+-                        LogLevel::Warning,
+-                        "",
+-                        &format!("Need '{auth_type}' username/password"),
+-                    );
+-                }
+-                PasswordNotification::NeedPassword { auth_type } => {
+-                    self.add_log(
+-                        LogLevel::Warning,
+-                        "",
+-                        &format!("Need '{auth_type}' password"),
+-                    );
+-                }
+-                PasswordNotification::VerificationFailed { auth_type } => {
+-                    self.add_log(
+-                        LogLevel::Warning,
+-                        "",
+-                        &format!("Auth verification failed: '{auth_type}'"),
+-                    );
+-                }
+-                PasswordNotification::StaticChallenge { challenge, .. } => {
+-                    self.add_log(
+-                        LogLevel::Warning,
+-                        "",
+-                        &format!("Static challenge: {challenge}"),
+-                    );
+-                }
+-                PasswordNotification::DynamicChallenge { challenge, .. } => {
+-                    self.add_log(
+-                        LogLevel::Warning,
+-                        "",
+-                        &format!("Dynamic challenge: {challenge}"),
+-                    );
+-                }
+-                PasswordNotification::AuthToken { token } => {
+-                    self.add_log(LogLevel::Info, "", &format!("Auth token received: {token}"));
+-                }
+-            },
+-            Notification::NeedOk { name, message } => {
+-                self.add_log(
+-                    LogLevel::Warning,
+-                    "",
+-                    &format!("NEED-OK '{name}': {message}"),
+-                );
+-            }
+-            Notification::NeedStr { name, message } => {
+-                self.add_log(
+-                    LogLevel::Warning,
+-                    "",
+-                    &format!("NEED-STR '{name}': {message}"),
+-                );
+-            }
+-            Notification::Remote {
+-                host,
+-                port,
+-                protocol,
+-            } => {
+-                self.add_log(
+-                    LogLevel::Info,
+-                    "",
+-                    &format!("Remote: {host}:{port} ({protocol})"),
+-                );
+-            }
+-            Notification::Proxy {
+-                index,
+-                proxy_type,
+-                host,
+-            } => {
+-                self.add_log(
+-                    LogLevel::Info,
+-                    "",
+-                    &format!("Proxy #{index}: {proxy_type} {host}"),
+-                );
+-            }
+-            Notification::RsaSign { data } => {
+-                self.add_log(
+-                    LogLevel::Info,
+-                    "",
+-                    &format!("RSA sign request: {}", &data[..data.len().min(40)]),
+-                );
+-            }
+-            Notification::Pkcs11IdCount { count } => {
+-                self.add_log(LogLevel::Info, "", &format!("PKCS#11 ID count: {count}"));
+-            }
+-            Notification::PkSign { data, algorithm } => {
+-                let algo = algorithm.as_deref().unwrap_or("unknown");
+-                self.add_log(
+-                    LogLevel::Info,
+-                    "",
+-                    &format!("PK sign request ({algo}): {}", &data[..data.len().min(40)]),
+-                );
+-            }
+-            Notification::Info { message } => {
+-                self.add_log(LogLevel::Info, "", &message);
+-            }
+-            Notification::InfoMsg { extra } => {
+-                self.add_log(LogLevel::Info, "", &format!("INFOMSG: {extra}"));
+-            }
+-            Notification::NeedCertificate { hint } => {
+-                self.add_log(LogLevel::Warning, "", &format!("Need certificate: {hint}"));
+-            }
+-            Notification::Simple { kind, payload } => {
+-                self.add_log(LogLevel::Info, "", &format!("[{kind}] {payload}"));
+-            }
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Handle startup-option changes. When connected, stream-mode and
+     /// bytecount changes are sent immediately so the tab controls
+     /// double as live toggles.
+     fn handle_startup(&mut self, msg: StartupMsg) -> Result<(), ActorGone> {
+         match msg {
+             StartupMsg::LogMode(mode) => {

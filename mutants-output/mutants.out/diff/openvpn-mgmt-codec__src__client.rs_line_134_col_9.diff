@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::into_framed -> Framed<T, OvpnCodec> with Default::default()
+@@ -126,17 +126,17 @@
+         Self {
+             framed,
+             notification_tx,
+         }
+     }
+ 
+     /// Recover the underlying framed transport.
+     pub fn into_framed(self) -> Framed<T, OvpnCodec> {
+-        self.framed
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // --- Internal helpers ---
+ 
+     /// Read frames until a non-notification message arrives. Interleaved
+     /// notifications are forwarded to the broadcast channel.
+     async fn recv_response(&mut self) -> Result<OvpnMessage, ClientError> {
+         loop {

@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::need_ok -> Result<(), ClientError> with Ok(())
+@@ -444,21 +444,17 @@
+     // -- Interactive prompts --
+ 
+     /// Respond to a `>NEED-OK:` prompt.
+     pub async fn need_ok(
+         &mut self,
+         name: impl Into<String>,
+         response: NeedOkResponse,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::NeedOk {
+-            name: name.into(),
+-            response,
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Respond to a `>NEED-STR:` prompt.
+     pub async fn need_str(
+         &mut self,
+         name: impl Into<String>,
+         value: impl Into<String>,
+     ) -> Result<(), ClientError> {

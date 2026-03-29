@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::set_version -> Result<(), ClientError> with Ok(())
+@@ -275,23 +275,17 @@
+         Ok(parsed_response::parse_version(&lines))
+     }
+ 
+     /// Set the management client version to announce feature support.
+     ///
+     /// For versions < 4 this produces no response from the server.
+     /// For versions >= 4 a `SUCCESS:` response is expected.
+     pub async fn set_version(&mut self, version: u32) -> Result<(), ClientError> {
+-        let cmd = OvpnCommand::SetVersion(version);
+-        if version < 4 {
+-            self.framed.send(cmd).await?;
+-            Ok(())
+-        } else {
+-            self.send_expect_ok(cmd).await
+-        }
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Query the PID of the OpenVPN process.
+     pub async fn pid(&mut self) -> Result<u32, ClientError> {
+         let payload = self.send_expect_success(OvpnCommand::Pid).await?;
+         Ok(parsed_response::parse_pid(&payload)?)
+     }
+ 

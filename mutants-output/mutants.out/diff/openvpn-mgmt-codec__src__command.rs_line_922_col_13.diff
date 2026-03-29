@@ -1,0 +1,32 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "env-filter" in <impl FromStr for OvpnCommand>::from_str
+@@ -914,28 +914,17 @@
+                     port: port
+                         .parse()
+                         .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+                 })),
+                 _ => cmd_err("usage: proxy none|http <host> <port> [nct]|socks <host> <port>"),
+             },
+ 
+             // --- ENV filter ---
+-            "env-filter" => {
+-                let level = if args.is_empty() {
+-                    0
+-                } else {
+-                    args.parse::<u32>()
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "env-filter level",
+-                            input: args.to_string(),
+-                        })?
+-                };
+-                Ok(Self::EnvFilter(level))
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Remote entry queries ---
+             "remote-entry-count" => Ok(Self::RemoteEntryCount),
+ 
+             "remote-entry-get" => {
+                 if args.is_empty() {
+                     return cmd_err("usage: remote-entry-get i|all [j]");
+                 }

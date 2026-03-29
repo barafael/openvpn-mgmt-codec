@@ -1,0 +1,30 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ replace format_rate -> String with "xyzzy".into()
+@@ -223,26 +223,17 @@
+ 
+ /// Format bytes/sec in a compact human-readable form (public variant).
+ pub(crate) fn format_rate_public(bps: f64) -> String {
+     format_rate(bps)
+ }
+ 
+ /// Format bytes/sec in a compact human-readable form for axis labels.
+ fn format_rate(bps: f64) -> String {
+-    const KIB: f64 = 1024.0;
+-    const MIB: f64 = 1024.0 * KIB;
+-
+-    if bps >= MIB {
+-        format!("{:.0}M", bps / MIB)
+-    } else if bps >= KIB {
+-        format!("{:.0}K", bps / KIB)
+-    } else {
+-        format!("{:.0}B", bps)
+-    }
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Create a chart widget element for the throughput history with a custom height.
+ pub(crate) fn throughput_chart_sized(
+     history: &ThroughputHistory,
+     height: f32,
+     palette: ChartPalette,
+ ) -> Element<'_, Message> {

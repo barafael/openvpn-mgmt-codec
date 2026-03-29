@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace < with <= in parse_status_v1
+@@ -309,17 +309,17 @@
+             Section::Header => {
+                 if fields.first() == Some(&"Common Name") {
+                     section = Section::ClientList;
+                     continue;
+                 }
+             }
+             Section::ClientList => {
+                 // V1 CLIENT_LIST: CN, Real Address, Bytes Received, Bytes Sent, Connected Since
+-                if fields.len() < 5 {
++                if fields.len() <= /* ~ changed by cargo-mutants ~ */ 5 {
+                     return Err(ParseStatusError::ClientListTooFewFields(fields.len()));
+                 }
+                 status.clients.push(ConnectedClient {
+                     common_name: fields[0].to_string(),
+                     real_address: fields[1].to_string(),
+                     virtual_address: String::new(), // Not present in V1
+                     virtual_ipv6: String::new(),
+                     bytes_in: parse_u64(fields[2], "bytes_received")?,

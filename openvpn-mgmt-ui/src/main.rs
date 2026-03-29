@@ -677,26 +677,19 @@ impl App {
 
     fn handle_notification(&mut self, notification: Notification) {
         match notification {
-            Notification::State {
-                timestamp,
-                name,
-                description,
-                local_ip,
-                remote_ip,
-                remote_port,
-                ..
-            } => {
-                tracing::info!(%name, %description, "vpn state changed");
-                let log_line = format!("State → {name} — {description}");
-                self.vpn_state = Some(name);
-                self.vpn_state_description = Some(description.clone());
-                self.local_ip = (!local_ip.is_empty()).then_some(local_ip);
-                self.remote_addr = (!remote_ip.is_empty()).then(|| {
-                    remote_port
-                        .map(|port| format!("{remote_ip}:{port}"))
-                        .unwrap_or(remote_ip)
+            Notification::State(state) => {
+                tracing::info!(%state.name, %state.description, "vpn state changed");
+                let log_line = format!("State → {} — {}", state.name, state.description);
+                self.vpn_state = Some(state.name);
+                self.vpn_state_description = Some(state.description.clone());
+                self.local_ip = (!state.local_ip.is_empty()).then_some(state.local_ip);
+                self.remote_addr = (!state.remote_ip.is_empty()).then(|| {
+                    state
+                        .remote_port
+                        .map(|port| format!("{}:{port}", state.remote_ip))
+                        .unwrap_or(state.remote_ip)
                 });
-                self.add_log(LogLevel::Info, &format_timestamp(timestamp), &log_line);
+                self.add_log(LogLevel::Info, &format_timestamp(state.timestamp.0), &log_line);
             }
             Notification::ByteCount {
                 bytes_in,
@@ -724,12 +717,12 @@ impl App {
                 level,
                 message,
             } => {
-                self.add_log(level, &format_timestamp(timestamp), &message);
+                self.add_log(level, &format_timestamp(timestamp.0), &message);
             }
             Notification::Echo { timestamp, param } => {
                 self.add_log(
                     LogLevel::Info,
-                    &format_timestamp(timestamp),
+                    &format_timestamp(timestamp.0),
                     &format!("Echo: {param}"),
                 );
             }

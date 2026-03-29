@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace < with > in parse_status_v1
+@@ -332,17 +332,17 @@
+                     cipher: None,
+                 });
+             }
+             Section::RoutingTable => {
+                 // Skip header row
+                 if fields.first() == Some(&"Virtual Address") {
+                     continue;
+                 }
+-                if fields.len() < 4 {
++                if fields.len() > /* ~ changed by cargo-mutants ~ */ 4 {
+                     return Err(ParseStatusError::RoutingTableTooFewFields(fields.len()));
+                 }
+                 status.routes.push(RoutingEntry {
+                     virtual_address: fields[0].to_string(),
+                     common_name: fields[1].to_string(),
+                     real_address: fields[2].to_string(),
+                     last_ref: fields[3..].join(","),
+                     last_ref_t: None,

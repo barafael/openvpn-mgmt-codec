@@ -1,0 +1,28 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "cr-response" in <impl FromStr for OvpnCommand>::from_str
+@@ -1027,24 +1027,17 @@
+                     extra,
+                     timeout,
+                 })
+             }
+ 
+             // Wire format per management-notes.txt:
+             //   cr-response <base64-response>
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "cr-response" => {
+-                let (response, _) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: cr-response <response>",
+-                ))?;
+-                Ok(Self::CrResponse {
+-                    response: Redacted::new(response),
+-                })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Raw multi-line ---
+             "raw-ml" => {
+                 if args.is_empty() {
+                     return cmd_err("usage: raw-ml <command>");
+                 }
+                 Ok(Self::RawMultiLine(args.to_string()))
+             }

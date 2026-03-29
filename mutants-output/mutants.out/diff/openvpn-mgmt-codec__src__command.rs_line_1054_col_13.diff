@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "quit" in <impl FromStr for OvpnCommand>::from_str
+@@ -1046,17 +1046,17 @@
+                 if args.is_empty() {
+                     return cmd_err("usage: raw-ml <command>");
+                 }
+                 Ok(Self::RawMultiLine(args.to_string()))
+             }
+ 
+             // --- Lifecycle ---
+             "exit" => Ok(Self::Exit),
+-            "quit" => Ok(Self::Quit),
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Fallback: send as raw command ---
+             _ => Ok(Self::Raw(line.to_string())),
+         }
+     }
+ }
+ 
+ /// The standard startup sequence that most management clients send after

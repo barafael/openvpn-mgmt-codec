@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace >= with < in parse_status_v2v3
+@@ -397,17 +397,17 @@
+                 // V2/V3 CLIENT_LIST columns (after the tag):
+                 // 0:CN 1:RealAddr 2:VirtAddr 3:VirtIPv6 4:BytesRecv 5:BytesSent
+                 // 6:ConnSince 7:ConnSince_t 8:Username 9:CID 10:PeerID 11:Cipher
+                 //
+                 // Older (2.3) layout omits VirtIPv6, PeerID, Cipher:
+                 // 0:CN 1:RealAddr 2:VirtAddr 3:BytesRecv 4:BytesSent
+                 // 5:ConnSince 6:ConnSince_t 7:Username
+                 let cols = &fields[1..]; // Skip the "CLIENT_LIST" tag
+-                let has_ipv6_column = cols.len() >= 12;
++                let has_ipv6_column = cols.len() < /* ~ changed by cargo-mutants ~ */ 12;
+ 
+                 if has_ipv6_column {
+                     // has_ipv6_column requires cols.len() >= 12, so all
+                     // indexed accesses (up to cols[7]) are in-bounds.
+                     status.clients.push(ConnectedClient {
+                         common_name: cols[0].to_string(),
+                         real_address: cols[1].to_string(),
+                         virtual_address: cols[2].to_string(),

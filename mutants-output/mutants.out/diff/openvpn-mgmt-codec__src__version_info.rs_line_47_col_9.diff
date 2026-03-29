@@ -1,0 +1,56 @@
+--- openvpn-mgmt-codec/src/version_info.rs
++++ replace VersionInfo::parse -> Self with Default::default()
+@@ -39,52 +39,17 @@
+ }
+ 
+ impl VersionInfo {
+     /// Parse a `version` command's multi-line response into structured data.
+     ///
+     /// Lines that don't match known prefixes are preserved in
+     /// [`raw_lines`](Self::raw_lines) for forward compatibility.
+     pub fn parse(lines: &[String]) -> Self {
+-        let mut management_version = None;
+-        let mut openvpn_version_line = None;
+-
+-        for line in lines {
+-            let lower = line.to_ascii_lowercase();
+-
+-            // Match the management version line regardless of exact
+-            // wording. Known variants:
+-            //   "Management Interface Version: 5"  (OpenVPN ≤ 2.6.9)
+-            //   "Management Version: 5"            (OpenVPN ≥ 2.6.16)
+-            // Future-proof: accept any line starting with "management"
+-            // that contains "version" followed by a number.
+-            if management_version.is_none()
+-                && lower.starts_with("management")
+-                && lower.contains("version")
+-            {
+-                management_version = line
+-                    .rsplit(|chr: char| !chr.is_ascii_digit())
+-                    .find(|part| !part.is_empty())
+-                    .and_then(|part| {
+-                        part.parse()
+-                            .inspect_err(|error| {
+-                                tracing::warn!(%error, part, "non-numeric management version")
+-                            })
+-                            .ok()
+-                    });
+-            } else if lower.starts_with("openvpn version") {
+-                openvpn_version_line = Some(line.clone());
+-            }
+-        }
+-
+-        Self {
+-            management_version,
+-            openvpn_version_line,
+-            raw_lines: lines.to_vec(),
+-        }
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// The management interface protocol version (e.g. `5`).
+     ///
+     /// Returns `None` if the line was missing or unparseable. Use this to
+     /// gate features: for instance, `client-pending-auth` requires
+     /// management version >= 5 (OpenVPN 2.5+).
+     pub fn management_version(&self) -> Option<u32> {

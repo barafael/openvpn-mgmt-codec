@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace parse_field -> Option<T> with Some(Default::default())
+@@ -1007,20 +1007,17 @@
+ /// Parse a string into `T`, logging a warning on failure and returning `None`.
+ ///
+ /// Used by the notification parsers that degrade to `Notification::Simple`
+ /// rather than failing hard.
+ fn parse_field<T: std::str::FromStr>(value: &str, field: &str) -> Option<T>
+ where
+     T::Err: std::fmt::Display,
+ {
+-    value
+-        .parse()
+-        .inspect_err(|error| warn!(%error, value, field, "failed to parse notification field"))
+-        .ok()
++    Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn parse_state(payload: &str) -> Option<Notification> {
+     // Wire format per management-notes.txt:
+     //   (a) timestamp, (b) state, (c) desc, (d) local_ip, (e) remote_ip,
+     //   (f) remote_port, (g) local_addr, (h) local_port, (i) local_ipv6
+     let mut parts = payload.splitn(9, ',');
+     let timestamp = parse_field(parts.next()?, "state timestamp")?;

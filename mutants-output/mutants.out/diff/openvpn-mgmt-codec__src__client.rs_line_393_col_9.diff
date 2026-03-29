@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::password -> Result<(), ClientError> with Ok(())
+@@ -385,21 +385,17 @@
+     }
+ 
+     /// Supply a password for the given auth type.
+     pub async fn password(
+         &mut self,
+         auth_type: AuthType,
+         value: impl Into<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::Password {
+-            auth_type,
+-            value: Redacted::new(value.into()),
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Set the auth-retry strategy.
+     pub async fn auth_retry(&mut self, mode: AuthRetryMode) -> Result<(), ClientError> {
+         self.send_expect_ok(OvpnCommand::AuthRetry(mode)).await
+     }
+ 
+     /// Forget all passwords entered during this management session.

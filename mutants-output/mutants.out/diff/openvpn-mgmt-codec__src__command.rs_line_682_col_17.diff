@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "off" in <impl FromStr for OvpnCommand>::from_str
+@@ -674,17 +674,17 @@
+                     }));
+                 }
+                 Ok(Self::Kill(KillTarget::CommonName(args.to_string())))
+             }
+ 
+             "hold" => match args {
+                 "" => Ok(Self::HoldQuery),
+                 "on" => Ok(Self::HoldOn),
+-                "off" => Ok(Self::HoldOff),
++                 /* ~ changed by cargo-mutants ~ */
+                 "release" => Ok(Self::HoldRelease),
+                 _ => Err(CommandParseError::InvalidChoice {
+                     field: "hold argument",
+                     input: args.to_string(),
+                     hint: "use on, off, or release",
+                 }),
+             },
+ 

@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ replace parse_version -> VersionInfo with Default::default()
+@@ -174,17 +174,17 @@
+ /// let lines = vec![
+ ///     "OpenVPN Version: OpenVPN 2.6.9 x86_64-pc-linux-gnu".to_string(),
+ ///     "Management Interface Version: 5".to_string(),
+ /// ];
+ /// let info = parse_version(&lines);
+ /// assert_eq!(info.management_version(), Some(5));
+ /// ```
+ pub fn parse_version(lines: &[String]) -> VersionInfo {
+-    VersionInfo::parse(lines)
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// A single state history entry from the `state` command's multi-line response.
+ ///
+ /// Wire format: `timestamp,state_name,description,local_ip,remote_ip,remote_port,local_addr,local_port,local_ipv6`
+ ///
+ /// Fields mirror [`Notification::State`](crate::Notification::State) exactly.
+ ///

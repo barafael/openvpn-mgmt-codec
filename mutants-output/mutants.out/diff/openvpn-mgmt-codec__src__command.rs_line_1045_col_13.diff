@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "raw-ml" in <impl FromStr for OvpnCommand>::from_str
+@@ -1037,22 +1037,17 @@
+                     "usage: cr-response <response>",
+                 ))?;
+                 Ok(Self::CrResponse {
+                     response: Redacted::new(response),
+                 })
+             }
+ 
+             // --- Raw multi-line ---
+-            "raw-ml" => {
+-                if args.is_empty() {
+-                    return cmd_err("usage: raw-ml <command>");
+-                }
+-                Ok(Self::RawMultiLine(args.to_string()))
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- Lifecycle ---
+             "exit" => Ok(Self::Exit),
+             "quit" => Ok(Self::Quit),
+ 
+             // --- Fallback: send as raw command ---
+             _ => Ok(Self::Raw(line.to_string())),
+         }

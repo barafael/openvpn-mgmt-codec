@@ -1,0 +1,42 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "needok" in <impl FromStr for OvpnCommand>::from_str
+@@ -730,38 +730,17 @@
+                 })
+             }
+ 
+             "auth-retry" => Ok(Self::AuthRetry(args.parse::<AuthRetryMode>()?)),
+ 
+             "forget-passwords" => Ok(Self::ForgetPasswords),
+ 
+             // --- Interactive prompts ---
+-            "needok" => {
+-                let (name, resp) =
+-                    args.rsplit_once(char::is_whitespace)
+-                        .ok_or(CommandParseError::MissingArgs(
+-                            "usage: needok <name> ok|cancel",
+-                        ))?;
+-                let response = match resp {
+-                    "ok" => NeedOkResponse::Ok,
+-                    "cancel" => NeedOkResponse::Cancel,
+-                    _ => {
+-                        return Err(CommandParseError::InvalidChoice {
+-                            field: "needok response",
+-                            input: resp.to_string(),
+-                            hint: "use ok or cancel",
+-                        });
+-                    }
+-                };
+-                Ok(Self::NeedOk {
+-                    name: name.trim().to_string(),
+-                    response,
+-                })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // Wire format per management-notes.txt:
+             //   needstr <name> <value>
+             // where <value> may be quoted+escaped.
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+             "needstr" => {
+                 let (name, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+                     "usage: needstr <name> <value>",

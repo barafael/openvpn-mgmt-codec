@@ -1,0 +1,54 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::subscription -> iced::Subscription<Message> with Subscription::from_iter([Default::default()])
+@@ -1319,50 +1319,13 @@
+         self.ops = OperationsForm::default();
+         self.command_history.clear();
+         self.awaiting_command_response = false;
+         self.selected_console_entry = None;
+         self.console_flash_entry = None;
+     }
+ 
+     fn subscription(&self) -> iced::Subscription<Message> {
+-        let keyboard = iced::event::listen_with(|event, _status, _window| match event {
+-            iced::Event::Keyboard(iced::keyboard::Event::ModifiersChanged(modifiers)) => {
+-                Some(Message::ModifiersChanged(modifiers))
+-            }
+-            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
+-                key: iced::keyboard::Key::Character(ref ch),
+-                modifiers,
+-                ..
+-            }) if modifiers.control() && ch.as_ref() == "c" => Some(Message::CopySelection),
+-            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
+-                key: iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowUp),
+-                ..
+-            }) => Some(Message::SelectionUp),
+-            iced::Event::Keyboard(iced::keyboard::Event::KeyPressed {
+-                key: iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowDown),
+-                ..
+-            }) => Some(Message::SelectionDown),
+-            _ => None,
+-        });
+-
+-        let mut subs = vec![keyboard];
+-
+-        if self.connection_state == ConnectionState::Connecting {
+-            subs.push(
+-                iced::time::every(std::time::Duration::from_millis(400))
+-                    .map(|_| Message::ConnectingTick),
+-            );
+-        }
+-
+-        #[cfg(debug_assertions)]
+-        if self.demo_chart {
+-            subs.push(
+-                iced::time::every(std::time::Duration::from_secs(1))
+-                    .map(|_| Message::DemoChartTick),
+-            );
+-        }
+-
+-        iced::Subscription::batch(subs)
++        Subscription::from_iter([Default::default()]) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ use openvpn_mgmt_codec::timestamp::format_timestamp;

@@ -1,0 +1,25 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::push_update_cid -> Result<(), ClientError> with Ok(())
+@@ -615,21 +615,17 @@
+     }
+ 
+     /// Push an option update to a specific client.
+     pub async fn push_update_cid(
+         &mut self,
+         cid: u64,
+         options: impl Into<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::PushUpdateCid {
+-            cid,
+-            options: options.into(),
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Management interface auth --
+ 
+     /// Authenticate to the management interface.
+     pub async fn management_password(
+         &mut self,
+         password: impl Into<String>,

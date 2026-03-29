@@ -1,0 +1,49 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "client-auth" in <impl FromStr for OvpnCommand>::from_str
+@@ -778,45 +778,17 @@
+             "pkcs11-id-get" => args.parse::<u32>().map(Self::Pkcs11IdGet).map_err(|_| {
+                 CommandParseError::InvalidNumber {
+                     field: "pkcs11-id-get index",
+                     input: args.to_string(),
+                 }
+             }),
+ 
+             // --- Client management (server mode) ---
+-            "client-auth" => {
+-                let mut parts = args.splitn(3, char::is_whitespace);
+-                let cid = parts
+-                    .next()
+-                    .ok_or(CommandParseError::MissingArgs(
+-                        "usage: client-auth <cid> <kid> [config-lines]",
+-                    ))?
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
+-                let kid = parts
+-                    .next()
+-                    .ok_or(CommandParseError::MissingArgs(
+-                        "usage: client-auth <cid> <kid> [config-lines]",
+-                    ))?
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
+-                let config_lines = match parts.next() {
+-                    Some(rest) => rest
+-                        .split(',')
+-                        .map(|line| line.trim().to_string())
+-                        .collect(),
+-                    None => vec![],
+-                };
+-                Ok(Self::ClientAuth {
+-                    cid,
+-                    kid,
+-                    config_lines,
+-                })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "client-auth-nt" => {
+                 let (cid_s, kid_s) =
+                     args.split_once(char::is_whitespace)
+                         .ok_or(CommandParseError::MissingArgs(
+                             "usage: client-auth-nt <cid> <kid>",
+                         ))?;
+                 Ok(Self::ClientAuthNt {

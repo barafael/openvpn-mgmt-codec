@@ -1,0 +1,40 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::recv_response -> Result<OvpnMessage, ClientError> with Ok(Default::default())
+@@ -134,36 +134,17 @@
+         self.framed
+     }
+ 
+     // --- Internal helpers ---
+ 
+     /// Read frames until a non-notification message arrives. Interleaved
+     /// notifications are forwarded to the broadcast channel.
+     async fn recv_response(&mut self) -> Result<OvpnMessage, ClientError> {
+-        loop {
+-            let msg = self
+-                .framed
+-                .next()
+-                .await
+-                .ok_or(ClientError::ConnectionClosed)??;
+-
+-            match msg {
+-                OvpnMessage::Notification(notification) => {
+-                    // No active receivers is fine — notifications are best-effort.
+-                    self.notification_tx
+-                        .send(notification)
+-                        .inspect_err(|error| {
+-                            tracing::debug!(%error, "no notification subscribers");
+-                        })
+-                        .ok();
+-                }
+-                other => return Ok(other),
+-            }
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Send a command and read frames until a non-notification response
+     /// arrives.
+     async fn send_and_recv(&mut self, cmd: OvpnCommand) -> Result<OvpnMessage, ClientError> {
+         self.framed.send(cmd).await?;
+         self.recv_response().await
+     }

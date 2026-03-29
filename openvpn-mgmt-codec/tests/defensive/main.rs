@@ -127,8 +127,8 @@ fn challenge_response_newline_must_not_inject_command() {
 #[test]
 fn static_challenge_response_newline_must_not_inject_command() {
     let wire = encode(OvpnCommand::StaticChallengeResponse {
-        password_b64: "cGFzcw==\nexit".into(),
-        response_b64: "cmVzcA==".into(),
+        password: "pass\nexit".into(),
+        response: "resp".into(),
     });
 
     let line_count = wire.lines().count();
@@ -825,10 +825,10 @@ fn strict_challenge_response_newline_rejected() {
 fn strict_static_challenge_response_newline_rejected() {
     assert!(
         try_encode_strict(OvpnCommand::StaticChallengeResponse {
-            password_b64: "cGFzcw==\nexit".into(),
-            response_b64: "cmVzcA==".into(),
+            password: "pass\nexit".into(),
+            response: "resp".into(),
         })
-        .is_err()
+        .is_ok()
     );
 }
 

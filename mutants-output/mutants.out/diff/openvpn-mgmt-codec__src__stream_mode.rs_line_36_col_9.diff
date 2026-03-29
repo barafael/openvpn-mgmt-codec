@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/stream_mode.rs
++++ replace StreamMode::returns_history -> bool with true
+@@ -28,17 +28,17 @@
+     /// Show the N most recent history entries.
+     Recent(u32),
+ }
+ 
+ impl StreamMode {
+     /// Whether this mode produces a multi-line history dump rather than a
+     /// simple `SUCCESS:` acknowledgement.
+     pub fn returns_history(self) -> bool {
+-        matches!(self, Self::All | Self::OnAll | Self::Recent(_))
++        true /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl fmt::Display for StreamMode {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         match self {
+             Self::On => f.write_str("on"),
+             Self::Off => f.write_str("off"),

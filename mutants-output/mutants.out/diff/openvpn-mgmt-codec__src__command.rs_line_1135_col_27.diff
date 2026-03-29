@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace > with == in connection_sequence
+@@ -1127,17 +1127,17 @@
+ /// # }
+ /// ```
+ pub fn connection_sequence(bytecount_interval: u32) -> Vec<OvpnCommand> {
+     let mut cmds = vec![
+         OvpnCommand::Log(StreamMode::OnAll),
+         OvpnCommand::StateStream(StreamMode::OnAll),
+         OvpnCommand::Pid,
+     ];
+-    if bytecount_interval > 0 {
++    if bytecount_interval == /* ~ changed by cargo-mutants ~ */ 0 {
+         cmds.push(OvpnCommand::ByteCount(bytecount_interval));
+     }
+     cmds.push(OvpnCommand::HoldRelease);
+     cmds
+ }
+ 
+ /// Standard startup sequence for **server-mode** management clients.
+ ///

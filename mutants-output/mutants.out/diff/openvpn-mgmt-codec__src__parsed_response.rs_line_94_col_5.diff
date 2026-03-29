@@ -1,0 +1,27 @@
+--- openvpn-mgmt-codec/src/parsed_response.rs
++++ replace parse_pid -> Result<u32, ParseResponseError> with Ok(0)
+@@ -86,23 +86,17 @@
+ /// Expects the format `pid=N` and returns the PID as `u32`.
+ ///
+ /// ```
+ /// use openvpn_mgmt_codec::parsed_response::parse_pid;
+ /// assert_eq!(parse_pid("pid=12345"), Ok(12345));
+ /// assert!(parse_pid("garbage").is_err());
+ /// ```
+ pub fn parse_pid(payload: &str) -> Result<u32, ParseResponseError> {
+-    let val = payload
+-        .strip_prefix("pid=")
+-        .ok_or_else(|| ParseResponseError::MissingPidPrefix(payload.to_string()))?;
+-    val.parse().map_err(|_| ParseResponseError::InvalidInteger {
+-        field: "pid",
+-        value: val.to_string(),
+-    })
++    Ok(0) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parse the `SUCCESS:` payload from a `load-stats` command.
+ ///
+ /// Expects the format `nclients=N,bytesin=N,bytesout=N`.
+ ///
+ /// ```
+ /// use openvpn_mgmt_codec::parsed_response::parse_load_stats;

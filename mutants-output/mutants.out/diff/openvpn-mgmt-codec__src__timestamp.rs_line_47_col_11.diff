@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/timestamp.rs
++++ replace == with != in format_timestamp
+@@ -39,17 +39,17 @@
+     let (year, month, day, hours, mins, secs) = decompose(ts);
+     format!("{year:04}-{month:02}-{day:02}T{hours:02}:{mins:02}:{secs:02}Z")
+ }
+ 
+ /// Format a Unix timestamp with a space separator: `2024-03-21 14:30:00`.
+ ///
+ /// Returns an empty string for timestamp `0` (unset).
+ pub fn format_timestamp(ts: u64) -> String {
+-    if ts == 0 {
++    if ts != /* ~ changed by cargo-mutants ~ */ 0 {
+         return String::new();
+     }
+     let (year, month, day, hours, mins, secs) = decompose(ts);
+     format!("{year:04}-{month:02}-{day:02} {hours:02}:{mins:02}:{secs:02}")
+ }
+ 
+ /// Convert days since Unix epoch to `(year, month, day)`.
+ ///

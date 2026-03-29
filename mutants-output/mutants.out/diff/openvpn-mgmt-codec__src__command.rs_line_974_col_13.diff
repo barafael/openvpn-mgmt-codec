@@ -1,0 +1,26 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "push-update-broad" in <impl FromStr for OvpnCommand>::from_str
+@@ -966,22 +966,17 @@
+             }
+ 
+             // --- Push updates ---
+             // Wire format per management-notes.txt:
+             //   push-update-broad "options"
+             //   push-update-cid <cid> "options"
+             // Options are quoted+escaped on the wire.
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "push-update-broad" => {
+-                let (options, _) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-broad <options>",
+-                ))?;
+-                Ok(Self::PushUpdateBroad { options })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "push-update-cid" => {
+                 let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+                     "usage: push-update-cid <cid> <options>",
+                 ))?;
+                 let cid = cid_str.parse::<u64>().map_err(|_| {
+                     CommandParseError::MissingArgs("push-update-cid: cid must be a number")
+                 })?;

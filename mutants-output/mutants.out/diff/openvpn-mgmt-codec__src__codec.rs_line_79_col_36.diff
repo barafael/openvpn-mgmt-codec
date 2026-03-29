@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete ! in wire_safe
+@@ -71,17 +71,17 @@
+     field: &'static str,
+     mode: EncoderMode,
+ ) -> Result<Cow<'a, str>, io::Error> {
+     if !s.contains(WIRE_UNSAFE) {
+         return Ok(Cow::Borrowed(s));
+     }
+     match mode {
+         EncoderMode::Sanitize => Ok(Cow::Owned(
+-            s.chars().filter(|chr| !WIRE_UNSAFE.contains(chr)).collect(),
++            s.chars().filter(|chr|  /* ~ changed by cargo-mutants ~ */WIRE_UNSAFE.contains(chr)).collect(),
+         )),
+         EncoderMode::Strict => Err(io::Error::other(EncodeError::UnsafeCharacters(field))),
+     }
+ }
+ 
+ /// Backslash-escape `\` and `"` per the OpenVPN config-file lexer rules
+ /// ("Command Parsing" section):
+ ///   `\` → `\\`

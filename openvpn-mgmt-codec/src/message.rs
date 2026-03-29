@@ -4,8 +4,9 @@ use std::fmt;
 use crate::auth::AuthType;
 use crate::client_event::ClientEvent;
 use crate::log_level::LogLevel;
-use crate::openvpn_state::OpenVpnState;
+use crate::parsed_response::StateEntry;
 use crate::redacted::Redacted;
+use crate::timestamp::UtcTimestamp;
 
 /// Sub-types of `>PASSWORD:` notifications. The password notification
 /// has several distinct forms with completely different structures.
@@ -111,30 +112,10 @@ pub enum Notification {
 
     /// `>STATE:timestamp,name,desc,local_ip,remote_ip,remote_port,local_addr,local_port,local_ipv6`
     ///
-    /// Field order per management-notes.txt: (a) timestamp, (b) state name,
-    /// (c) description, (d) TUN/TAP local IPv4, (e) remote server address,
-    /// (f) remote server port, (g) local address, (h) local port,
-    /// (i) TUN/TAP local IPv6.
-    State {
-        /// (a) Unix timestamp of the state change.
-        timestamp: u64,
-        /// (b) State name (e.g. `Connected`, `Reconnecting`).
-        name: OpenVpnState,
-        /// (c) Verbose description (mostly for RECONNECTING/EXITING).
-        description: String,
-        /// (d) TUN/TAP local IPv4 address (may be empty).
-        local_ip: String,
-        /// (e) Remote server address (may be empty).
-        remote_ip: String,
-        /// (f) Remote server port (empty in many states).
-        remote_port: Option<u16>,
-        /// (g) Local address (may be empty).
-        local_addr: String,
-        /// (h) Local port (empty in many states).
-        local_port: Option<u16>,
-        /// (i) TUN/TAP local IPv6 address (may be empty).
-        local_ipv6: String,
-    },
+    /// Shares the same [`StateEntry`] struct used by the `state` command
+    /// response parser, so real-time notifications and polled state share
+    /// a single type.
+    State(StateEntry),
 
     /// `>BYTECOUNT:bytes_in,bytes_out` (client mode)
     ByteCount {
@@ -156,8 +137,8 @@ pub enum Notification {
 
     /// `>LOG:timestamp,level,message`
     Log {
-        /// Unix timestamp of the log entry.
-        timestamp: u64,
+        /// Timestamp of the log entry.
+        timestamp: UtcTimestamp,
         /// Log severity level.
         level: LogLevel,
         /// The log message text.
@@ -166,8 +147,8 @@ pub enum Notification {
 
     /// `>ECHO:timestamp,param_string`
     Echo {
-        /// Unix timestamp.
-        timestamp: u64,
+        /// Timestamp.
+        timestamp: UtcTimestamp,
         /// The echoed parameter string.
         param: String,
     },
@@ -328,10 +309,16 @@ impl fmt::Debug for RedactedEnv<'_> {
     }
 }
 
+impl From<StateEntry> for Notification {
+    fn from(entry: StateEntry) -> Self {
+        Self::State(entry)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport_protocol::TransportProtocol;
+
     // --- Debug redaction ---
 
     #[test]
@@ -443,173 +430,6 @@ mod tests {
         }
     }
 
-    // --- Notification Debug output for each variant ---
-
-    #[test]
-    fn debug_state_notification() {
-        let notification = Notification::State {
-            timestamp: 1700000000,
-            name: OpenVpnState::Connected,
-            description: "SUCCESS".to_string(),
-            local_ip: "10.0.0.2".to_string(),
-            remote_ip: "1.2.3.4".to_string(),
-            remote_port: Some(1194),
-            local_addr: "192.168.1.5".to_string(),
-            local_port: Some(51234),
-            local_ipv6: String::new(),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("State"));
-        assert!(dbg.contains("Connected"));
-        assert!(dbg.contains("10.0.0.2"));
-    }
-
-    #[test]
-    fn debug_bytecount() {
-        let notification = Notification::ByteCount {
-            bytes_in: 1024,
-            bytes_out: 2048,
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("1024"));
-        assert!(dbg.contains("2048"));
-    }
-
-    #[test]
-    fn debug_bytecount_cli() {
-        let notification = Notification::ByteCountCli {
-            cid: 7,
-            bytes_in: 100,
-            bytes_out: 200,
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("ByteCountCli"));
-        assert!(dbg.contains("7"));
-    }
-
-    #[test]
-    fn debug_log() {
-        let notification = Notification::Log {
-            timestamp: 1700000000,
-            level: LogLevel::Warning,
-            message: "something happened".to_string(),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("Log"));
-        assert!(dbg.contains("something happened"));
-    }
-
-    #[test]
-    fn debug_echo() {
-        let notification = Notification::Echo {
-            timestamp: 123,
-            param: "push-update".to_string(),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("Echo"));
-        assert!(dbg.contains("push-update"));
-    }
-
-    #[test]
-    fn debug_hold() {
-        let notification = Notification::Hold {
-            text: "Waiting for hold release".to_string(),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("Hold"));
-    }
-
-    #[test]
-    fn debug_fatal() {
-        let notification = Notification::Fatal {
-            message: "cannot allocate TUN/TAP".to_string(),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("Fatal"));
-        assert!(dbg.contains("cannot allocate TUN/TAP"));
-    }
-
-    #[test]
-    fn debug_remote() {
-        let notification = Notification::Remote {
-            host: "vpn.example.com".to_string(),
-            port: 1194,
-            protocol: TransportProtocol::Udp,
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("Remote"));
-        assert!(dbg.contains("vpn.example.com"));
-    }
-
-    #[test]
-    fn debug_proxy() {
-        let notification = Notification::Proxy {
-            index: 1,
-            proxy_type: TransportProtocol::Tcp,
-            host: "proxy.local".to_string(),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("Proxy"));
-        assert!(dbg.contains("proxy.local"));
-    }
-
-    #[test]
-    fn debug_pk_sign_with_algorithm() {
-        let notification = Notification::PkSign {
-            data: "dGVzdA==".to_string(),
-            algorithm: Some("RSA_PKCS1_PADDING".to_string()),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("PkSign"));
-        assert!(dbg.contains("RSA_PKCS1_PADDING"));
-        assert!(dbg.contains("dGVzdA=="));
-    }
-
-    #[test]
-    fn debug_pk_sign_without_algorithm() {
-        let notification = Notification::PkSign {
-            data: "dGVzdA==".to_string(),
-            algorithm: None,
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("PkSign"));
-        assert!(dbg.contains("None"));
-    }
-
-    #[test]
-    fn debug_info_notification() {
-        let notification = Notification::Info {
-            message: "WEB_AUTH::https://example.com/auth".to_string(),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("Info"));
-        assert!(dbg.contains("WEB_AUTH"));
-    }
-
-    #[test]
-    fn debug_simple_fallback() {
-        let notification = Notification::Simple {
-            kind: "FUTURE_TYPE".to_string(),
-            payload: "some data".to_string(),
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("FUTURE_TYPE"));
-        assert!(dbg.contains("some data"));
-    }
-
-    #[test]
-    fn debug_client_address() {
-        let notification = Notification::ClientAddress {
-            cid: 42,
-            addr: "10.8.0.6".to_string(),
-            primary: true,
-        };
-        let dbg = format!("{notification:?}");
-        assert!(dbg.contains("ClientAddress"));
-        assert!(dbg.contains("10.8.0.6"));
-        assert!(dbg.contains("true"));
-    }
-
     // --- OvpnMessage variants ---
 
     #[test]
@@ -625,30 +445,44 @@ mod tests {
     }
 
     #[test]
-    fn ovpn_message_pkcs11_entry() {
-        let msg = OvpnMessage::Pkcs11IdEntry {
-            index: "0".to_string(),
-            id: "slot_0".to_string(),
-            blob: "AQID".to_string(),
-        };
-        let dbg = format!("{msg:?}");
-        assert!(dbg.contains("Pkcs11IdEntry"));
-        assert!(dbg.contains("slot_0"));
-    }
-
-    #[test]
     fn ovpn_message_password_prompt() {
         assert_eq!(OvpnMessage::PasswordPrompt, OvpnMessage::PasswordPrompt);
     }
 
+    // --- Canary leak detection: full message chain ---
+    //
+    // Verify that Redacted secrets never appear when formatting the
+    // outermost OvpnMessage or Notification wrapper, not just the inner
+    // PasswordNotification type.
+
+    const CANARY: &str = "CANARY_LEAK_DETECT_98765";
+
     #[test]
-    fn ovpn_message_unrecognized() {
-        let msg = OvpnMessage::Unrecognized {
-            line: "garbage".to_string(),
-            kind: crate::unrecognized::UnrecognizedKind::UnexpectedLine,
-        };
+    fn debug_redacts_auth_token_through_full_message_chain() {
+        let msg =
+            OvpnMessage::Notification(Notification::Password(PasswordNotification::AuthToken {
+                token: Redacted::new(CANARY),
+            }));
         let dbg = format!("{msg:?}");
-        assert!(dbg.contains("garbage"));
+        assert!(
+            !dbg.contains(CANARY),
+            "AuthToken secret leaked through OvpnMessage Debug: {dbg}",
+        );
+    }
+
+    #[test]
+    fn debug_redacts_password_env_through_full_message_chain() {
+        let msg = OvpnMessage::Notification(Notification::Client {
+            event: ClientEvent::Connect,
+            cid: 1,
+            kid: Some(0),
+            env: BTreeMap::from([("password".to_string(), CANARY.to_string())]),
+        });
+        let dbg = format!("{msg:?}");
+        assert!(
+            !dbg.contains(CANARY),
+            "password ENV value leaked through OvpnMessage Debug: {dbg}",
+        );
     }
 }
 

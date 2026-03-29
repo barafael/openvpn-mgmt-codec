@@ -135,7 +135,7 @@ fn notifications_between_commands_do_not_corrupt_state() {
     assert_eq!(msgs.len(), 2);
     assert!(matches!(
         &msgs[0],
-        OvpnMessage::Notification(Notification::State { .. })
+        OvpnMessage::Notification(Notification::State(..))
     ));
     assert!(matches!(
         &msgs[1],
@@ -169,7 +169,7 @@ fn notification_interleaved_in_multiline_preserves_sequence() {
     assert_eq!(msgs.len(), 2);
     assert!(matches!(
         &msgs[0],
-        OvpnMessage::Notification(Notification::State { .. })
+        OvpnMessage::Notification(Notification::State(..))
     ));
     assert!(matches!(&msgs[1], OvpnMessage::MultiLine(lines) if lines.len() == 2));
 }

@@ -1,0 +1,28 @@
+--- openvpn-mgmt-codec/src/log_level.rs
++++ replace <impl FromStr for LogLevel>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -47,24 +47,17 @@
+     }
+ }
+ 
+ impl FromStr for LogLevel {
+     type Err = ParseLogLevelError;
+ 
+     /// Parse a recognized log-flag string: `I`, `D`, `W`, `N`, `F`.
+     fn from_str(input: &str) -> Result<Self, Self::Err> {
+-        match input {
+-            "I" => Ok(Self::Info),
+-            "D" => Ok(Self::Debug),
+-            "W" => Ok(Self::Warning),
+-            "N" => Ok(Self::NonFatal),
+-            "F" => Ok(Self::Fatal),
+-            other => Err(ParseLogLevelError(other.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use test_case::test_case;
+ 

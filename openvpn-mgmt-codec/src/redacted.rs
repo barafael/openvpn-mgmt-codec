@@ -20,7 +20,7 @@ use derive_more::{Debug, Display};
 /// assert_eq!(format!("{secret}"), "<redacted>");
 /// assert_eq!(secret.expose(), "hunter2");
 /// ```
-#[derive(Clone, PartialEq, Eq, Debug, Display)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Display)]
 #[debug("<redacted>")]
 #[display("<redacted>")]
 pub struct Redacted(String);

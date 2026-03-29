@@ -6,7 +6,7 @@ use std::str::FromStr;
 pub struct ParseTransportProtocolError(String);
 
 /// Transport protocol as reported in `>REMOTE:` and `>PROXY:` notifications.
-#[derive(Debug, Clone, PartialEq, Eq, strum::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum TransportProtocol {
     /// UDP transport.

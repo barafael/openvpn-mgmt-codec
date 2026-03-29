@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::net -> Result<Vec<String>, ClientError> with Ok(vec![])
+@@ -307,17 +307,17 @@
+ 
+     /// Query or set the mute threshold.
+     pub async fn mute(&mut self, threshold: Option<u32>) -> Result<String, ClientError> {
+         self.send_expect_success(OvpnCommand::Mute(threshold)).await
+     }
+ 
+     /// (Windows) Show network adapter list.
+     pub async fn net(&mut self) -> Result<Vec<String>, ClientError> {
+-        self.send_expect_multi_line(OvpnCommand::Net).await
++        Ok(vec![]) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     // -- Notification control --
+ 
+     /// Control real-time log streaming.
+     ///
+     /// Streaming modes return accumulated log history. `On`/`Off` return `Ok(None)`.
+     pub async fn log(&mut self, mode: StreamMode) -> Result<Option<Vec<String>>, ClientError> {

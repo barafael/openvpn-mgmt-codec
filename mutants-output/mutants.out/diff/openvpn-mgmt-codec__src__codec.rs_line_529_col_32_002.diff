@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace > with >= in <impl Encoder<OvpnCommand> for OvpnCodec>::encode
+@@ -521,17 +521,17 @@
+             OvpnCommand::ClientPendingAuth {
+                 cid,
+                 kid,
+                 ref extra,
+                 timeout,
+             } => {
+                 // Real-world limit discovered by jkroepke/openvpn-auth-oauth2
+                 // (used for WEB_AUTH URLs). Not documented in management-notes.txt.
+-                if extra.len() > 245 {
++                if extra.len() >= /* ~ changed by cargo-mutants ~ */ 245 {
+                     warn!(
+                         len = extra.len(),
+                         max = 245,
+                         "client-pending-auth extra exceeds 245-character limit; \
+                          OpenVPN may truncate or reject it"
+                     );
+                 }
+                 let extra = wire_safe(extra, "client-pending-auth extra", mode)?;

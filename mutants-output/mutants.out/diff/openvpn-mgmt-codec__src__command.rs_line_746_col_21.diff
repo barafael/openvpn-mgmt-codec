@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "cancel" in <impl FromStr for OvpnCommand>::from_str
+@@ -738,17 +738,17 @@
+             "needok" => {
+                 let (name, resp) =
+                     args.rsplit_once(char::is_whitespace)
+                         .ok_or(CommandParseError::MissingArgs(
+                             "usage: needok <name> ok|cancel",
+                         ))?;
+                 let response = match resp {
+                     "ok" => NeedOkResponse::Ok,
+-                    "cancel" => NeedOkResponse::Cancel,
++                     /* ~ changed by cargo-mutants ~ */
+                     _ => {
+                         return Err(CommandParseError::InvalidChoice {
+                             field: "needok response",
+                             input: resp.to_string(),
+                             hint: "use ok or cancel",
+                         });
+                     }
+                 };

@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete match arm "STATE" in OvpnCodec::parse_notification
+@@ -929,17 +929,17 @@
+                 kid,
+                 env: BTreeMap::new(),
+             });
+             return None; // Signal to the caller to keep reading.
+         }
+ 
+         // Dispatch to typed parsers. On parse failure, fall back to Simple.
+         let notification = match kind {
+-            "STATE" => parse_state(payload),
++             /* ~ changed by cargo-mutants ~ */
+             "BYTECOUNT" => parse_bytecount(payload),
+             "BYTECOUNT_CLI" => parse_bytecount_cli(payload),
+             "LOG" => parse_log(payload),
+             "ECHO" => parse_echo(payload),
+             "HOLD" => Some(Notification::Hold {
+                 text: payload.to_string(),
+             }),
+             "FATAL" => Some(Notification::Fatal {

@@ -1,0 +1,21 @@
+--- openvpn-mgmt-ui/src/chart.rs
++++ delete ! in ThroughputHistory::push
+@@ -80,17 +80,17 @@
+ }
+ 
+ impl ThroughputHistory {
+     /// Feed a new cumulative byte-count reading.
+     ///
+     /// `interval` is the configured bytecount interval in seconds (used to
+     /// convert the delta into bytes/sec).
+     pub(crate) fn push(&mut self, bytes_in: u64, bytes_out: u64, interval_secs: u32) {
+-        if !self.seeded {
++        if  /* ~ changed by cargo-mutants ~ */self.seeded {
+             self.prev_in = bytes_in;
+             self.prev_out = bytes_out;
+             self.seeded = true;
+             return;
+         }
+ 
+         let elapsed = interval_secs.max(1) as f64;
+         let sample = Sample {

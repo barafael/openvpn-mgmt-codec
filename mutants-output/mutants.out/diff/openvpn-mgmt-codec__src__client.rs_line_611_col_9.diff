@@ -1,0 +1,24 @@
+--- openvpn-mgmt-codec/src/client.rs
++++ replace ManagementClient<T>::push_update_broad -> Result<(), ClientError> with Ok(())
+@@ -603,20 +603,17 @@
+ 
+     // -- Push updates (server mode) --
+ 
+     /// Broadcast a push option update to all connected clients.
+     pub async fn push_update_broad(
+         &mut self,
+         options: impl Into<String>,
+     ) -> Result<(), ClientError> {
+-        self.send_expect_ok(OvpnCommand::PushUpdateBroad {
+-            options: options.into(),
+-        })
+-        .await
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Push an option update to a specific client.
+     pub async fn push_update_cid(
+         &mut self,
+         cid: u64,
+         options: impl Into<String>,
+     ) -> Result<(), ClientError> {

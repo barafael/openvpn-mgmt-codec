@@ -1,0 +1,29 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::add_log with ()
+@@ -1185,25 +1185,17 @@
+             if let Some(entry) = self.command_history.last_mut() {
+                 entry.response_lines.extend(lines);
+             }
+             self.awaiting_command_response = false;
+         }
+     }
+ 
+     fn add_log(&mut self, level: LogLevel, timestamp: &str, message: &str) {
+-        self.log_entries.push(LogEntry {
+-            level,
+-            timestamp: timestamp.to_string(),
+-            message: message.to_string(),
+-        });
+-        if self.log_entries.len() > MAX_LOG_ENTRIES {
+-            self.log_entries
+-                .drain(0..self.log_entries.len() - MAX_LOG_ENTRIES);
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     fn send_actor(&self, command: ActorCommand) -> Result<(), ActorGone> {
+         let sender = self.actor_tx.as_ref().ok_or(ActorGone)?;
+         sender.try_send(command).map_err(|_| ActorGone)
+     }
+ 
+     /// Send a command (with console recording) only if currently connected.

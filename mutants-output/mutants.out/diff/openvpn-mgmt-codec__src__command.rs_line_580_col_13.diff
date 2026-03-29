@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ replace <impl FromStr for OvpnCommand>::from_str::cmd_err -> Result<T, CommandParseError> with Ok(Default::default())
+@@ -572,17 +572,17 @@
+     /// assert_eq!(cmd, OvpnCommand::Version);
+     ///
+     /// let cmd: OvpnCommand = "state on all".parse().unwrap();
+     /// assert_eq!(cmd, OvpnCommand::StateStream(openvpn_mgmt_codec::StreamMode::OnAll));
+     /// ```
+     fn from_str(line: &str) -> Result<Self, Self::Err> {
+         /// Shorthand for `Err(CommandParseError::MissingArgs(...))`.
+         fn cmd_err<T>(msg: &'static str) -> Result<T, CommandParseError> {
+-            Err(CommandParseError::MissingArgs(msg))
++            Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+         }
+ 
+         let line = line.trim();
+         let (cmd, args) = line
+             .split_once(char::is_whitespace)
+             .map(|(c, a)| (c, a.trim()))
+             .unwrap_or((line, ""));
+ 

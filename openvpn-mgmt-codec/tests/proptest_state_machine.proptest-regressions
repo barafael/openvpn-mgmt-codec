@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 364b84dc9ca7483de5644438c6991309d3e857693fd0591f87ccb0661735ffd0 # shrinks to (initial_state, transitions, seen_counter) = (CodecModel { pending_responses: 0, in_multi_line: false, in_client_notification: false }, [EncodeMultiLine, DecodeGarbage, DecodeSuccess], None)

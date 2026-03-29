@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ delete ! in OvpnCodec::parse_notification
+@@ -863,17 +863,17 @@
+                 kind: UnrecognizedKind::MalformedNotification,
+             });
+         };
+ 
+         // >INFO: on the very first line is the connection banner — surface
+         // it as OvpnMessage::Info. All subsequent >INFO: lines (e.g.
+         // >INFO:WEB_AUTH::url) are routed to Notification::Info.
+         if kind == "INFO" {
+-            if !self.seen_info {
++            if  /* ~ changed by cargo-mutants ~ */self.seen_info {
+                 self.seen_info = true;
+                 return Some(OvpnMessage::Info(payload.to_string()));
+             }
+             return Some(OvpnMessage::Notification(Notification::Info {
+                 message: payload.to_string(),
+             }));
+         }
+ 

@@ -1,0 +1,355 @@
+
+*** openvpn-mgmt-codec/src/codec.rs:669:9: replace <impl Decoder for OvpnCodec>::decode -> Result<Option<Self::Item>, Self::Error> with Ok(Some(Default::default()))
+
+*** mutation diff:
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace <impl Decoder for OvpnCodec>::decode -> Result<Option<Self::Item>, Self::Error> with Ok(Some(Default::default()))
+@@ -661,195 +661,17 @@
+ 
+ // --- Decoder ---
+ 
+ impl Decoder for OvpnCodec {
+     type Item = OvpnMessage;
+     type Error = io::Error;
+ 
+     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+-        loop {
+-            // Find the next complete line.
+-            let Some(newline_pos) = src.iter().position(|&b| b == b'\n') else {
+-                // No complete line yet. Check for a password prompt
+-                // without a trailing newline (OpenVPN ≥ 2.6 sends it as
+-                // an interactive prompt with no line terminator).
+-                // We accept any buffer that starts with the prompt text
+-                // since no `\n` is present (checked above). Consume the
+-                // prompt and any trailing `\r`.
+-                if src.starts_with(PW_PROMPT) {
+-                    let mut consume = PW_PROMPT.len();
+-                    if src.get(consume) == Some(&b'\r') {
+-                        consume += 1;
+-                    }
+-                    src.advance(consume);
+-                    return Ok(Some(OvpnMessage::PasswordPrompt));
+-                }
+-                // Hint to Framed: reserve enough for a typical management
+-                // protocol line so the next read_buf doesn't micro-allocate.
+-                if src.capacity() - src.len() < 256 {
+-                    src.reserve(256);
+-                }
+-                return Ok(None); // Need more data.
+-            };
+-
+-            // Extract the line and advance the buffer past the newline.
+-            let line_bytes = src.split_to(newline_pos + 1);
+-            let line = match std::str::from_utf8(&line_bytes) {
+-                Ok(text) => text,
+-                Err(error) => {
+-                    // Reset all accumulation state so the decoder doesn't
+-                    // remain stuck in a half-finished multi-line block.
+-                    self.multi_line_buf = None;
+-                    self.client_notification = None;
+-                    self.expected_queue.clear();
+-                    return Err(io::Error::new(io::ErrorKind::InvalidData, error));
+-                }
+-            }
+-            .trim_end_matches(['\r', '\n'])
+-            .to_string();
+-
+-            // Bare newlines (empty lines) carry no information when the
+-            // decoder is not inside an accumulation context AND is not
+-            // expecting a multi-line response. Skip them silently rather
+-            // than emitting Unrecognized. This also absorbs the trailing
+-            // `\n` when the password prompt was already consumed without
+-            // a line terminator (OpenVPN ≥ 2.6).
+-            if line.is_empty()
+-                && self.multi_line_buf.is_none()
+-                && self.client_notification.is_none()
+-                && !matches!(self.expected_front(), ResponseKind::MultiLine)
+-            {
+-                continue;
+-            }
+-
+-            // --- Phase 1: Multi-line >CLIENT: accumulation ---
+-            //
+-            // When we're accumulating a CLIENT notification, >CLIENT:ENV
+-            // lines belong to it. The block terminates with >CLIENT:ENV,END.
+-            // The spec guarantees atomicity for CLIENT notifications, so
+-            // interleaving here should not occur. Any other line (SUCCESS,
+-            // ERROR, other notifications) falls through to normal processing
+-            // as a defensive measure.
+-            if let Some(ref mut accum) = self.client_notification
+-                && let Some(rest) = line.strip_prefix(">CLIENT:ENV,")
+-            {
+-                if rest == "END" {
+-                    let finished = self.client_notification.take().expect("guarded by if-let");
+-                    debug!(event = ?finished.event, cid = finished.cid, env_count = finished.env.len(), "decoded CLIENT notification");
+-                    return Ok(Some(OvpnMessage::Notification(Notification::Client {
+-                        event: finished.event,
+-                        cid: finished.cid,
+-                        kid: finished.kid,
+-                        env: finished.env,
+-                    })));
+-                } else {
+-                    // Parse "key=value" (value may contain '=').
+-                    let (k, v) = rest
+-                        .split_once('=')
+-                        .map(|(k, v)| (k.to_string(), v.to_string()))
+-                        .unwrap_or_else(|| (rest.to_string(), String::new()));
+-                    check_accumulation_limit(
+-                        accum.env.len(),
+-                        self.max_client_env_entries,
+-                        "client ENV",
+-                    )?;
+-                    accum.env.insert(k, v);
+-                    continue; // Next line.
+-                }
+-            }
+-            // Not a >CLIENT:ENV line — fall through to normal processing.
+-            // This handles interleaved notifications or unexpected output.
+-
+-            // --- Phase 2: Multi-line command response accumulation ---
+-            if let Some(ref mut buf) = self.multi_line_buf {
+-                if line == "END" {
+-                    let lines = self.multi_line_buf.take().expect("guarded by if-let");
+-                    self.consume_expected();
+-                    debug!(line_count = lines.len(), "decoded multi-line response");
+-                    return Ok(Some(OvpnMessage::MultiLine(lines)));
+-                }
+-                // The spec only guarantees atomicity for CLIENT notifications,
+-                // not for command responses — real-time notifications (>STATE:,
+-                // >LOG:, etc.) can arrive mid-response. Emit them immediately
+-                // without breaking the accumulation.
+-                if line.starts_with('>') {
+-                    if let Some(msg) = self.parse_notification(&line) {
+-                        return Ok(Some(msg));
+-                    }
+-                    // parse_notification returns None when it starts a CLIENT
+-                    // accumulation. Loop to read the next line.
+-                    continue;
+-                }
+-                check_accumulation_limit(
+-                    buf.len(),
+-                    self.max_multi_line_lines,
+-                    "multi-line response",
+-                )?;
+-                buf.push(line);
+-                continue; // Next line.
+-            }
+-
+-            // --- Phase 3: Self-describing lines ---
+-            //
+-            // SUCCESS: and ERROR: are unambiguous. We match on "SUCCESS:"
+-            // without requiring a trailing space — the doc shows
+-            // "SUCCESS: [text]" but text could be empty.
+-            if let Some(rest) = line.strip_prefix("SUCCESS:") {
+-                self.consume_expected();
+-                return Ok(Some(OvpnMessage::Success(
+-                    rest.strip_prefix(' ').unwrap_or(rest).to_string(),
+-                )));
+-            }
+-            if let Some(rest) = line.strip_prefix("ERROR:") {
+-                self.consume_expected();
+-                return Ok(Some(OvpnMessage::Error(
+-                    rest.strip_prefix(' ').unwrap_or(rest).to_string(),
+-                )));
+-            }
+-
+-            // Management interface password prompt (no `>` prefix).
+-            if line == "ENTER PASSWORD:" {
+-                return Ok(Some(OvpnMessage::PasswordPrompt));
+-            }
+-
+-            // Real-time notifications.
+-            if line.starts_with('>') {
+-                if let Some(msg) = self.parse_notification(&line) {
+-                    return Ok(Some(msg));
+-                }
+-                // Started CLIENT notification accumulation — loop for ENV lines.
+-                continue;
+-            }
+-
+-            // --- Phase 4: Ambiguous lines — use command tracking ---
+-            //
+-            // The line is not self-describing (no SUCCESS/ERROR/> prefix).
+-            // Use the expected-response state from the last encoded command
+-            // to decide how to frame it.
+-            match self.expected_front() {
+-                ResponseKind::MultiLine => {
+-                    if line == "END" {
+-                        // Edge case: empty multi-line block (header-less).
+-                        self.consume_expected();
+-                        return Ok(Some(OvpnMessage::MultiLine(Vec::new())));
+-                    }
+-                    self.multi_line_buf = Some(vec![line]);
+-                    continue; // Accumulate until END.
+-                }
+-                ResponseKind::SuccessOrError | ResponseKind::NoResponse => {
+-                    self.consume_expected();
+-                    warn!(line = %line, "unrecognized line from server");
+-                    return Ok(Some(OvpnMessage::Unrecognized {
+-                        line,
+-                        kind: UnrecognizedKind::UnexpectedLine,
+-                    }));
+-                }
+-            }
+-        }
++        Ok(Some(Default::default())) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl OvpnCodec {
+     /// Parse a `>` notification line. Returns `Some(msg)` for single-line
+     /// notifications and `None` when a multi-line CLIENT accumulation has
+     /// been started (the caller should continue reading lines).
+     fn parse_notification(&mut self, line: &str) -> Option<OvpnMessage> {
+
+
+*** C:\\workspace\\tools\\rustup\\toolchains\\nightly-x86_64-pc-windows-msvc\\bin\\cargo.exe test --no-run --verbose --package=openvpn-mgmt-codec@1.0.0-rc.1
+       Fresh unicode-ident v1.0.24
+       Fresh windows-link v0.2.1
+       Fresh cfg-if v1.0.4
+       Fresh pin-project-lite v0.2.17
+       Fresh once_cell v1.21.4
+       Fresh strsim v0.11.1
+       Fresh fnv v1.0.7
+       Fresh ident_case v1.0.1
+       Fresh futures-core v0.3.32
+       Fresh futures-sink v0.3.32
+       Fresh regex-syntax v0.8.10
+       Fresh heck v0.5.0
+       Fresh futures-io v0.3.32
+       Fresh proc-macro2 v1.0.106
+       Fresh windows-sys v0.61.2
+       Fresh tracing-core v0.1.36
+       Fresh futures-channel v0.3.32
+       Fresh once_cell_polyfill v1.70.2
+       Fresh slab v0.4.12
+       Fresh anstyle v1.0.14
+       Fresh utf8parse v0.2.2
+       Fresh autocfg v1.5.0
+       Fresh memchr v2.8.0
+       Fresh futures-task v0.3.32
+       Fresh regex-automata v0.4.14
+       Fresh log v0.4.29
+       Fresh quote v1.0.45
+       Fresh getrandom v0.3.4
+       Fresh mio v1.2.0
+       Fresh anstyle-query v1.1.5
+       Fresh rustversion v1.0.22
+       Fresh anstyle-wincon v3.0.11
+       Fresh zerocopy v0.8.48
+       Fresh getrandom v0.4.2
+       Fresh anstyle-parse v1.0.0
+       Fresh socket2 v0.6.3
+       Fresh bytes v1.11.1
+       Fresh unicode-xid v0.2.6
+       Fresh fastrand v2.3.0
+       Fresh colorchoice v1.0.5
+       Fresh is_terminal_polyfill v1.70.2
+       Fresh lazy_static v1.5.0
+       Fresh nu-ansi-term v0.50.3
+       Fresh tracing-log v0.2.0
+       Fresh syn v2.0.117
+       Fresh rand_core v0.9.5
+       Fresh ppv-lite86 v0.2.21
+       Fresh tempfile v3.27.0
+       Fresh anstream v1.0.0
+       Fresh sharded-slab v0.1.7
+       Fresh matchers v0.2.0
+       Fresh thread_local v1.1.9
+       Fresh smallvec v1.15.1
+       Fresh wait-timeout v0.2.1
+       Fresh bit-vec v0.8.0
+       Fresh quick-error v1.2.3
+       Fresh clap_lex v1.1.0
+       Fresh bitflags v2.11.0
+       Fresh unarray v0.1.4
+       Fresh base64 v0.22.1
+       Fresh darling_core v0.21.3
+       Fresh tracing-attributes v0.1.31
+       Fresh futures-macro v0.3.32
+       Fresh tokio-macros v2.6.1
+       Fresh prettyplease v0.2.37
+       Fresh derive_more-impl v1.0.0
+       Fresh test-case-core v3.3.1
+       Fresh strum_macros v0.27.2
+       Fresh thiserror-impl v2.0.18
+       Fresh tracing-test-macro v0.2.6
+       Fresh clap_derive v4.6.0
+       Fresh rand_chacha v0.9.0
+       Fresh rand v0.9.2
+       Fresh rusty-fork v0.3.1
+       Fresh rand_xorshift v0.4.0
+       Fresh bit-set v0.8.0
+       Fresh clap_builder v4.6.0
+       Fresh num-traits v0.2.19
+       Fresh better_default v1.0.5
+       Fresh darling_macro v0.21.3
+       Fresh futures-util v0.3.32
+       Fresh tracing v0.1.44
+       Fresh tokio v1.50.0
+       Fresh derive_more v1.0.0
+       Fresh test-case-macros v3.3.1
+       Fresh thiserror v2.0.18
+       Fresh strum v0.27.2
+       Fresh proptest v1.11.0
+       Fresh anyhow v1.0.102
+       Fresh clap v4.6.0
+       Fresh darling v0.21.3
+       Fresh futures-executor v0.3.32
+       Fresh tokio-util v0.7.18
+       Fresh tracing-subscriber v0.3.23
+       Fresh test-case v3.3.1
+       Fresh bon-macros v3.9.1
+       Fresh tracing-test v0.2.6
+       Fresh futures v0.3.32
+       Fresh bon v3.9.1
+       Dirty openvpn-mgmt-codec v1.0.0-rc.1 (C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\openvpn-mgmt-codec): the file `openvpn-mgmt-codec\src\codec.rs` has changed (13419255125.260066000s, 16s after last build at 13419255109.939753100s)
+   Compiling openvpn-mgmt-codec v1.0.0-rc.1 (C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\openvpn-mgmt-codec)
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=282ab4b98e7fb711 -C extra-filename=-200b94a0a24d68d8 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=58618598a94def4d -C extra-filename=-af921328b0c6dc1c --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rmeta' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rmeta' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rmeta' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rmeta' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rmeta' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rmeta' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rmeta' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rmeta' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rmeta' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rmeta' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rmeta' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rmeta'`
+error[E0277]: the trait bound `OvpnMessage: Default` is not satisfied
+   --> openvpn-mgmt-codec\src\codec.rs:669:17
+    |
+669 |         Ok(Some(Default::default())) /* ~ changed by cargo-mutants ~ */
+    |                 ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Default` is not implemented for `OvpnMessage`
+   --> openvpn-mgmt-codec\src\message.rs:657:1
+    |
+657 | pub enum OvpnMessage {
+    | ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Buf`
+ --> openvpn-mgmt-codec\src\codec.rs:3:13
+  |
+3 | use bytes::{Buf, BufMut, BytesMut};
+  |             ^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0277`.
+warning: `openvpn-mgmt-codec` (lib) generated 1 warning
+error: could not compile `openvpn-mgmt-codec` (lib) due to 1 previous error; 1 warning emitted
+
+Caused by:
+  process didn't exit successfully: `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=58618598a94def4d -C extra-filename=-af921328b0c6dc1c --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rmeta' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rmeta' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rmeta' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rmeta' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rmeta' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rmeta' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rmeta' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rmeta' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rmeta' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rmeta' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rmeta' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rmeta'` (exit code: 1)
+warning: build failed, waiting for other jobs to finish...
+error[E0277]: the trait bound `message::OvpnMessage: Default` is not satisfied
+   --> openvpn-mgmt-codec\src\codec.rs:669:17
+    |
+669 |         Ok(Some(Default::default())) /* ~ changed by cargo-mutants ~ */
+    |                 ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Default` is not implemented for `message::OvpnMessage`
+   --> openvpn-mgmt-codec\src\message.rs:657:1
+    |
+657 | pub enum OvpnMessage {
+    | ^^^^^^^^^^^^^^^^^^^^
+
+warning: `openvpn-mgmt-codec` (lib test) generated 1 warning (1 duplicate)
+error: could not compile `openvpn-mgmt-codec` (lib test) due to 1 previous error; 1 warning emitted
+
+Caused by:
+  process didn't exit successfully: `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=282ab4b98e7fb711 -C extra-filename=-200b94a0a24d68d8 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-AxKYiK.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'` (exit code: 1)
+
+*** result: Failure(101)

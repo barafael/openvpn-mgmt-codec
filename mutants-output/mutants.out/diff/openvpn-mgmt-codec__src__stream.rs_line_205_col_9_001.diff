@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/stream.rs
++++ replace ClassifyExt::classify -> Classified<Self> with Classified::from_iter([Default::default()])
+@@ -197,17 +197,17 @@
+ /// // In both cases, you should reconnect (see reconnection example above).
+ /// # Ok(())
+ /// # }
+ /// ```
+ pub trait ClassifyExt: Stream<Item = Result<OvpnMessage, io::Error>> + Sized {
+     /// Classify each [`OvpnMessage`] into a [`ManagementEvent`],
+     /// splitting notifications from command responses.
+     fn classify(self) -> Classified<Self> {
+-        Classified { inner: self }
++        Classified::from_iter([Default::default()]) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl<S: Stream<Item = Result<OvpnMessage, io::Error>>> ClassifyExt for S {}
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;

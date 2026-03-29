@@ -1,0 +1,30 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::send_and_record -> Result<(), ActorGone> with Ok(())
+@@ -1213,26 +1213,17 @@
+             self.send_and_record(label, command)?;
+         }
+         Ok(())
+     }
+ 
+     /// Send a command and record it in the output history so the response
+     /// is visible in the console output pane.
+     fn send_and_record(&mut self, label: &str, command: OvpnCommand) -> Result<(), ActorGone> {
+-        self.command_history.push(CommandHistoryEntry {
+-            command: label.to_string(),
+-            response_lines: Vec::new(),
+-        });
+-        if self.command_history.len() > MAX_COMMAND_HISTORY {
+-            self.command_history
+-                .drain(0..self.command_history.len() - MAX_COMMAND_HISTORY);
+-        }
+-        self.awaiting_command_response = true;
+-        self.send_actor(ActorCommand::Send(command))
++        Ok(()) /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// The actor's command channel is broken — transition to disconnected.
+     fn on_actor_gone(&mut self) {
+         tracing::warn!("actor command channel closed");
+         self.actor_tx = None;
+         self.connection_state = ConnectionState::Disconnected;
+         self.last_error = Some("Connection actor exited".to_string());

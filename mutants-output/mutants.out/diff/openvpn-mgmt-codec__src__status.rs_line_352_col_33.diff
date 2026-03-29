@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/status.rs
++++ replace >= with < in parse_status_v1
+@@ -344,17 +344,17 @@
+                     virtual_address: fields[0].to_string(),
+                     common_name: fields[1].to_string(),
+                     real_address: fields[2].to_string(),
+                     last_ref: fields[3..].join(","),
+                     last_ref_t: None,
+                 });
+             }
+             Section::GlobalStats => {
+-                if fields.len() >= 2 {
++                if fields.len() < /* ~ changed by cargo-mutants ~ */ 2 {
+                     status
+                         .global_stats
+                         .push((fields[0].to_string(), fields[1..].join(",")));
+                 }
+             }
+         }
+     }
+ 

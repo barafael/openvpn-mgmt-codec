@@ -72,7 +72,8 @@ pub use status_format::{ParseStatusFormatError, StatusFormat};
 pub use stream_mode::{ParseStreamModeError, StreamMode};
 pub use transport_protocol::{ParseTransportProtocolError, TransportProtocol};
 pub use unrecognized::UnrecognizedKind;
-pub use version_info::VersionInfo;
+pub use timestamp::UtcTimestamp;
+pub use version_info::{ParseVersionError, VersionInfo};
 
 // Re-export key items from sub-modules for convenience.
 pub use client::{ClientError, ManagementClient};

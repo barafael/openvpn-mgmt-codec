@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/stream.rs
++++ replace <impl Stream for Classified<S>>::size_hint -> (usize, Option<usize>) with (0, Some(0))
+@@ -100,17 +100,17 @@
+     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+         self.project()
+             .inner
+             .poll_next(cx)
+             .map(|opt| opt.map(|result| result.map(ManagementEvent::from)))
+     }
+ 
+     fn size_hint(&self) -> (usize, Option<usize>) {
+-        self.inner.size_hint()
++        (0, Some(0)) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// Extension trait that adds [`.classify()`](ClassifyExt::classify) to
+ /// any stream of `Result<OvpnMessage, io::Error>`.
+ ///
+ /// # Example
+ ///

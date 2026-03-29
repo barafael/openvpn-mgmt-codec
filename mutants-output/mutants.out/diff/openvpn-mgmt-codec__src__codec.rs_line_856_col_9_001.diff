@@ -1,0 +1,145 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace OvpnCodec::parse_notification -> Option<OvpnMessage> with Some(Default::default())
+@@ -848,141 +848,17 @@
+     }
+ }
+ 
+ impl OvpnCodec {
+     /// Parse a `>` notification line. Returns `Some(msg)` for single-line
+     /// notifications and `None` when a multi-line CLIENT accumulation has
+     /// been started (the caller should continue reading lines).
+     fn parse_notification(&mut self, line: &str) -> Option<OvpnMessage> {
+-        let inner = &line[1..]; // Strip leading `>`
+-
+-        let Some((kind, payload)) = inner.split_once(':') else {
+-            // Malformed notification — no colon.
+-            warn!(line = %line, "malformed notification (no colon)");
+-            return Some(OvpnMessage::Unrecognized {
+-                line: line.to_string(),
+-                kind: UnrecognizedKind::MalformedNotification,
+-            });
+-        };
+-
+-        // >INFO: on the very first line is the connection banner — surface
+-        // it as OvpnMessage::Info. All subsequent >INFO: lines (e.g.
+-        // >INFO:WEB_AUTH::url) are routed to Notification::Info.
+-        if kind == "INFO" {
+-            if !self.seen_info {
+-                self.seen_info = true;
+-                return Some(OvpnMessage::Info(payload.to_string()));
+-            }
+-            return Some(OvpnMessage::Notification(Notification::Info {
+-                message: payload.to_string(),
+-            }));
+-        }
+-
+-        // >CLIENT: may be multi-line. Inspect the sub-type to decide.
+-        if kind == "CLIENT" {
+-            let (event, args) = payload
+-                .split_once(',')
+-                .map(|(event_str, args_str)| (event_str.to_string(), args_str.to_string()))
+-                .unwrap_or_else(|| (payload.to_string(), String::new()));
+-
+-            // ADDRESS notifications are always single-line (no ENV block).
+-            if event == "ADDRESS" {
+-                let mut parts = args.splitn(3, ',');
+-                let cid = parts
+-                    .next()
+-                    .and_then(|field| parse_field(field, "client address cid"))
+-                    .unwrap_or(0);
+-                let addr = parts.next().unwrap_or("").to_string();
+-                let primary = parts.next() == Some("1");
+-                return Some(OvpnMessage::Notification(Notification::ClientAddress {
+-                    cid,
+-                    addr,
+-                    primary,
+-                }));
+-            }
+-
+-            // CONNECT, REAUTH, ESTABLISHED, DISCONNECT, and CR_RESPONSE all
+-            // have ENV blocks. Parse CID, optional KID, and (for CR_RESPONSE)
+-            // the trailing base64 response from the args.
+-            let mut id_parts = args.splitn(3, ',');
+-            let cid = id_parts
+-                .next()
+-                .and_then(|field| parse_field(field, "client cid"))
+-                .unwrap_or(0);
+-            let kid = id_parts
+-                .next()
+-                .and_then(|field| parse_field(field, "client kid"));
+-
+-            let parsed_event = if event == "CR_RESPONSE" {
+-                let response = id_parts.next().unwrap_or("").to_string();
+-                ClientEvent::CrResponse(response)
+-            } else {
+-                event
+-                    .parse()
+-                    .inspect_err(|error| warn!(%error, "unknown client event"))
+-                    .unwrap_or_else(|_| ClientEvent::Unknown(event.clone()))
+-            };
+-
+-            // Start accumulation — don't emit anything yet.
+-            self.client_notification = Some(ClientNotificationAccumulator {
+-                event: parsed_event,
+-                cid,
+-                kid,
+-                env: BTreeMap::new(),
+-            });
+-            return None; // Signal to the caller to keep reading.
+-        }
+-
+-        // Dispatch to typed parsers. On parse failure, fall back to Simple.
+-        let notification = match kind {
+-            "STATE" => parse_state(payload),
+-            "BYTECOUNT" => parse_bytecount(payload),
+-            "BYTECOUNT_CLI" => parse_bytecount_cli(payload),
+-            "LOG" => parse_log(payload),
+-            "ECHO" => parse_echo(payload),
+-            "HOLD" => Some(Notification::Hold {
+-                text: payload.to_string(),
+-            }),
+-            "FATAL" => Some(Notification::Fatal {
+-                message: payload.to_string(),
+-            }),
+-            "PKCS11ID-COUNT" => parse_pkcs11id_count(payload),
+-            "NEED-OK" => parse_need_ok(payload),
+-            "NEED-STR" => parse_need_str(payload),
+-            "RSA_SIGN" => Some(Notification::RsaSign {
+-                data: payload.to_string(),
+-            }),
+-            "PK_SIGN" => parse_pk_sign(payload),
+-            "INFOMSG" => Some(Notification::InfoMsg {
+-                extra: payload.to_string(),
+-            }),
+-            "NEED-CERTIFICATE" => Some(Notification::NeedCertificate {
+-                hint: payload.to_string(),
+-            }),
+-            "REMOTE" => parse_remote(payload),
+-            "PROXY" => parse_proxy(payload),
+-            "PASSWORD" => parse_password(payload),
+-            "PKCS11ID-ENTRY" => {
+-                return parse_pkcs11id_entry_notif(payload).or_else(|| {
+-                    Some(OvpnMessage::Notification(Notification::Simple {
+-                        kind: kind.to_string(),
+-                        payload: payload.to_string(),
+-                    }))
+-                });
+-            }
+-            _ => None,
+-        };
+-
+-        Some(OvpnMessage::Notification(notification.unwrap_or(
+-            Notification::Simple {
+-                kind: kind.to_string(),
+-                payload: payload.to_string(),
+-            },
+-        )))
++        Some(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ // --- Notification parsers ---
+ //
+ // Each returns `Option<Notification>`. `None` means "could not parse,
+ // fall back to Simple". This is intentional — the protocol varies
+ // across OpenVPN versions and we never want a parse failure to

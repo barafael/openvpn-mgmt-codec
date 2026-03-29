@@ -1,0 +1,26 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::append_command_response_lines with ()
+@@ -1176,22 +1176,17 @@
+                 entry.response_lines.push(line);
+             }
+             self.awaiting_command_response = false;
+         }
+     }
+ 
+     /// Append all lines of a multi-line response at once.
+     fn append_command_response_lines(&mut self, lines: Vec<String>) {
+-        if self.awaiting_command_response {
+-            if let Some(entry) = self.command_history.last_mut() {
+-                entry.response_lines.extend(lines);
+-            }
+-            self.awaiting_command_response = false;
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     fn add_log(&mut self, level: LogLevel, timestamp: &str, message: &str) {
+         self.log_entries.push(LogEntry {
+             level,
+             timestamp: timestamp.to_string(),
+             message: message.to_string(),
+         });

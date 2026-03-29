@@ -1,0 +1,22 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace OvpnCodec::with_encoder_mode -> Self with Default::default()
+@@ -234,18 +234,17 @@
+ 
+     /// Set the encoder mode for handling unsafe characters in user-supplied
+     /// strings.
+     ///
+     /// The default is [`EncoderMode::Sanitize`], which silently strips
+     /// `\n`, `\r`, and `\0`. Use [`EncoderMode::Strict`] to reject inputs
+     /// containing those characters with an error instead.
+     pub fn with_encoder_mode(mut self, mode: EncoderMode) -> Self {
+-        self.encoder_mode = mode;
+-        self
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Peek at the expected response kind for the next unmatched command.
+     /// Falls back to `SuccessOrError` when no command is pending (defensive;
+     /// self-describing SUCCESS/ERROR lines will still decode correctly).
+     fn expected_front(&self) -> ResponseKind {
+         self.expected_queue
+             .front()

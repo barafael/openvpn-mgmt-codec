@@ -1,0 +1,44 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "client-deny" in <impl FromStr for OvpnCommand>::from_str
+@@ -829,40 +829,17 @@
+                         .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?,
+                 })
+             }
+ 
+             // Wire format per management-notes.txt:
+             //   client-deny <cid> <kid> "reason" ["client-reason"]
+             // Reason strings are quoted+escaped on the wire.
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "client-deny" => {
+-                let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let cid = cid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
+-                let (kid_str, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let kid = kid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
+-                let (reason, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let client_reason = next_token(rest).map(|(cr, _)| cr);
+-                Ok(Self::ClientDeny(ClientDeny {
+-                    cid,
+-                    kid,
+-                    reason,
+-                    client_reason,
+-                }))
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             "client-kill" => {
+                 let (cid_str, message) = match args.split_once(char::is_whitespace) {
+                     Some((c, m)) => (c, Some(m.trim().to_string())),
+                     None => (args, None),
+                 };
+                 let cid = cid_str
+                     .parse::<u64>()

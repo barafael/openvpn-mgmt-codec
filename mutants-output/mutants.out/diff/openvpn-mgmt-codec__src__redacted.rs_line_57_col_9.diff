@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/redacted.rs
++++ replace <impl From<&str> for Redacted>::from -> Self with Default::default()
+@@ -49,17 +49,17 @@
+ impl From<String> for Redacted {
+     fn from(s: String) -> Self {
+         Self(s)
+     }
+ }
+ 
+ impl From<&str> for Redacted {
+     fn from(s: &str) -> Self {
+-        Self(s.to_string())
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]

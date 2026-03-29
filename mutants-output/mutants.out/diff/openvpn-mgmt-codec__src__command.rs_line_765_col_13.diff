@@ -1,0 +1,29 @@
+--- openvpn-mgmt-codec/src/command.rs
++++ delete match arm "needstr" in <impl FromStr for OvpnCommand>::from_str
+@@ -757,25 +757,17 @@
+                     response,
+                 })
+             }
+ 
+             // Wire format per management-notes.txt:
+             //   needstr <name> <value>
+             // where <value> may be quoted+escaped.
+             // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "needstr" => {
+-                let (name, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: needstr <name> <value>",
+-                ))?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: needstr <name> <value>",
+-                ))?;
+-                Ok(Self::NeedStr { name, value })
+-            }
++             /* ~ changed by cargo-mutants ~ */
+ 
+             // --- PKCS#11 ---
+             "pkcs11-id-count" => Ok(Self::Pkcs11IdCount),
+ 
+             "pkcs11-id-get" => args.parse::<u32>().map(Self::Pkcs11IdGet).map_err(|_| {
+                 CommandParseError::InvalidNumber {
+                     field: "pkcs11-id-get index",
+                     input: args.to_string(),

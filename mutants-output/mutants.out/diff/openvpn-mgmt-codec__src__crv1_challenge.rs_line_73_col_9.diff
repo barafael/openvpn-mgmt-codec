@@ -1,0 +1,29 @@
+--- openvpn-mgmt-codec/src/crv1_challenge.rs
++++ replace <impl fmt::Display for Crv1Challenge>::fmt -> fmt::Result with Ok(Default::default())
+@@ -65,25 +65,17 @@
+ 
+     /// Challenge text presented to the user (sent in clear text).
+     #[builder(into)]
+     pub challenge_text: String,
+ }
+ 
+ impl fmt::Display for Crv1Challenge {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        let engine = base64::engine::general_purpose::STANDARD;
+-        write!(
+-            f,
+-            "CRV1:{}:{}:{}:{}",
+-            self.flags,
+-            engine.encode(&self.state_id),
+-            engine.encode(&self.username),
+-            self.challenge_text,
+-        )
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]

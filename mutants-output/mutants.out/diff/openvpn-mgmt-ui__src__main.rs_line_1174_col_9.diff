@@ -1,0 +1,26 @@
+--- openvpn-mgmt-ui/src/main.rs
++++ replace App::append_command_response with ()
+@@ -1166,22 +1166,17 @@
+             text.push_str(line);
+         }
+         Some(text)
+     }
+ 
+     /// Append text to the most recent command-history entry (if awaiting).
+     /// Append a single response line (Success / Error).
+     fn append_command_response(&mut self, line: String) {
+-        if self.awaiting_command_response {
+-            if let Some(entry) = self.command_history.last_mut() {
+-                entry.response_lines.push(line);
+-            }
+-            self.awaiting_command_response = false;
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     /// Append all lines of a multi-line response at once.
+     fn append_command_response_lines(&mut self, lines: Vec<String>) {
+         if self.awaiting_command_response {
+             if let Some(entry) = self.command_history.last_mut() {
+                 entry.response_lines.extend(lines);
+             }

@@ -1,0 +1,21 @@
+--- openvpn-mgmt-codec/src/codec.rs
++++ replace == with != in <impl Decoder for OvpnCodec>::decode
+@@ -756,17 +756,17 @@
+                     continue; // Next line.
+                 }
+             }
+             // Not a >CLIENT:ENV line — fall through to normal processing.
+             // This handles interleaved notifications or unexpected output.
+ 
+             // --- Phase 2: Multi-line command response accumulation ---
+             if let Some(ref mut buf) = self.multi_line_buf {
+-                if line == "END" {
++                if line != /* ~ changed by cargo-mutants ~ */ "END" {
+                     let lines = self.multi_line_buf.take().expect("guarded by if-let");
+                     self.consume_expected();
+                     debug!(line_count = lines.len(), "decoded multi-line response");
+                     return Ok(Some(OvpnMessage::MultiLine(lines)));
+                 }
+                 // The spec only guarantees atomicity for CLIENT notifications,
+                 // not for command responses — real-time notifications (>STATE:,
+                 // >LOG:, etc.) can arrive mid-response. Emit them immediately

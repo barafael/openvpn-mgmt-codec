@@ -1,0 +1,672 @@
+
+*** openvpn-mgmt-codec/src/command.rs:578:9: replace <impl FromStr for OvpnCommand>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+
+*** mutation diff:
+--- openvpn-mgmt-codec/src/command.rs
++++ replace <impl FromStr for OvpnCommand>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+@@ -570,497 +570,17 @@
+     ///
+     /// let cmd: OvpnCommand = "version".parse().unwrap();
+     /// assert_eq!(cmd, OvpnCommand::Version);
+     ///
+     /// let cmd: OvpnCommand = "state on all".parse().unwrap();
+     /// assert_eq!(cmd, OvpnCommand::StateStream(openvpn_mgmt_codec::StreamMode::OnAll));
+     /// ```
+     fn from_str(line: &str) -> Result<Self, Self::Err> {
+-        /// Shorthand for `Err(CommandParseError::MissingArgs(...))`.
+-        fn cmd_err<T>(msg: &'static str) -> Result<T, CommandParseError> {
+-            Err(CommandParseError::MissingArgs(msg))
+-        }
+-
+-        let line = line.trim();
+-        let (cmd, args) = line
+-            .split_once(char::is_whitespace)
+-            .map(|(c, a)| (c, a.trim()))
+-            .unwrap_or((line, ""));
+-
+-        match cmd {
+-            // --- Informational ---
+-            "version" if args.is_empty() => Ok(Self::Version),
+-            "version" => Ok(Self::SetVersion(args.parse().map_err(|_| {
+-                CommandParseError::InvalidChoice {
+-                    field: "version number",
+-                    input: args.to_string(),
+-                    hint: "expected a positive integer (e.g. version 2)",
+-                }
+-            })?)),
+-            "pid" => Ok(Self::Pid),
+-            "help" => Ok(Self::Help),
+-            "net" => Ok(Self::Net),
+-            "load-stats" => Ok(Self::LoadStats),
+-
+-            "status" => match args {
+-                "" | "1" => Ok(Self::Status(StatusFormat::V1)),
+-                "2" => Ok(Self::Status(StatusFormat::V2)),
+-                "3" => Ok(Self::Status(StatusFormat::V3)),
+-                _ => Err(CommandParseError::InvalidChoice {
+-                    field: "status format",
+-                    input: args.to_string(),
+-                    hint: "use 1, 2, or 3",
+-                }),
+-            },
+-
+-            "state" => match args {
+-                "" => Ok(Self::State),
+-                other => Ok(Self::StateStream(other.parse::<StreamMode>()?)),
+-            },
+-
+-            "log" => Ok(Self::Log(args.parse::<StreamMode>()?)),
+-            "echo" => Ok(Self::Echo(args.parse::<StreamMode>()?)),
+-
+-            "verb" => {
+-                if args.is_empty() {
+-                    Ok(Self::Verb(None))
+-                } else {
+-                    args.parse::<u8>()
+-                        .map(|level| Self::Verb(Some(level)))
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "verbosity",
+-                            input: args.to_string(),
+-                        })
+-                }
+-            }
+-
+-            "mute" => {
+-                if args.is_empty() {
+-                    Ok(Self::Mute(None))
+-                } else {
+-                    args.parse::<u32>()
+-                        .map(|threshold| Self::Mute(Some(threshold)))
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "mute threshold",
+-                            input: args.to_string(),
+-                        })
+-                }
+-            }
+-
+-            "bytecount" => args.parse::<u32>().map(Self::ByteCount).map_err(|_| {
+-                CommandParseError::InvalidNumber {
+-                    field: "bytecount interval",
+-                    input: args.to_string(),
+-                }
+-            }),
+-
+-            // --- Connection control ---
+-            "signal" => Ok(Self::Signal(args.parse::<Signal>()?)),
+-
+-            "kill" => {
+-                if args.is_empty() {
+-                    return cmd_err("kill requires a target (common name or proto:ip:port)");
+-                }
+-                let parts: Vec<&str> = args.splitn(3, ':').collect();
+-                if parts.len() == 3
+-                    && let Ok(port) = parts[2].parse::<u16>()
+-                {
+-                    return Ok(Self::Kill(KillTarget::Address {
+-                        protocol: parts[0]
+-                            .parse()
+-                            .inspect_err(|error| warn!(%error, "unknown transport protocol"))
+-                            .unwrap_or_else(|_| TransportProtocol::Unknown(parts[0].to_string())),
+-                        ip: parts[1].to_string(),
+-                        port,
+-                    }));
+-                }
+-                Ok(Self::Kill(KillTarget::CommonName(args.to_string())))
+-            }
+-
+-            "hold" => match args {
+-                "" => Ok(Self::HoldQuery),
+-                "on" => Ok(Self::HoldOn),
+-                "off" => Ok(Self::HoldOff),
+-                "release" => Ok(Self::HoldRelease),
+-                _ => Err(CommandParseError::InvalidChoice {
+-                    field: "hold argument",
+-                    input: args.to_string(),
+-                    hint: "use on, off, or release",
+-                }),
+-            },
+-
+-            // --- Authentication ---
+-            // Wire format per management-notes.txt:
+-            //   username "Auth" myuser
+-            //   password "Private Key" "foo\"bar"
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            //
+-            // Auth types are quoted and may contain spaces ("HTTP Proxy",
+-            // "SOCKS Proxy", "Private Key"), so we use quote-aware
+-            // tokenization matching manage.c's parse_line() lexer.
+-            // https://github.com/OpenVPN/openvpn/blob/master/src/openvpn/manage.c
+-            "username" => {
+-                let (auth_type_str, rest) = next_token(args).ok_or(
+-                    CommandParseError::MissingArgs("usage: username <auth-type> <value>"),
+-                )?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: username <auth-type> <value>",
+-                ))?;
+-                Ok(Self::Username {
+-                    auth_type: auth_type_str
+-                        .parse()
+-                        .inspect_err(|error| warn!(%error, "unknown auth type"))
+-                        .unwrap_or(AuthType::Unknown(auth_type_str)),
+-                    value: value.into(),
+-                })
+-            }
+-
+-            "password" => {
+-                let (auth_type_str, rest) = next_token(args).ok_or(
+-                    CommandParseError::MissingArgs("usage: password <auth-type> <value>"),
+-                )?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: password <auth-type> <value>",
+-                ))?;
+-                Ok(Self::Password {
+-                    auth_type: auth_type_str
+-                        .parse()
+-                        .inspect_err(|error| warn!(%error, "unknown auth type"))
+-                        .unwrap_or(AuthType::Unknown(auth_type_str)),
+-                    value: value.into(),
+-                })
+-            }
+-
+-            "auth-retry" => Ok(Self::AuthRetry(args.parse::<AuthRetryMode>()?)),
+-
+-            "forget-passwords" => Ok(Self::ForgetPasswords),
+-
+-            // --- Interactive prompts ---
+-            "needok" => {
+-                let (name, resp) =
+-                    args.rsplit_once(char::is_whitespace)
+-                        .ok_or(CommandParseError::MissingArgs(
+-                            "usage: needok <name> ok|cancel",
+-                        ))?;
+-                let response = match resp {
+-                    "ok" => NeedOkResponse::Ok,
+-                    "cancel" => NeedOkResponse::Cancel,
+-                    _ => {
+-                        return Err(CommandParseError::InvalidChoice {
+-                            field: "needok response",
+-                            input: resp.to_string(),
+-                            hint: "use ok or cancel",
+-                        });
+-                    }
+-                };
+-                Ok(Self::NeedOk {
+-                    name: name.trim().to_string(),
+-                    response,
+-                })
+-            }
+-
+-            // Wire format per management-notes.txt:
+-            //   needstr <name> <value>
+-            // where <value> may be quoted+escaped.
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "needstr" => {
+-                let (name, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: needstr <name> <value>",
+-                ))?;
+-                let (value, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: needstr <name> <value>",
+-                ))?;
+-                Ok(Self::NeedStr { name, value })
+-            }
+-
+-            // --- PKCS#11 ---
+-            "pkcs11-id-count" => Ok(Self::Pkcs11IdCount),
+-
+-            "pkcs11-id-get" => args.parse::<u32>().map(Self::Pkcs11IdGet).map_err(|_| {
+-                CommandParseError::InvalidNumber {
+-                    field: "pkcs11-id-get index",
+-                    input: args.to_string(),
+-                }
+-            }),
+-
+-            // --- Client management (server mode) ---
+-            "client-auth" => {
+-                let mut parts = args.splitn(3, char::is_whitespace);
+-                let cid = parts
+-                    .next()
+-                    .ok_or(CommandParseError::MissingArgs(
+-                        "usage: client-auth <cid> <kid> [config-lines]",
+-                    ))?
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
+-                let kid = parts
+-                    .next()
+-                    .ok_or(CommandParseError::MissingArgs(
+-                        "usage: client-auth <cid> <kid> [config-lines]",
+-                    ))?
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
+-                let config_lines = match parts.next() {
+-                    Some(rest) => rest
+-                        .split(',')
+-                        .map(|line| line.trim().to_string())
+-                        .collect(),
+-                    None => vec![],
+-                };
+-                Ok(Self::ClientAuth {
+-                    cid,
+-                    kid,
+-                    config_lines,
+-                })
+-            }
+-
+-            "client-auth-nt" => {
+-                let (cid_s, kid_s) =
+-                    args.split_once(char::is_whitespace)
+-                        .ok_or(CommandParseError::MissingArgs(
+-                            "usage: client-auth-nt <cid> <kid>",
+-                        ))?;
+-                Ok(Self::ClientAuthNt {
+-                    cid: cid_s
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?,
+-                    kid: kid_s
+-                        .trim()
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?,
+-                })
+-            }
+-
+-            // Wire format per management-notes.txt:
+-            //   client-deny <cid> <kid> "reason" ["client-reason"]
+-            // Reason strings are quoted+escaped on the wire.
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "client-deny" => {
+-                let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let cid = cid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
+-                let (kid_str, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let kid = kid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
+-                let (reason, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-deny <cid> <kid> <reason> [client-reason]",
+-                ))?;
+-                let client_reason = next_token(rest).map(|(cr, _)| cr);
+-                Ok(Self::ClientDeny(ClientDeny {
+-                    cid,
+-                    kid,
+-                    reason,
+-                    client_reason,
+-                }))
+-            }
+-
+-            "client-kill" => {
+-                let (cid_str, message) = match args.split_once(char::is_whitespace) {
+-                    Some((c, m)) => (c, Some(m.trim().to_string())),
+-                    None => (args, None),
+-                };
+-                let cid = cid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::InvalidNumber {
+-                        field: "client-kill CID",
+-                        input: cid_str.to_string(),
+-                    })?;
+-                Ok(Self::ClientKill { cid, message })
+-            }
+-
+-            // --- Remote/Proxy override ---
+-            "remote" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+-                ["accept" | "ACCEPT"] => Ok(Self::Remote(RemoteAction::Accept)),
+-                ["skip" | "SKIP"] => Ok(Self::Remote(RemoteAction::Skip)),
+-                ["skip" | "SKIP", n] => Ok(Self::Remote(RemoteAction::SkipN(n.parse().map_err(
+-                    |_| CommandParseError::InvalidChoice {
+-                        field: "remote skip count",
+-                        input: n.to_string(),
+-                        hint: "expected a positive integer (e.g. remote SKIP 3)",
+-                    },
+-                )?))),
+-                ["mod" | "MOD", host, port] => Ok(Self::Remote(RemoteAction::Modify {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                })),
+-                _ => cmd_err("usage: remote accept|skip [n]|mod <host> <port>"),
+-            },
+-
+-            "proxy" => match args.split_whitespace().collect::<Vec<_>>().as_slice() {
+-                ["none" | "NONE"] => Ok(Self::Proxy(ProxyAction::None)),
+-                ["http" | "HTTP", host, port] => Ok(Self::Proxy(ProxyAction::Http {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                    non_cleartext_only: false,
+-                })),
+-                ["http" | "HTTP", host, port, "nct"] => Ok(Self::Proxy(ProxyAction::Http {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                    non_cleartext_only: true,
+-                })),
+-                ["socks" | "SOCKS", host, port] => Ok(Self::Proxy(ProxyAction::Socks {
+-                    host: host.to_string(),
+-                    port: port
+-                        .parse()
+-                        .map_err(|_| CommandParseError::MissingArgs("port must be a number"))?,
+-                })),
+-                _ => cmd_err("usage: proxy none|http <host> <port> [nct]|socks <host> <port>"),
+-            },
+-
+-            // --- ENV filter ---
+-            "env-filter" => {
+-                let level = if args.is_empty() {
+-                    0
+-                } else {
+-                    args.parse::<u32>()
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "env-filter level",
+-                            input: args.to_string(),
+-                        })?
+-                };
+-                Ok(Self::EnvFilter(level))
+-            }
+-
+-            // --- Remote entry queries ---
+-            "remote-entry-count" => Ok(Self::RemoteEntryCount),
+-
+-            "remote-entry-get" => {
+-                if args.is_empty() {
+-                    return cmd_err("usage: remote-entry-get i|all [j]");
+-                }
+-                let range = if args == "all" {
+-                    RemoteEntryRange::All
+-                } else {
+-                    let mut parts = args.splitn(2, char::is_whitespace);
+-                    let from = parts.next().unwrap().parse::<u32>().map_err(|_| {
+-                        CommandParseError::InvalidNumber {
+-                            field: "remote-entry-get index",
+-                            input: args.to_string(),
+-                        }
+-                    })?;
+-                    match parts.next() {
+-                        Some(to_str) => {
+-                            let end = to_str.trim().parse::<u32>().map_err(|_| {
+-                                CommandParseError::InvalidNumber {
+-                                    field: "remote-entry-get end index",
+-                                    input: to_str.to_string(),
+-                                }
+-                            })?;
+-                            RemoteEntryRange::Range { from, end }
+-                        }
+-                        None => RemoteEntryRange::Single(from),
+-                    }
+-                };
+-                Ok(Self::RemoteEntryGet(range))
+-            }
+-
+-            // --- Push updates ---
+-            // Wire format per management-notes.txt:
+-            //   push-update-broad "options"
+-            //   push-update-cid <cid> "options"
+-            // Options are quoted+escaped on the wire.
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "push-update-broad" => {
+-                let (options, _) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-broad <options>",
+-                ))?;
+-                Ok(Self::PushUpdateBroad { options })
+-            }
+-
+-            "push-update-cid" => {
+-                let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-cid <cid> <options>",
+-                ))?;
+-                let cid = cid_str.parse::<u64>().map_err(|_| {
+-                    CommandParseError::MissingArgs("push-update-cid: cid must be a number")
+-                })?;
+-                let (options, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: push-update-cid <cid> <options>",
+-                ))?;
+-                Ok(Self::PushUpdateCid { cid, options })
+-            }
+-
+-            // --- Extended client management ---
+-            // Wire format per management-notes.txt:
+-            //   client-pending-auth <cid> <kid> <extra> <timeout>
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "client-pending-auth" => {
+-                let (cid_str, rest) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-pending-auth <cid> <kid> <extra> <timeout>",
+-                ))?;
+-                let cid = cid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("cid must be a number"))?;
+-                let (kid_str, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-pending-auth <cid> <kid> <extra> <timeout>",
+-                ))?;
+-                let kid = kid_str
+-                    .parse::<u64>()
+-                    .map_err(|_| CommandParseError::MissingArgs("kid must be a number"))?;
+-                let (extra, rest) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-pending-auth <cid> <kid> <extra> <timeout>",
+-                ))?;
+-                let (timeout_str, _) = next_token(rest).ok_or(CommandParseError::MissingArgs(
+-                    "usage: client-pending-auth <cid> <kid> <extra> <timeout>",
+-                ))?;
+-                let timeout =
+-                    timeout_str
+-                        .parse::<u32>()
+-                        .map_err(|_| CommandParseError::InvalidNumber {
+-                            field: "client-pending-auth timeout",
+-                            input: timeout_str,
+-                        })?;
+-                Ok(Self::ClientPendingAuth {
+-                    cid,
+-                    kid,
+-                    extra,
+-                    timeout,
+-                })
+-            }
+-
+-            // Wire format per management-notes.txt:
+-            //   cr-response <base64-response>
+-            // https://github.com/OpenVPN/openvpn/blob/master/doc/management-notes.txt
+-            "cr-response" => {
+-                let (response, _) = next_token(args).ok_or(CommandParseError::MissingArgs(
+-                    "usage: cr-response <response>",
+-                ))?;
+-                Ok(Self::CrResponse {
+-                    response: Redacted::new(response),
+-                })
+-            }
+-
+-            // --- Raw multi-line ---
+-            "raw-ml" => {
+-                if args.is_empty() {
+-                    return cmd_err("usage: raw-ml <command>");
+-                }
+-                Ok(Self::RawMultiLine(args.to_string()))
+-            }
+-
+-            // --- Lifecycle ---
+-            "exit" => Ok(Self::Exit),
+-            "quit" => Ok(Self::Quit),
+-
+-            // --- Fallback: send as raw command ---
+-            _ => Ok(Self::Raw(line.to_string())),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// The standard startup sequence that most management clients send after
+ /// connecting.
+ ///
+ /// This is the pattern used by `node-openvpn` and other clients: enable
+ /// log streaming, request the PID, start byte-count notifications, and
+
+
+*** C:\\workspace\\tools\\rustup\\toolchains\\nightly-x86_64-pc-windows-msvc\\bin\\cargo.exe test --no-run --verbose --package=openvpn-mgmt-codec@1.0.0-rc.1
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh quote v1.0.45
+       Fresh syn v2.0.117
+       Fresh windows-link v0.2.1
+       Fresh windows-sys v0.61.2
+       Fresh cfg-if v1.0.4
+       Fresh once_cell v1.21.4
+       Fresh pin-project-lite v0.2.17
+       Fresh fnv v1.0.7
+       Fresh strsim v0.11.1
+       Fresh getrandom v0.3.4
+       Fresh futures-core v0.3.32
+       Fresh regex-syntax v0.8.10
+       Fresh futures-sink v0.3.32
+       Fresh ident_case v1.0.1
+       Fresh darling_core v0.21.3
+       Fresh rand_core v0.9.5
+       Fresh tracing-core v0.1.36
+       Fresh heck v0.5.0
+       Fresh autocfg v1.5.0
+       Fresh zerocopy v0.8.48
+       Fresh getrandom v0.4.2
+       Fresh darling_macro v0.21.3
+       Fresh futures-channel v0.3.32
+       Fresh futures-macro v0.3.32
+       Fresh tracing-attributes v0.1.31
+       Fresh slab v0.4.12
+       Fresh memchr v2.8.0
+       Fresh once_cell_polyfill v1.70.2
+       Fresh futures-task v0.3.32
+       Fresh fastrand v2.3.0
+       Fresh utf8parse v0.2.2
+       Fresh anstyle v1.0.14
+       Fresh futures-io v0.3.32
+       Fresh futures-util v0.3.32
+       Fresh anstyle-wincon v3.0.11
+       Fresh anstyle-parse v1.0.0
+       Fresh tempfile v3.27.0
+       Fresh tracing v0.1.44
+       Fresh darling v0.21.3
+       Fresh ppv-lite86 v0.2.21
+       Fresh prettyplease v0.2.37
+       Fresh rustversion v1.0.22
+       Fresh regex-automata v0.4.14
+       Fresh socket2 v0.6.3
+       Fresh mio v1.2.0
+       Fresh anstyle-query v1.1.5
+       Fresh tokio-macros v2.6.1
+       Fresh lazy_static v1.5.0
+       Fresh log v0.4.29
+       Fresh wait-timeout v0.2.1
+       Fresh bytes v1.11.1
+       Fresh colorchoice v1.0.5
+       Fresh is_terminal_polyfill v1.70.2
+       Fresh quick-error v1.2.3
+       Fresh unicode-xid v0.2.6
+       Fresh bit-vec v0.8.0
+       Fresh bit-set v0.8.0
+       Fresh derive_more-impl v1.0.0
+       Fresh anstream v1.0.0
+       Fresh rusty-fork v0.3.1
+       Fresh tokio v1.50.0
+       Fresh tracing-log v0.2.0
+       Fresh sharded-slab v0.1.7
+       Fresh matchers v0.2.0
+       Fresh bon-macros v3.9.1
+       Fresh num-traits v0.2.19
+       Fresh rand_chacha v0.9.0
+       Fresh strum_macros v0.27.2
+       Fresh rand_xorshift v0.4.0
+       Fresh rand v0.9.2
+       Fresh test-case-core v3.3.1
+       Fresh thread_local v1.1.9
+       Fresh nu-ansi-term v0.50.3
+       Fresh thiserror-impl v2.0.18
+       Fresh unarray v0.1.4
+       Fresh smallvec v1.15.1
+       Fresh bitflags v2.11.0
+       Fresh clap_lex v1.1.0
+       Fresh clap_builder v4.6.0
+       Fresh proptest v1.11.0
+       Fresh tracing-subscriber v0.3.23
+       Fresh thiserror v2.0.18
+       Fresh test-case-macros v3.3.1
+       Fresh strum v0.27.2
+       Fresh bon v3.9.1
+       Fresh tokio-util v0.7.18
+       Fresh derive_more v1.0.0
+       Fresh futures-executor v0.3.32
+       Fresh clap_derive v4.6.0
+       Fresh tracing-test-macro v0.2.6
+       Fresh better_default v1.0.5
+       Fresh base64 v0.22.1
+       Fresh clap v4.6.0
+       Fresh tracing-test v0.2.6
+       Fresh futures v0.3.32
+       Fresh test-case v3.3.1
+       Fresh proptest-state-machine v0.8.0
+       Fresh anyhow v1.0.102
+       Dirty openvpn-mgmt-codec v1.0.0-rc.1 (C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\openvpn-mgmt-codec): the file `openvpn-mgmt-codec\src\command.rs` has changed (13419255802.515102600s, 41s after last build at 13419255761.799495500s)
+   Compiling openvpn-mgmt-codec v1.0.0-rc.1 (C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\openvpn-mgmt-codec)
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=3584fd5ad36b3241 -C extra-filename=-be808f7b3d23b828 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'proptest_state_machine=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libproptest_state_machine-3e44732a38c52c84.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'`
+     Running `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=58618598a94def4d -C extra-filename=-af921328b0c6dc1c --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rmeta' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rmeta' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbytes-451899d30935c5b9.rmeta' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rmeta' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rmeta' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rmeta' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rmeta' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rmeta' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rmeta' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtokio-bfa17e041d525217.rmeta' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rmeta' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rmeta'`
+warning: unused import: `transport_protocol::TransportProtocol`
+  --> openvpn-mgmt-codec\src\command.rs:15:5
+   |
+15 |     transport_protocol::TransportProtocol,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `tracing::warn`
+  --> openvpn-mgmt-codec\src\command.rs:17:5
+   |
+17 | use tracing::warn;
+   |     ^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `OvpnCommand: Default` is not satisfied
+   --> openvpn-mgmt-codec\src\command.rs:578:12
+    |
+578 |         Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+    |            ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Default` is not implemented for `OvpnCommand`
+   --> openvpn-mgmt-codec\src\command.rs:154:1
+    |
+154 | pub enum OvpnCommand {
+    | ^^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0277`.
+warning: `openvpn-mgmt-codec` (lib) generated 2 warnings
+error: could not compile `openvpn-mgmt-codec` (lib) due to 1 previous error; 2 warnings emitted
+
+Caused by:
+  process didn't exit successfully: `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=58618598a94def4d -C extra-filename=-af921328b0c6dc1c --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rmeta' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rmeta' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbytes-451899d30935c5b9.rmeta' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rmeta' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rmeta' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rmeta' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rmeta' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rmeta' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rmeta' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtokio-bfa17e041d525217.rmeta' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rmeta' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rmeta'` (exit code: 1)
+warning: build failed, waiting for other jobs to finish...
+warning: unused import: `tracing::warn`
+  --> openvpn-mgmt-codec\src\command.rs:17:5
+   |
+17 | use tracing::warn;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0277]: the trait bound `command::OvpnCommand: Default` is not satisfied
+   --> openvpn-mgmt-codec\src\command.rs:578:12
+    |
+578 |         Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+    |            ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Default` is not implemented for `command::OvpnCommand`
+   --> openvpn-mgmt-codec\src\command.rs:154:1
+    |
+154 | pub enum OvpnCommand {
+    | ^^^^^^^^^^^^^^^^^^^^
+
+warning: `openvpn-mgmt-codec` (lib test) generated 1 warning
+error: could not compile `openvpn-mgmt-codec` (lib test) due to 1 previous error; 1 warning emitted
+
+Caused by:
+  process didn't exit successfully: `C:\workspace\tools\rustup\toolchains\nightly-x86_64-pc-windows-msvc\bin\rustc.exe --crate-name openvpn_mgmt_codec --edition=2024 'openvpn-mgmt-codec\src\lib.rs' --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("conformance-tests"))' -C metadata=3584fd5ad36b3241 -C extra-filename=-be808f7b3d23b828 --out-dir 'C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps' -C 'incremental=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\incremental' -L 'dependency=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps' --extern 'anyhow=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libanyhow-5c1ea5ee8443e80f.rlib' --extern 'base64=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbase64-c9cc1af3ab183922.rlib' --extern 'better_default=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\better_default-44296539a231aa00.dll' --extern 'bon=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbon-45056ae249f4fdb8.rlib' --extern 'bytes=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libbytes-451899d30935c5b9.rlib' --extern 'clap=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libclap-75126aba5829834c.rlib' --extern 'derive_more=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libderive_more-768101fcabcda6a1.rlib' --extern 'futures=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures-62bab5b3b3fe1fdf.rlib' --extern 'futures_core=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures_core-0c6ebedae6662627.rlib' --extern 'futures_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libfutures_util-573e535b9712bedc.rlib' --extern 'pin_project_lite=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libpin_project_lite-9282e9cd9f25d405.rlib' --extern 'proptest=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libproptest-8449fca68ce24b36.rlib' --extern 'proptest_state_machine=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libproptest_state_machine-3e44732a38c52c84.rlib' --extern 'strum=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libstrum-a6ce10af0dd06aac.rlib' --extern 'test_case=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtest_case-68a28b1cc9d82546.rlib' --extern 'thiserror=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libthiserror-7a1298a18d9ead1b.rlib' --extern 'tokio=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtokio-bfa17e041d525217.rlib' --extern 'tokio_util=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtokio_util-dfacde342d75385f.rlib' --extern 'tracing=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtracing-383a285d8fe84aba.rlib' --extern 'tracing_subscriber=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtracing_subscriber-75b159a3dc2bc193.rlib' --extern 'tracing_test=C:\Users\RBACHM~1\AppData\Local\Temp\cargo-mutants-ovpn-mgmt-codec-20dG1m.tmp\target\debug\deps\libtracing_test-58f53be75208008d.rlib'` (exit code: 1)
+
+*** result: Failure(101)
