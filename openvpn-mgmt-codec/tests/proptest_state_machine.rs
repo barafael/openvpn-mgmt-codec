@@ -232,10 +232,8 @@ impl StateMachineTest for CodecSut {
                 // Notification must always be emitted immediately, even
                 // during multi-line accumulation.
                 assert!(
-                    msgs.iter().any(|m| matches!(
-                        m,
-                        OvpnMessage::Notification(Notification::State(..))
-                    )),
+                    msgs.iter()
+                        .any(|m| matches!(m, OvpnMessage::Notification(Notification::State(..)))),
                     "notification was swallowed: {msgs:?}",
                 );
             }

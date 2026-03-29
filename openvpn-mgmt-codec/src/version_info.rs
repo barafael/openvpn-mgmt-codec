@@ -178,6 +178,9 @@ mod tests {
         // A number too large for u32 returns an error.
         let lines = vec!["Management Version: 99999999999999999999".to_string()];
         let err = VersionInfo::parse(&lines).unwrap_err();
-        assert!(matches!(err, ParseVersionError::InvalidManagementVersion(_)));
+        assert!(matches!(
+            err,
+            ParseVersionError::InvalidManagementVersion(_)
+        ));
     }
 }

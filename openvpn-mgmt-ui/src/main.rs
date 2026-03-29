@@ -689,7 +689,11 @@ impl App {
                         .map(|port| format!("{}:{port}", state.remote_ip))
                         .unwrap_or(state.remote_ip)
                 });
-                self.add_log(LogLevel::Info, &format_timestamp(state.timestamp.0), &log_line);
+                self.add_log(
+                    LogLevel::Info,
+                    &format_timestamp(state.timestamp.0),
+                    &log_line,
+                );
             }
             Notification::ByteCount {
                 bytes_in,

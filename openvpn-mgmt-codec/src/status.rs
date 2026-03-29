@@ -396,8 +396,7 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
             }
             "TIME" => {
                 status.updated = fields.get(1).map(|val| val.to_string());
-                status.timestamp =
-                    fields.get(2).and_then(|val| parse_optional_timestamp(val));
+                status.timestamp = fields.get(2).and_then(|val| parse_optional_timestamp(val));
             }
             "HEADER" => {
                 // Skip header rows — they describe columns, not data.
@@ -445,7 +444,9 @@ fn parse_status_v2v3(lines: &[String], sep: char) -> Result<StatusResponse, Pars
                         bytes_in: parse_u64(cols[3], "bytes_received")?,
                         bytes_out: parse_u64(cols[4], "bytes_sent")?,
                         connected_since: cols.get(5).unwrap_or(&"").to_string(),
-                        connected_since_t: cols.get(6).and_then(|val| parse_optional_timestamp(val)),
+                        connected_since_t: cols
+                            .get(6)
+                            .and_then(|val| parse_optional_timestamp(val)),
                         username: cols.get(7).and_then(|val| parse_optional_string(val)),
                         cid: None,
                         peer_id: None,
@@ -604,7 +605,10 @@ mod tests {
             status.title.as_deref(),
             Some("OpenVPN 2.6.8 x86_64-pc-linux-gnu")
         );
-        assert_eq!(status.timestamp, Some(crate::timestamp::UtcTimestamp(1711031400)));
+        assert_eq!(
+            status.timestamp,
+            Some(crate::timestamp::UtcTimestamp(1711031400))
+        );
         assert_eq!(status.updated.as_deref(), Some("2024-03-21 14:30:00"));
         assert_eq!(status.clients.len(), 1);
         let client = &status.clients[0];
@@ -614,7 +618,10 @@ mod tests {
         assert!(client.virtual_ipv6.is_empty());
         assert_eq!(client.bytes_in, 1548576);
         assert_eq!(client.bytes_out, 984320);
-        assert_eq!(client.connected_since_t, Some(crate::timestamp::UtcTimestamp(1711012500)));
+        assert_eq!(
+            client.connected_since_t,
+            Some(crate::timestamp::UtcTimestamp(1711012500))
+        );
         assert_eq!(client.username, None); // "UNDEF" is mapped to None
         assert_eq!(client.cid, Some(0));
         assert_eq!(client.peer_id, Some(0));
@@ -623,7 +630,10 @@ mod tests {
         assert_eq!(status.routes.len(), 1);
         let route = &status.routes[0];
         assert_eq!(route.virtual_address, "10.8.0.6");
-        assert_eq!(route.last_ref_t, Some(crate::timestamp::UtcTimestamp(1711031390)));
+        assert_eq!(
+            route.last_ref_t,
+            Some(crate::timestamp::UtcTimestamp(1711031390))
+        );
 
         assert_eq!(status.global_stats.len(), 1);
         assert_eq!(status.global_stats[0].0, "Max bcast/mcast queue length");

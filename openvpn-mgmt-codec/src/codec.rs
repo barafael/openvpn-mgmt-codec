@@ -1025,8 +1025,7 @@ fn parse_state(payload: &str) -> Option<Notification> {
     //   (a) timestamp, (b) state, (c) desc, (d) local_ip, (e) remote_ip,
     //   (f) remote_port, (g) local_addr, (h) local_port, (i) local_ipv6
     let mut parts = payload.splitn(9, ',');
-    let timestamp =
-        crate::timestamp::UtcTimestamp(parse_field(parts.next()?, "state timestamp")?);
+    let timestamp = crate::timestamp::UtcTimestamp(parse_field(parts.next()?, "state timestamp")?);
     let state_str = parts.next()?;
     let name = state_str
         .parse()

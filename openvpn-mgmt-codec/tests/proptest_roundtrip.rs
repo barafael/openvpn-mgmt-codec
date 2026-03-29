@@ -1015,8 +1015,10 @@ fn arb_single_line_notification() -> BoxedStrategy<Notification> {
                 message: msg,
             }
         }),
-        (any::<u64>(), safe_text())
-            .prop_map(|(timestamp, param)| Notification::Echo { timestamp: UtcTimestamp(timestamp), param }),
+        (any::<u64>(), safe_text()).prop_map(|(timestamp, param)| Notification::Echo {
+            timestamp: UtcTimestamp(timestamp),
+            param
+        }),
         safe_text().prop_map(|text| Notification::Hold { text }),
         safe_text().prop_map(|message| Notification::Fatal { message }),
         any::<u32>().prop_map(|count| Notification::Pkcs11IdCount { count }),

@@ -1885,7 +1885,9 @@ fn state_reconnecting_various_reasons() {
         assert_eq!(msgs.len(), 1);
         match &msgs[0] {
             OvpnMessage::Notification(Notification::State(StateEntry {
-                name, description, ..
+                name,
+                description,
+                ..
             })) => {
                 assert_eq!(*name, OpenVpnState::Reconnecting);
                 assert_eq!(description, *reason);
