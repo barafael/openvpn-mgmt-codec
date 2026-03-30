@@ -6,7 +6,7 @@ mod common;
 use std::collections::BTreeMap;
 
 use bytes::BytesMut;
-use openvpn_mgmt_codec::stream::ManagementEvent;
+use openvpn_mgmt_codec::management_event::ManagementEvent;
 use openvpn_mgmt_codec::*;
 use tokio_util::codec::Encoder;
 

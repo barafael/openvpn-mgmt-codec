@@ -18,6 +18,8 @@ pub mod crv1_challenge;
 pub mod kill_target;
 /// Log severity levels (Info, Debug, Warning, etc.).
 pub mod log_level;
+/// Stream adapter categorizing messages as responses or notifications.
+pub mod management_event;
 /// Decoded messages and real-time notifications.
 pub mod message;
 /// Responses to `>NEED-OK:` prompts.
@@ -42,8 +44,6 @@ pub mod split;
 pub mod status;
 /// Status output format versions (V1/V2/V3).
 pub mod status_format;
-/// Stream adapter categorizing messages as responses or notifications.
-pub mod stream;
 /// Stream mode selectors (on/off/all/recent).
 pub mod stream_mode;
 /// Lightweight UTC timestamp formatting.
@@ -79,6 +79,7 @@ pub use version_info::VersionInfo;
 
 // Re-export key items from sub-modules for convenience.
 pub use command::{connection_sequence, server_connection_sequence};
+pub use management_event::ManagementEvent;
 pub use parsed_response::{LoadStats, ParseResponseError, StateEntry};
 pub use session::{ManagementSession, SessionError};
 pub use split::{EventStream, ManagementSink, management_split};
@@ -86,4 +87,3 @@ pub use status::{
     ClientStatistics, ConnectedClient, GlobalStats, ParseStatusError, RoutingEntry, StatusResponse,
     parse_client_statistics, parse_status,
 };
-pub use stream::ManagementEvent;

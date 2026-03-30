@@ -21,9 +21,8 @@
 //! use tokio::net::TcpStream;
 //! use tokio_util::codec::Framed;
 //! use openvpn_mgmt_codec::{
-//!     OvpnCodec,
+//!     ManagementEvent, OvpnCodec,
 //!     split::{management_split, ManagementSink},
-//!     stream::ManagementEvent,
 //! };
 //! use futures::StreamExt;
 //!
@@ -87,6 +86,7 @@ use crate::client_deny::ClientDeny;
 use crate::codec::OvpnCodec;
 use crate::command::{OvpnCommand, RemoteEntryRange};
 use crate::kill_target::KillTarget;
+use crate::management_event::ManagementEvent;
 use crate::message::{Notification, OvpnMessage};
 use crate::need_ok::NeedOkResponse;
 use crate::proxy_action::ProxyAction;
@@ -95,7 +95,6 @@ use crate::remote_action::RemoteAction;
 use crate::session::SessionError;
 use crate::signal::Signal;
 use crate::status_format::StatusFormat;
-use crate::stream::ManagementEvent;
 use crate::stream_mode::StreamMode;
 
 /// The write half of a split management connection.
@@ -170,14 +169,22 @@ where
     /// Any notifications encountered while scanning are stashed and will
     /// appear on subsequent `.next()` calls.
     pub async fn recv_response(&mut self) -> Result<OvpnMessage, SessionError> {
+        use futures_util::StreamExt as _;
+        // Poll the inner transport directly (not self.next()) to avoid
+        // re-yielding notifications we just stashed.
         loop {
-            match self.next().await {
-                Some(Ok(ManagementEvent::Response(msg))) => return Ok(msg),
-                Some(Ok(ManagementEvent::Notification(n))) => {
+            let msg = self
+                .inner
+                .next()
+                .await
+                .ok_or(SessionError::ConnectionClosed)?
+                .map_err(SessionError::Io)?;
+
+            match msg {
+                OvpnMessage::Notification(n) => {
                     self.stash.push_back(n);
                 }
-                Some(Err(e)) => return Err(SessionError::Io(e)),
-                None => return Err(SessionError::ConnectionClosed),
+                other => return Ok(other),
             }
         }
     }

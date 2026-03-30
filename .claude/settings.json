@@ -30,7 +30,15 @@
       "Bash(grep -E \"\\\\.\\(rs|py|sh\\)$\")",
       "WebFetch(domain:tzemanovic.gitlab.io)",
       "Bash(cargo info:*)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(gh api:*)",
+      "Bash(taskkill /F /IM split_tests-b6e3ca19d1d010fd.exe)",
+      "Bash(taskkill //F //PID 23868)",
+      "Bash(taskkill //F //PID 14976)",
+      "Bash(taskkill //F //PID 28180)"
+    ],
+    "additionalDirectories": [
+      "c:\\workspace\\sources\\openvpn-mfa\\src"
     ]
   }
 }

@@ -1,5 +1,4 @@
-//! Event type for categorizing decoded messages as responses or
-//! notifications.
+//! Event type for categorizing decoded messages as responses or notifications.
 
 use crate::message::{Notification, OvpnMessage};
 
