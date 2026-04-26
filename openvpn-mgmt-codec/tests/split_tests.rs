@@ -639,7 +639,9 @@ async fn session_state() {
         let mut buf = vec![0u8; 64];
         let _ = server.read(&mut buf).await.unwrap();
         server
-            .write_all(b"1711000000,CONNECTING,,,,,,,\n1711000005,CONNECTED,SUCCESS,10.8.0.6,,,,,\nEND\n")
+            .write_all(
+                b"1711000000,CONNECTING,,,,,,,\n1711000005,CONNECTED,SUCCESS,10.8.0.6,,,,,\nEND\n",
+            )
             .await
             .unwrap();
     });
@@ -680,7 +682,10 @@ async fn session_connection_closed_mid_command() {
     let mut session = ManagementSession::new(framed);
 
     let err = session.pid().await.unwrap_err();
-    assert!(matches!(err, SessionError::Io(_) | SessionError::ConnectionClosed));
+    assert!(matches!(
+        err,
+        SessionError::Io(_) | SessionError::ConnectionClosed
+    ));
 }
 
 // =====================================================================
@@ -790,17 +795,17 @@ async fn recv_success_on_multiline_returns_unexpected() {
 
     use futures::SinkExt;
     framed.send(OvpnCommand::Help).await.unwrap();
-    server
-        .write_all(b"help line 1\nEND\n")
-        .await
-        .unwrap();
+    server.write_all(b"help line 1\nEND\n").await.unwrap();
     drop(server);
 
     let (_sink, mut events) = management_split(framed);
 
     // recv_success expects SUCCESS, but gets MultiLine.
     let err = events.recv_success().await.unwrap_err();
-    assert!(matches!(err, SessionError::UnexpectedResponse(OvpnMessage::MultiLine(_))));
+    assert!(matches!(
+        err,
+        SessionError::UnexpectedResponse(OvpnMessage::MultiLine(_))
+    ));
 }
 
 #[tokio::test]
@@ -816,7 +821,10 @@ async fn recv_multi_line_on_success_returns_unexpected() {
 
     // recv_multi_line expects MultiLine, but gets Success.
     let err = events.recv_multi_line().await.unwrap_err();
-    assert!(matches!(err, SessionError::UnexpectedResponse(OvpnMessage::Success(_))));
+    assert!(matches!(
+        err,
+        SessionError::UnexpectedResponse(OvpnMessage::Success(_))
+    ));
 }
 
 #[tokio::test]
@@ -842,9 +850,7 @@ async fn alternating_recv_response_and_next() {
     framed.send(OvpnCommand::Pid).await.unwrap();
 
     server
-        .write_all(
-            b">HOLD:a\nSUCCESS: pid=1\n>HOLD:b\nSUCCESS: hold=0\n>HOLD:c\nSUCCESS: pid=2\n",
-        )
+        .write_all(b">HOLD:a\nSUCCESS: pid=1\n>HOLD:b\nSUCCESS: hold=0\n>HOLD:c\nSUCCESS: pid=2\n")
         .await
         .unwrap();
     drop(server);
@@ -855,19 +861,25 @@ async fn alternating_recv_response_and_next() {
     let r1 = events.recv_response().await.unwrap();
     assert!(matches!(r1, OvpnMessage::Success(ref s) if s == "pid=1"));
     let n1 = events.next().await.unwrap().unwrap();
-    assert!(matches!(&n1, ManagementEvent::Notification(Notification::Hold { text }) if text == "a"));
+    assert!(
+        matches!(&n1, ManagementEvent::Notification(Notification::Hold { text }) if text == "a")
+    );
 
     // Round 2: recv_response + drain
     let r2 = events.recv_response().await.unwrap();
     assert!(matches!(r2, OvpnMessage::Success(ref s) if s == "hold=0"));
     let n2 = events.next().await.unwrap().unwrap();
-    assert!(matches!(&n2, ManagementEvent::Notification(Notification::Hold { text }) if text == "b"));
+    assert!(
+        matches!(&n2, ManagementEvent::Notification(Notification::Hold { text }) if text == "b")
+    );
 
     // Round 3: recv_response + drain
     let r3 = events.recv_response().await.unwrap();
     assert!(matches!(r3, OvpnMessage::Success(ref s) if s == "pid=2"));
     let n3 = events.next().await.unwrap().unwrap();
-    assert!(matches!(&n3, ManagementEvent::Notification(Notification::Hold { text }) if text == "c"));
+    assert!(
+        matches!(&n3, ManagementEvent::Notification(Notification::Hold { text }) if text == "c")
+    );
 
     // Stream is done.
     assert!(events.next().await.is_none());
