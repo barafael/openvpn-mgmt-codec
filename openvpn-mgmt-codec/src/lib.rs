@@ -14,6 +14,8 @@ pub mod codec;
 pub mod command;
 /// Builder for outgoing CRV1 dynamic-challenge strings.
 pub mod crv1_challenge;
+/// Parser for incoming CRV1 dynamic-challenge responses.
+pub mod crv1_response;
 /// Client kill-target addressing.
 pub mod kill_target;
 /// Log severity levels (Info, Debug, Warning, etc.).
@@ -61,6 +63,7 @@ pub use client_event::{ClientEvent, ParseClientEventError};
 pub use codec::{AccumulationLimit, EncodeError, EncoderMode, OvpnCodec};
 pub use command::{CommandParseError, OvpnCommand, RemoteEntryRange};
 pub use crv1_challenge::Crv1Challenge;
+pub use crv1_response::{Crv1Response, ParseCrv1ResponseError};
 pub use kill_target::KillTarget;
 pub use log_level::{LogLevel, ParseLogLevelError};
 pub use message::{Notification, OvpnMessage, PasswordNotification};
